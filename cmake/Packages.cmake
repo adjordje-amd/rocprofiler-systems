@@ -36,6 +36,8 @@ rocprofiler_systems_add_interface_library(rocprofiler-systems-elfutils
                                           "Provides ElfUtils")
 rocprofiler_systems_add_interface_library(rocprofiler-systems-perfetto
                                           "Enables Perfetto support")
+rocprofiler_systems_add_interface_library(rocprofiler-systems-sqlite3
+                                          "Enables SQLite3 support")                            
 rocprofiler_systems_add_interface_library(rocprofiler-systems-timemory
                                           "Provides timemory libraries")
 rocprofiler_systems_add_interface_library(
