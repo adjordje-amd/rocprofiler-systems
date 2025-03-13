@@ -1,4 +1,3 @@
-#include <memory>
 #include <sstream>
 #include <type_traits>
 
@@ -19,38 +18,43 @@ namespace database {
 namespace queries {
 namespace query_builders {
 
-    struct QueryPropertyValueBuilder {
-        QueryPropertyValueBuilder(std::stringstream& ss) : _ss{std::move(ss)}{}
+    struct QueryValueBuilder {
+        QueryValueBuilder(std::stringstream& ss) : _ss{ss}{}
 
         template<typename ... Values>
-        std::string set_values(Values&& ... values) {
+        QueryValueBuilder& set_values(Values&& ... values) {
             auto i = sizeof ...(values);
-            _ss << "VALUES ( ";
+            _ss << "( ";
             ((_ss << (is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
                     << values  
                     << (is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
                     << (i-- > 1 ? ", " : " ")), ...) << ")";       
+            return *this;
+        }
+
+        std::string get_query_string() {
             return _ss.str();
         }
 
     private:
-        std::stringstream _ss;  
+        std::stringstream& _ss;  
     };
 
 
-    struct QueryPropertyNameBuilder {
-        QueryPropertyNameBuilder(std::stringstream& ss) : _ss{std::move(ss)}{}
+    struct QueryColumnsBuilder {
+        QueryColumnsBuilder(std::stringstream& ss) :_ss{ss}, _query_value_builder{_ss} {}
 
         template <typename ... Columns, typename = std::enable_if_t<(is_string_literal<Columns>::value && ...)>>
-        std::unique_ptr<QueryPropertyValueBuilder> set_columns(Columns& ... columns) {
+        QueryValueBuilder& set_columns(Columns& ... columns) {
             auto i = sizeof ...(columns);
             _ss << "( ";
-            (( _ss << columns << (i-- > 1 ? ", " : " ")), ...) << ") ";  
-            return std::make_unique<QueryPropertyValueBuilder>(_ss);
+            (( _ss << columns << (i-- > 1 ? ", " : " ")), ...) << ") VALUES";  
+            return _query_value_builder;
         }
 
     private:
-        std::stringstream _ss;
+        std::stringstream& _ss;
+        QueryValueBuilder _query_value_builder;
     };
 
 } // namespace query_builders

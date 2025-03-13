@@ -281,9 +281,9 @@ uint64_t
 insert_event() {
     static auto event_id = 1;
     database::queries::TableInsertQuery query;
-    get_database().execute_query(query.set_table_name("rocpd_event")->
-                                        set_columns("id", "category_id")->
-                                        set_values(event_id, SMI_CATEGORY_ID));
+    get_database().execute_query(query.set_table_name("rocpd_event").
+                                        set_columns("id", "category_id").
+                                        set_values(event_id, SMI_CATEGORY_ID).get_query_string());
     
     return event_id++;
 }
@@ -294,9 +294,9 @@ void insert_pcm_value_device_busy(double value) {
     auto event_id = insert_event();
     database::queries::TableInsertQuery query;
     get_database().execute_query(
-        query.set_table_name("rocpd_pmc_event")->
-                set_columns("id", "event_id", "pmc_id", "value")->
-                set_values(id, event_id, SMI_GPU_BUSY_PCM_ID, value));
+        query.set_table_name("rocpd_pmc_event").
+                set_columns("id", "event_id", "pmc_id", "value").
+                set_values(id, event_id, SMI_GPU_BUSY_PCM_ID, value).get_query_string());
 }
 
 void
@@ -549,11 +549,11 @@ setup()
         
         database::queries::TableInsertQuery query;
         // initialize cathegories
-        get_database().execute_query(query.set_table_name("rocpd_string")->set_columns("id", "string")->set_values(1, "SMI stats"));
+        get_database().execute_query(query.set_table_name("rocpd_string").set_columns("id", "string").set_values(1, "SMI stats").get_query_string());
         // set pmc value
-        get_database().execute_query(query.set_table_name("rocpd_pmc")->
-                                set_columns("id", "target_arch", "name", "description", "symbol", "value_type")->
-                                set_values(SMI_CATEGORY_ID, "GPU", "Device busy", "Device Busy Percentage", "%", "ABS"));
+        get_database().execute_query(query.set_table_name("rocpd_pmc").
+                                set_columns("id", "target_arch", "name", "description", "symbol", "value_type").
+                                set_values(SMI_CATEGORY_ID, "GPU", "Device busy", "Device Busy Percentage", "%", "ABS").get_query_string());
         
         is_initialized() = true;
         data::setup();

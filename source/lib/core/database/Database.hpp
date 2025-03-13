@@ -1,7 +1,6 @@
 #pragma once
 #include "queries/TableInsertQuery.hpp"
 
-#include <memory>
 #include <sqlite3.h>
 
 
