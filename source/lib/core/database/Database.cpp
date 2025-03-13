@@ -4,10 +4,12 @@
 #include <fstream>
 
 namespace {
-    inline void validate_sqlite3_result(int sqlite3_error_code, const char* error_base_msg) {
+    template<typename ... Args>
+    inline void validate_sqlite3_result(int sqlite3_error_code, Args&& ... args) {
         if (SQLITE_OK != sqlite3_error_code) {
             std::stringstream ss;
-            ss << error_base_msg << " (Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code) << ")";
+            ((ss << args << " "),...);
+            ss << " [Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code) << "]";
             throw std::runtime_error(ss.str());
         }
     }
@@ -49,7 +51,7 @@ namespace database {
     }
 
     void Database::execute_query(const std::string& query) {
-        validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.c_str(), 0, 0, 0), "Failed to execute query!");
+        validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.c_str(), 0, 0, 0), "Failed to execute query - ", query);
     }
     
 

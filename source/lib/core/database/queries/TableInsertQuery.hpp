@@ -9,7 +9,7 @@ namespace queries {
         TableInsertQuery() : _query_columns_builder{_ss}{}  
 
         query_builders::QueryColumnsBuilder& set_table_name(const std::string& tableName) {
-            _ss.clear();
+            _ss.str("");
             _ss << "INSERT INTO " << tableName << " ";
             return _query_columns_builder;
         }
