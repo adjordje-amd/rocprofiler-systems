@@ -1,6 +1,8 @@
+include_guard(GLOBAL)
+
 if(ROCPROFILER_BUILD_SQLITE3)
      # checkout submodule if not already checked out or clone repo if no .gitmodules file
-    rocprofiler_checkout_git_submodule(
+    rocprofiler_systems_checkout_git_submodule(
         RECURSIVE
         RELATIVE_PATH external/sqlite
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}

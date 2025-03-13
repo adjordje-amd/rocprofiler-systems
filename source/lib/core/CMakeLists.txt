@@ -17,7 +17,9 @@ set(core_sources
     ${CMAKE_CURRENT_LIST_DIR}/rocprofiler-sdk.cpp
     ${CMAKE_CURRENT_LIST_DIR}/state.cpp
     ${CMAKE_CURRENT_LIST_DIR}/timemory.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/utility.cpp)
+    ${CMAKE_CURRENT_LIST_DIR}/utility.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/utility.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/database/Database.cpp)
 
 set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/argparse.hpp
@@ -39,7 +41,11 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/rocprofiler-sdk.hpp
     ${CMAKE_CURRENT_LIST_DIR}/state.hpp
     ${CMAKE_CURRENT_LIST_DIR}/timemory.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/utility.hpp)
+    ${CMAKE_CURRENT_LIST_DIR}/utility.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/database/Database.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/database/queries/TableInsertQuery.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/database/queries/TableInsertQuery.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/database/queries/query_builders/InsertQueryBuilders.hpp)
 
 add_library(rocprofiler-systems-core-library STATIC)
 add_library(rocprofiler-systems::rocprofiler-systems-core ALIAS

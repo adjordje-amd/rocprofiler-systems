@@ -30,6 +30,9 @@
 #    undef NDEBUG
 #endif
 
+#include "core/database/Database.hpp"
+#include "core/database/queries/TableInsertQuery.hpp"
+
 #include "library/rocm_smi.hpp"
 #include "core/common.hpp"
 #include "core/components/fwd.hpp"
@@ -115,6 +118,9 @@ get_state()
 }  // namespace
 
 //--------------------------------------------------------------------------------------//
+#include <sqlite3.h>
+
+sqlite3* db;
 
 size_t                           data::device_count     = 0;
 std::set<uint32_t>               data::device_list      = {};
@@ -261,6 +267,38 @@ data::shutdown()
         }                                                                                \
     }
 
+
+#define SMI_GPU_BUSY_PCM_ID 1
+#define SMI_CATEGORY_ID 1
+
+database::Database&
+get_database() {
+    static database::Database db;
+    return db;
+}
+
+uint64_t 
+insert_event() {
+    static auto event_id = 1;
+    database::queries::TableInsertQuery query;
+    get_database().execute_query(query.set_table_name("rocpd_event")->
+                                        set_columns("id", "category_id")->
+                                        set_values(event_id, SMI_CATEGORY_ID));
+    
+    return event_id++;
+}
+
+void insert_pcm_value_device_busy(double value) {
+    static auto id = 0;
+    std::stringstream ss;
+    auto event_id = insert_event();
+    database::queries::TableInsertQuery query;
+    get_database().execute_query(
+        query.set_table_name("rocpd_pmc_event")->
+                set_columns("id", "event_id", "pmc_id", "value")->
+                set_values(id, event_id, SMI_GPU_BUSY_PCM_ID, value));
+}
+
 void
 data::post_process(uint32_t _dev_id)
 {
@@ -358,6 +396,8 @@ data::post_process(uint32_t _dev_id)
             double _temp  = itr.m_temp / 1.0e3;
             double _power = itr.m_power / 1.0e6;
             double _usage = itr.m_mem_usage / static_cast<double>(units::megabyte);
+
+            insert_pcm_value_device_busy(_busy);
 
             if(_settings.busy)
                 TRACE_COUNTER("device_busy", counter_track::at(_dev_id, _idx.at(0)), _ts,
@@ -504,9 +544,18 @@ setup()
                 }
             }
         }
-
+        
+        get_database().initialize_schema();
+        
+        database::queries::TableInsertQuery query;
+        // initialize cathegories
+        get_database().execute_query(query.set_table_name("rocpd_string")->set_columns("id", "string")->set_values(1, "SMI stats"));
+        // set pmc value
+        get_database().execute_query(query.set_table_name("rocpd_pmc")->
+                                set_columns("id", "target_arch", "name", "description", "symbol", "value_type")->
+                                set_values(SMI_CATEGORY_ID, "GPU", "Device busy", "Device Busy Percentage", "%", "ABS"));
+        
         is_initialized() = true;
-
         data::setup();
     } catch(std::runtime_error& _e)
     {
@@ -536,6 +585,7 @@ shutdown()
     }
 
     is_initialized() = false;
+
 }
 
 void
