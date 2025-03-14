@@ -30,8 +30,8 @@
 #    undef NDEBUG
 #endif
 
-#include "core/database/Database.hpp"
-#include "core/database/queries/TableInsertQuery.hpp"
+#include "core/data_storage/database.hpp"
+#include "core/data_storage/queries/table_insert_query.hpp"
 
 #include "library/rocm_smi.hpp"
 #include "core/common.hpp"
@@ -118,9 +118,6 @@ get_state()
 }  // namespace
 
 //--------------------------------------------------------------------------------------//
-#include <sqlite3.h>
-
-sqlite3* db;
 
 size_t                           data::device_count     = 0;
 std::set<uint32_t>               data::device_list      = {};
@@ -271,15 +268,15 @@ data::shutdown()
 #define SMI_GPU_BUSY_PCM_ID 1
 #define SMI_CATEGORY_ID 1
 
-database::Database&
+data_storage::database&
 get_database() {
-    return database::Database::get_instance();
+    return data_storage::database::get_instance();
 }
 
 uint64_t 
 insert_event() {
     static auto event_id = 1;
-    database::queries::TableInsertQuery query;
+    data_storage::queries::table_insert_query query;
     get_database().execute_query(query.set_table_name("rocpd_event").
                                         set_columns("id", "category_id").
                                         set_values(event_id, SMI_CATEGORY_ID).get_query_string());
@@ -291,7 +288,7 @@ void insert_pcm_value_device_busy(double value) {
     static auto id = 0;
     std::stringstream ss;
     auto event_id = insert_event();
-    database::queries::TableInsertQuery query;
+    data_storage::queries::table_insert_query query;
     get_database().execute_query(
         query.set_table_name("rocpd_pmc_event").
                 set_columns("id", "event_id", "pmc_id", "value").
@@ -546,7 +543,7 @@ setup()
         
         get_database().initialize_schema();
         
-        database::queries::TableInsertQuery query;
+        data_storage::queries::table_insert_query query;
         // initialize cathegories
         get_database().execute_query(query.set_table_name("rocpd_string").set_columns("id", "string").set_values(1, "SMI stats").get_query_string());
         // set pmc value

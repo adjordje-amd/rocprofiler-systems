@@ -14,15 +14,15 @@ namespace {
     struct is_string_literal<const char[N]> : std::true_type {}; 
 }
 
-namespace database {
+namespace data_storage {
 namespace queries {
 namespace query_builders {
 
-    struct QueryValueBuilder {
-        QueryValueBuilder(std::stringstream& ss) : _ss{ss}{}
+    struct query_value_builder {
+        query_value_builder(std::stringstream& ss) : _ss{ss}{}
 
         template<typename ... Values>
-        QueryValueBuilder& set_values(Values&& ... values) {
+        query_value_builder& set_values(Values&& ... values) {
             auto i = sizeof ...(values);
             _ss << "( ";
             ((_ss << (is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
@@ -41,11 +41,11 @@ namespace query_builders {
     };
 
 
-    struct QueryColumnsBuilder {
-        QueryColumnsBuilder(std::stringstream& ss) :_ss{ss}, _query_value_builder{_ss} {}
+    struct query_columns_builder {
+        query_columns_builder(std::stringstream& ss) :_ss{ss}, _query_value_builder{_ss} {}
 
         template <typename ... Columns, typename = std::enable_if_t<(is_string_literal<Columns>::value && ...)>>
-        QueryValueBuilder& set_columns(Columns& ... columns) {
+        query_value_builder& set_columns(Columns& ... columns) {
             auto i = sizeof ...(columns);
             _ss << "( ";
             (( _ss << columns << (i-- > 1 ? ", " : " ")), ...) << ") VALUES";  
@@ -54,11 +54,11 @@ namespace query_builders {
 
     private:
         std::stringstream& _ss;
-        QueryValueBuilder _query_value_builder;
+        query_value_builder _query_value_builder;
     };
 
 } // namespace query_builders
 } // namespace queries
-} // namespace database
+} // namespace data_storage
 
 

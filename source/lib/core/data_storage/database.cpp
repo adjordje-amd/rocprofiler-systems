@@ -1,4 +1,4 @@
-#include "Database.hpp"
+#include "database.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -15,14 +15,14 @@ namespace {
     }
 }
 
-namespace database {
+namespace data_storage {
 
-    Database& Database::get_instance() {
-        static Database _instance;
+    database& database::get_instance() {
+        static database _instance;
         return _instance;
     }
 
-    Database::Database() {
+    database::database() {
         auto db_name = [] {
             auto now = std::chrono::system_clock::now();
             // Convert the time point to a duration since the epoch
@@ -35,10 +35,10 @@ namespace database {
         }();
 
         printf("DATABASE NAME: %s\r\n", db_name.c_str());
-        validate_sqlite3_result(sqlite3_open(db_name.c_str(), &_sqlite3_db), "Database open failed!");
+        validate_sqlite3_result(sqlite3_open(db_name.c_str(), &_sqlite3_db), "database open failed!");
     };
 
-    void Database::initialize_schema() {
+    void database::initialize_schema() {
         auto schemaFile = "tableSchema.sql";
         std::ifstream file(schemaFile);
         if (!file.is_open()){
@@ -50,11 +50,11 @@ namespace database {
         validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.str().c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
     }
 
-    Database::~Database() {
+    database::~database() {
         sqlite3_close(_sqlite3_db);
     }
 
-    void Database::execute_query(const std::string& query) {
+    void database::execute_query(const std::string& query) {
         validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.c_str(), 0, 0, 0), "Failed to execute query - ", query);
     }
     
