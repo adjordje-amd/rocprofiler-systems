@@ -273,8 +273,7 @@ data::shutdown()
 
 database::Database&
 get_database() {
-    static database::Database db;
-    return db;
+    return database::Database::get_instance();
 }
 
 uint64_t 

@@ -16,7 +16,12 @@ namespace {
 }
 
 namespace database {
-    
+
+    Database& Database::get_instance() {
+        static Database _instance;
+        return _instance;
+    }
+
     Database::Database() {
         auto db_name = [] {
             auto now = std::chrono::system_clock::now();
@@ -44,7 +49,6 @@ namespace database {
         query << file.rdbuf();
         validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.str().c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
     }
-
 
     Database::~Database() {
         sqlite3_close(_sqlite3_db);

@@ -1,19 +1,23 @@
 #pragma once
 #include "queries/TableInsertQuery.hpp"
-
 #include <sqlite3.h>
-
 
 namespace database {
 
+
 class Database {
 public:
-    Database();
+    static Database& get_instance();
 
     Database(Database&) = delete;
     Database& operator=(Database&) = delete;
     
     ~Database();
+
+private:
+    Database();
+
+public:  
     
     void initialize_schema();
 
