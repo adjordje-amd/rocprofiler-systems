@@ -30,8 +30,7 @@
 #    undef NDEBUG
 #endif
 
-#include "core/data_storage/database.hpp"
-#include "core/data_storage/queries/table_insert_query.hpp"
+#include "core/data_processor/data_processor.hpp"
 
 #include "library/rocm_smi.hpp"
 #include "core/common.hpp"
@@ -264,35 +263,9 @@ data::shutdown()
         }                                                                                \
     }
 
-
-#define SMI_GPU_BUSY_PCM_ID 1
-#define SMI_CATEGORY_ID 1
-
-data_storage::database&
-get_database() {
-    return data_storage::database::get_instance();
-}
-
-uint64_t 
-insert_event() {
-    static auto event_id = 1;
-    data_storage::queries::table_insert_query query;
-    get_database().execute_query(query.set_table_name("rocpd_event").
-                                        set_columns("id", "category_id").
-                                        set_values(event_id, SMI_CATEGORY_ID).get_query_string());
-    
-    return event_id++;
-}
-
-void insert_pcm_value_device_busy(double value) {
-    static auto id = 0;
-    std::stringstream ss;
-    auto event_id = insert_event();
-    data_storage::queries::table_insert_query query;
-    get_database().execute_query(
-        query.set_table_name("rocpd_pmc_event").
-                set_columns("id", "event_id", "pmc_id", "value").
-                set_values(id, event_id, SMI_GPU_BUSY_PCM_ID, value).get_query_string());
+data_processor&
+get_data_processor() {
+    return data_processor::get_instance();
 }
 
 void
@@ -393,7 +366,14 @@ data::post_process(uint32_t _dev_id)
             double _power = itr.m_power / 1.0e6;
             double _usage = itr.m_mem_usage / static_cast<double>(units::megabyte);
 
-            insert_pcm_value_device_busy(_busy);
+            data_processor::get_instance().add_event(
+                data_processor::category_id::smi_device_busy, data_processor::correlation_id::smi_unused, 0, 0);
+            data_processor::get_instance().add_event(
+                data_processor::category_id::smi_device_temperature, data_processor::correlation_id::smi_unused, 0, 0);
+            data_processor::get_instance().add_event(
+                data_processor::category_id::smi_device_power, data_processor::correlation_id::smi_unused, 0, 0);
+            data_processor::get_instance().add_event(
+                data_processor::category_id::smi_device_memory_usage, data_processor::correlation_id::smi_unused, 0, 0);
 
             if(_settings.busy)
                 TRACE_COUNTER("device_busy", counter_track::at(_dev_id, _idx.at(0)), _ts,
@@ -541,15 +521,16 @@ setup()
             }
         }
         
-        get_database().initialize_schema();
+        get_data_processor().create_track("GPU usage", 0, getpid(), std::this_thread::get_id());
+        // get_database().initialize_schema();
         
-        data_storage::queries::table_insert_query query;
-        // initialize cathegories
-        get_database().execute_query(query.set_table_name("rocpd_string").set_columns("id", "string").set_values(1, "SMI stats").get_query_string());
-        // set pmc value
-        get_database().execute_query(query.set_table_name("rocpd_pmc").
-                                set_columns("id", "target_arch", "name", "description", "symbol", "value_type").
-                                set_values(SMI_CATEGORY_ID, "GPU", "Device busy", "Device Busy Percentage", "%", "ABS").get_query_string());
+        // data_storage::queries::table_insert_query query;
+        // // initialize cathegories
+        // get_database().execute_query(query.set_table_name("rocpd_string").set_columns("id", "string").set_values(1, "SMI stats").get_query_string());
+        // // set pmc value
+        // get_database().execute_query(query.set_table_name("rocpd_pmc").
+        //                         set_columns("id", "target_arch", "name", "description", "symbol", "value_type").
+        //                         set_values(SMI_CATEGORY_ID, "GPU", "Device busy", "Device Busy Percentage", "%", "ABS").get_query_string());
         
         is_initialized() = true;
         data::setup();

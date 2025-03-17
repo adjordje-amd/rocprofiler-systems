@@ -2,18 +2,8 @@
 
 #include <chrono>
 #include <fstream>
-
-namespace {
-    template<typename ... Args>
-    inline void validate_sqlite3_result(int sqlite3_error_code, Args&& ... args) {
-        if (SQLITE_OK != sqlite3_error_code) {
-            std::stringstream ss;
-            ((ss << args << " "),...);
-            ss << " [Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code) << "]";
-            throw std::runtime_error(ss.str());
-        }
-    }
-}
+#include <memory>
+#include <functional>
 
 namespace data_storage {
 
@@ -57,6 +47,4 @@ namespace data_storage {
     void database::execute_query(const std::string& query) {
         validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.c_str(), 0, 0, 0), "Failed to execute query - ", query);
     }
-    
-
 }

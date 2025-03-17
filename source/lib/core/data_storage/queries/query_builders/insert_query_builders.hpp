@@ -1,18 +1,10 @@
+#include "data_storage/utils.hpp"
+
 #include <sstream>
 #include <type_traits>
-
+#include <string_view>
 #include <iostream>
 
-namespace {
-    template <typename T>  
-    struct is_string_literal : std::false_type {};  
-      
-    template <std::size_t N>  
-    struct is_string_literal<char[N]> : std::true_type {};  
-      
-    template <std::size_t N>  
-    struct is_string_literal<const char[N]> : std::true_type {}; 
-}
 
 namespace data_storage {
 namespace queries {
@@ -25,9 +17,9 @@ namespace query_builders {
         query_value_builder& set_values(Values&& ... values) {
             auto i = sizeof ...(values);
             _ss << "( ";
-            ((_ss << (is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
+            ((_ss << (utils::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
                     << values  
-                    << (is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
+                    << (utils::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
                     << (i-- > 1 ? ", " : " ")), ...) << ")";       
             return *this;
         }
@@ -44,11 +36,11 @@ namespace query_builders {
     struct query_columns_builder {
         query_columns_builder(std::stringstream& ss) :_ss{ss}, _query_value_builder{_ss} {}
 
-        template <typename ... Columns, typename = std::enable_if_t<(is_string_literal<Columns>::value && ...)>>
+        template <typename ... Columns, typename = std::enable_if_t<(utils::is_string_literal<Columns>::value && ...)>>
         query_value_builder& set_columns(Columns& ... columns) {
             auto i = sizeof ...(columns);
             _ss << "( ";
-            (( _ss << columns << (i-- > 1 ? ", " : " ")), ...) << ") VALUES";  
+            (( _ss << columns << (i-- > 1 ? ", " : " ")), ...) << ") VALUES ";  
             return _query_value_builder;
         }
 
