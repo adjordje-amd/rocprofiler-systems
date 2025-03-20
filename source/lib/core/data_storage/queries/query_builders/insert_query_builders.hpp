@@ -1,4 +1,6 @@
-#include "data_storage/utils.hpp"
+#pragma once
+
+#include "core/data_storage/utils.hpp"
 
 #include <sstream>
 #include <type_traits>

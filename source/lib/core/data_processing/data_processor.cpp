@@ -1,7 +1,24 @@
 #include "data_processor.hpp"
-#include "data_storage/database.hpp"
 
 namespace rocprofsys{
+namespace {
+    
+static inline constexpr const char* 
+get_agent_type(data_processor::agent_type agent_type) {
+    switch (agent_type)
+    {
+        case data_processor::agent_type::cpu:
+            return "CPU";
+        
+        case data_processor::agent_type::gpu:
+            return "GPU";
+        
+        default: 
+            return "UNKNOWN";
+    }
+}
+
+}
 
 constexpr char* CATEHORY_NAME_SMI_DEVICE_BUSY = "Device Busy";
 constexpr char* CATEHORY_NAME_SMI_DEVICE_MEMORY_USAGE = "Device Memory Usage";
@@ -42,6 +59,19 @@ int data_processor::create_string(std::string_view str){
 }
 
 void 
+data_processor::create_agent(const data_processor::agent_descriptor& agent) {
+    data_storage::queries::table_insert_query query;
+    data_storage::database::get_instance()
+                            .execute_query(
+                                query.set_table_name("rocpd_agent")
+                                    .set_columns("id", "node_id", "type", "absolute_index", "logical_index", "type_index", "uuid", "name", 
+                                                    "model_name", "vendor_name", "product_name", "user_name", "extdata")
+                                    .set_values(agent.id, agent.node_id, get_agent_type(agent.type), agent.absolute_index, agent.logical_index, agent.type_index, 
+                                                agent.uuid, agent.name, agent.model_name, agent.vendor_name, agent.product_name, agent.user_name, agent.extdata)
+                                    .get_query_string());
+}
+
+void 
 data_processor::create_track(std::string_view track_name, uint32_t node_id, pid_t pid, std::thread::id tid){
     if (_track_name_map.find(track_name) != _track_name_map.end()) {
         // TODO: Add warning message
@@ -59,27 +89,6 @@ data_processor::create_track(std::string_view track_name, uint32_t node_id, pid_
                                     .set_values(_track_id++, node_id, pid, tid, name_id)
                                     .get_query_string());
 }                            
-
-void 
-data_processor::add_event(category_id _category_id, correlation_id _correlation_id, 
-                            uint32_t _stack_id, uint32_t _parent_stack_id) 
-{
-    static auto _add_event_stmt = []{
-        data_storage::queries::table_insert_query query;
-        return data_storage::database::get_instance().
-                                                create_statment_executor<uint32_t, uint32_t, uint32_t, uint32_t>(
-                                                    query.set_table_name("rocpd_event")
-                                                            .set_columns("category_id", "correlation_id", "stack_id", "parent_stack_id")
-                                                            .set_values('?','?','?','?')
-                                                            .get_query_string());
-    }();
-
-    _add_event_stmt(
-        reinterpret_cast<uint32_t&&>(_category_map[_category_id]), 
-        reinterpret_cast<uint32_t&&>(_correlation_id), 
-        reinterpret_cast<uint32_t&&>(_stack_id), 
-        reinterpret_cast<uint32_t&&>(_parent_stack_id));
-}
 
 void 
 data_processor::add_sample(std::string_view track_name, uint64_t timestamp) {

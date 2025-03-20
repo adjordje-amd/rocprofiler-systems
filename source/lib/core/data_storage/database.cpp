@@ -38,6 +38,16 @@ namespace data_storage {
         std::stringstream query;
         query << file.rdbuf();
         validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.str().c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
+        file.close();
+        
+        file.open("utilitySchema.sql");
+        if (!file.is_open()){
+            throw std::runtime_error("Failed to open utility schema file!");
+        }
+        query.str("");
+        query << file.rdbuf();
+        validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.str().c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
+        file.close();
     }
 
     database::~database() {

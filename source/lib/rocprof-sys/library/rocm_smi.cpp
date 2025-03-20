@@ -30,7 +30,9 @@
 #    undef NDEBUG
 #endif
 
-#include "core/data_processor/data_processor.hpp"
+#include "core/data_processing/data_processor.hpp"
+#include "core/data_processing/json.hpp"
+#include "core/data_processing/utils.hpp"
 
 #include "library/rocm_smi.hpp"
 #include "core/common.hpp"
@@ -268,6 +270,30 @@ get_data_processor() {
     return data_processor::get_instance();
 }
 
+
+struct smi_metric : data_processing::serializable<smi_metric> {
+    smi_metric(rocm_smi::settings settings) : _settings{settings}{}
+    double busy = 0.0;
+    double temp = 0.0;
+    double power = 0.0;
+    double usage = 0.0;
+    rocm_smi::settings _settings;
+
+    const std::string serialize_impl() const {
+        auto metrics = data_processing::json::create();
+        if(_settings.busy) 
+            metrics->set("device_busy", busy);
+        if(_settings.temp)    
+            metrics->set("device_temp", temp);
+        if(_settings.power) 
+            metrics->set("device_power", power);
+        if(_settings.mem_usage)    
+            metrics->set("device_memory_usage", usage);
+        std::cout << "Serialized smi metric " << metrics->to_string() << std::endl;
+        return metrics->to_string();
+    }
+};
+
 void
 data::post_process(uint32_t _dev_id)
 {
@@ -366,14 +392,17 @@ data::post_process(uint32_t _dev_id)
             double _power = itr.m_power / 1.0e6;
             double _usage = itr.m_mem_usage / static_cast<double>(units::megabyte);
 
-            data_processor::get_instance().add_event(
-                data_processor::category_id::smi_device_busy, data_processor::correlation_id::smi_unused, 0, 0);
-            data_processor::get_instance().add_event(
-                data_processor::category_id::smi_device_temperature, data_processor::correlation_id::smi_unused, 0, 0);
-            data_processor::get_instance().add_event(
-                data_processor::category_id::smi_device_power, data_processor::correlation_id::smi_unused, 0, 0);
-            data_processor::get_instance().add_event(
-                data_processor::category_id::smi_device_memory_usage, data_processor::correlation_id::smi_unused, 0, 0);
+            smi_metric metric(_settings);
+            metric.busy = _busy;
+            metric.temp = _temp;
+            metric.power = _power;
+            metric.usage = _usage;
+            // (int category_id, int correlation_id, int stack_id, int parent_stack_id, const char* args, const T& metrics, 
+            //     const char* call_stack, const char* line_info,  const char* extdata
+            const data_processing::event<smi_metric> event(0, 0, 0, 0, "args", metric, "call_stack", " line_info", "ext data");
+
+            data_processor::get_instance().add_event(event);
+
 
             if(_settings.busy)
                 TRACE_COUNTER("device_busy", counter_track::at(_dev_id, _idx.at(0)), _ts,
