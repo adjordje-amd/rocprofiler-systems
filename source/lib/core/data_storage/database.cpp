@@ -1,9 +1,13 @@
 #include "database.hpp"
 
+#include <timemory/environment/types.hpp>
 #include <chrono>
 #include <fstream>
 #include <memory>
 #include <functional>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 namespace data_storage {
 
@@ -29,8 +33,20 @@ namespace data_storage {
     };
 
     void database::initialize_schema() {
-        auto schemaFile = "tableSchema.sql";
-        std::ifstream file(schemaFile);
+        auto get_file_path = [](const char* filename) {
+            auto _rocprofsys_root = tim::get_env<std::string>(
+                "rocprofiler_systems_ROOT", tim::get_env<std::string>("ROCPROFSYS_ROOT", ""));
+            if(!_rocprofsys_root.empty() && fs::exists(std::string(_rocprofsys_root)))
+            {
+                auto new_file_path = std::string(_rocprofsys_root).append("/share/rocprofiler-systems/").append(filename);
+                if(fs::exists(new_file_path)) {
+                    return new_file_path;
+                }
+            }
+            return std::string("rocprof-sys-source/source/lib/core/data_storage/schema/").append(filename);
+        };
+
+        std::ifstream file(get_file_path("tableSchema.sql"));
         if (!file.is_open()){
             throw std::runtime_error("Failed to open database schema file!");
         }
@@ -40,7 +56,7 @@ namespace data_storage {
         validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.str().c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
         file.close();
         
-        file.open("utilitySchema.sql");
+        file.open(get_file_path("utilitySchema.sql"));
         if (!file.is_open()){
             throw std::runtime_error("Failed to open utility schema file!");
         }

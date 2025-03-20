@@ -24,7 +24,7 @@ if(ROCPROFILER_BUILD_SQLITE3)
         CONFIGURE_COMMAND
             <SOURCE_DIR>/configure --prefix=${PROJECT_BINARY_DIR}/external/sqlite/install
             --libdir=${PROJECT_BINARY_DIR}/external/sqlite/install/lib --disable-shared
-            --enable-tempstore=yes --enable-all --disable-tcl --with-pic CFLAGS=-O3\ -g1
+            --with-tempstore=yes --enable-all --disable-tcl CFLAGS=-O3\ -g1
         BUILD_COMMAND ${MAKE_COMMAND} install -s
         INSTALL_COMMAND "")
  
