@@ -13,11 +13,13 @@
 
 
 namespace rocprofsys {
-namespace {
-    using add_event_stmt = std::function<void(int, uint32_t, uint32_t, uint32_t, uint32_t)>;
-}
-
+    
 struct data_processor {
+
+    using insert_event_stmt = std::function<void(uint32_t, uint32_t, uint32_t, uint32_t, const char*, const char*, const char*, const char*, const char*)>;
+    using insert_pmc_event_stms = std::function<void(uint32_t, uint32_t, double, const char*)>;
+
+
     enum class category_id {
         smi_device_busy,
         smi_device_temperature,
@@ -51,71 +53,23 @@ struct data_processor {
         const char* extdata;
     };
 
-    struct event_descriptor {
-       int category_id;
-       int correlation_id;
-       int stack_id;
-       int parent_stack_id;
-       const char* args;
-       const char* metrics;
-       const char* call_stack;
-       const char* line_info;
-       const char* extdata;
-    };
-
     static data_processor& get_instance();
 
-    int create_string(std::string_view str);
+    size_t insert_string(const char* str);
 
-    void create_agent(const agent_descriptor& agent);
+    void insert_agent(const agent_descriptor& agent);
     
-    void create_track(std::string_view name, uint32_t node_id, pid_t pid, std::thread::id tid);
+    void insert_track(const char* name, uint32_t node_id, pid_t pid, std::thread::id tid);
     
-    /**
-     * @brief record event into database
-     * 
-     * This function logs or registers an event with the given category, correlation, stack, and
-     * parent stack identifiers. It is typically used in systems where events are categorized
-     * and correlated in structured formats for processing, logging, or analysis.
-     * 
-     * @param category_id A unique identifier representing the category of the event.
-     * 
-     * @param correlation_id A unique identifier used to correlate this event with others.
-     * 
-     * @param stack_id A unique identifier representing the stack trace or context from
-     * 
-     * @param parent_stack_id A unique identifier for the parent stack trace or context.
-     */
-    template<typename T>
-    void add_event(const data_processing::event<T>& event) {
-        static auto _add_event_stmt = []{
-            data_storage::queries::table_insert_query query_builder;
-            auto query = query_builder.set_table_name("rocpd_event")
-                                        .set_columns(
-                                            "category_id", "correlation_id", "stack_id", "parent_stack_id", 
-                                            "args", "metrics", "call_stack", "line_info", "extdata")
-                                        .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?')
-                                        .get_query_string();
-            return data_storage::database::get_instance().create_statment_executor<decltype(event.category_id),
-                                                                                    decltype(event.correlation_id),
-                                                                                    decltype(event.stack_id),
-                                                                                    decltype(event.parent_stack_id),
-                                                                                    decltype(event.args),
-                                                                                    const char*,
-                                                                                    decltype(event.call_stack),
-                                                                                    decltype(event.line_info),
-                                                                                    decltype(event.extdata)>(query);                                            
-        }();
+    void initialize_event_stmt();
 
-        static std::string metrics;
-        metrics = event.metrics.serialize();
-        std::cout << "Add event. Metrics " << metrics << std::endl;
+    size_t insert_event(const data_processing::event& event);
 
-        _add_event_stmt(event.category_id, event.correlation_id, event.stack_id, event.parent_stack_id, 
-                        event.args, metrics.c_str(), event.call_stack, event.line_info, event.extdata);
-    }
+    void initialize_pmc_event_stmt();
+
+    void insert_pmc_event(const data_processing::pmc_event& event);
         
-    void add_sample(std::string_view track_name, uint64_t timestamp);
+    void insert_sample(const char* track_name, uint64_t timestamp, size_t event_id);
 
 private:
     data_processor();
@@ -125,13 +79,10 @@ private:
     data_processor& operator=(const data_processor&) = delete;
 
 private:
-    std::unordered_map<std::string_view, uint32_t> _track_name_map;
-    std::unordered_map<category_id, int> _category_map;
+    std::unordered_map<std::string, uint32_t> _track_name_map;
 
-    uint32_t _track_id{1};
-    uint32_t _string_id{1};
-    uint32_t _sample_id{1};
-    uint32_t _event_id{1};
+    insert_event_stmt _insert_event_statement;
+    insert_pmc_event_stms _insert_pmc_event_statement;
 };
 
 } // namespace rocprofsys

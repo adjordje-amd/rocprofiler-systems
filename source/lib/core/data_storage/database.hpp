@@ -35,6 +35,8 @@ public:
 
     void execute_query(const std::string& query);
 
+    size_t get_last_insert_id();
+
     /**
      * This function prepares an SQLite statement based on the provided SQL query and returns a lambda   
      * that can execute the prepared statement, binding the provided values to the respective placeholders   
@@ -44,11 +46,9 @@ public:
     auto create_statment_executor(const std::string& query) {
         sqlite3_stmt* p_stmt;
         validate_sqlite3_result(sqlite3_prepare_v2(_sqlite3_db, query.c_str(), -1, &p_stmt, nullptr), "Failed to create statement!", query);
-        std::unique_ptr<
-                sqlite3_stmt, 
-                std::function<int(sqlite3_stmt*)>> u_stmt{p_stmt, sqlite3_finalize};
+        std::shared_ptr<sqlite3_stmt> stmt{p_stmt, sqlite3_finalize};
 
-        return [stmt = std::move(u_stmt)](Values ... value) mutable {
+        return [stmt](Values ... value) {
             int position = 1;
             auto bind_value = [&](auto value) {
                 using T = decltype(value);
@@ -60,7 +60,7 @@ public:
                     std::cout << "Binding text " << value << std::endl;
                     database::validate_sqlite3_result(sqlite3_bind_text(stmt.get(), position, value, -1, SQLITE_STATIC), "Failed to bind text!");
                 } else {
-                    std::cout << "SSS " << value << std::endl;
+                    throw std::runtime_error("Unsupported type for binding!");
                 }
                 position++;
             };

@@ -270,30 +270,6 @@ get_data_processor() {
     return data_processor::get_instance();
 }
 
-
-struct smi_metric : data_processing::serializable<smi_metric> {
-    smi_metric(rocm_smi::settings settings) : _settings{settings}{}
-    double busy = 0.0;
-    double temp = 0.0;
-    double power = 0.0;
-    double usage = 0.0;
-    rocm_smi::settings _settings;
-
-    const std::string serialize_impl() const {
-        auto metrics = data_processing::json::create();
-        if(_settings.busy) 
-            metrics->set("device_busy", busy);
-        if(_settings.temp)    
-            metrics->set("device_temp", temp);
-        if(_settings.power) 
-            metrics->set("device_power", power);
-        if(_settings.mem_usage)    
-            metrics->set("device_memory_usage", usage);
-        std::cout << "Serialized smi metric " << metrics->to_string() << std::endl;
-        return metrics->to_string();
-    }
-};
-
 void
 data::post_process(uint32_t _dev_id)
 {
@@ -392,16 +368,30 @@ data::post_process(uint32_t _dev_id)
             double _power = itr.m_power / 1.0e6;
             double _usage = itr.m_mem_usage / static_cast<double>(units::megabyte);
 
-            smi_metric metric(_settings);
-            metric.busy = _busy;
-            metric.temp = _temp;
-            metric.power = _power;
-            metric.usage = _usage;
-            // (int category_id, int correlation_id, int stack_id, int parent_stack_id, const char* args, const T& metrics, 
-            //     const char* call_stack, const char* line_info,  const char* extdata
-            const data_processing::event<smi_metric> event(0, 0, 0, 0, "args", metric, "call_stack", " line_info", "ext data");
 
-            data_processor::get_instance().add_event(event);
+            auto& data_processor = get_data_processor();
+            data_processing::event event= {0, 0, 0, 0, "args", "metrics", "call_stack", " line_info", "ext data"};
+            auto event_id = data_processor.insert_event(event);
+            data_processing::pmc_event busy_pmc_event = { event_id, 1, _busy, ""};
+            data_processor.insert_pmc_event(busy_pmc_event);
+
+            data_processing::pmc_event temp_pmc_event = { event_id, 2, _temp, ""};
+            data_processor.insert_pmc_event(temp_pmc_event);
+
+            data_processing::pmc_event power_pmc_event = { event_id, 3, _power, ""};
+            data_processor.insert_pmc_event(power_pmc_event);
+
+            data_processing::pmc_event usage_pmc_event = { event_id, 4, _usage, ""};
+            data_processor.insert_pmc_event(usage_pmc_event);
+            // metric.busy = _busy;
+            // metric.temp = _temp;
+            // metric.power = _power;
+            // metric.usage = _usage;
+            // // (int category_id, int correlation_id, int stack_id, int parent_stack_id, const char* args, const T& metrics, 
+            // //     const char* call_stack, const char* line_info,  const char* extdata
+            // const data_processing::event<smi_metric> event(0, 0, 0, 0, "args", metric, "call_stack", " line_info", "ext data");
+
+            // data_processor::get_instance().add_event(event);
 
 
             if(_settings.busy)
@@ -549,10 +539,12 @@ setup()
                 }
             }
         }
-        
-        get_data_processor().create_track("GPU usage", 0, getpid(), std::this_thread::get_id());
-        // get_database().initialize_schema();
-        
+
+        get_data_processor().insert_track("GPU usage", 0, getpid(), std::this_thread::get_id());
+        get_data_processor().insert_track("GPU power", 0, getpid(), std::this_thread::get_id());
+        get_data_processor().insert_track("GPU temperature", 0, getpid(), std::this_thread::get_id());
+        get_data_processor().insert_track("GPU memory usage", 0, getpid(), std::this_thread::get_id());
+      
         // data_storage::queries::table_insert_query query;
         // // initialize cathegories
         // get_database().execute_query(query.set_table_name("rocpd_string").set_columns("id", "string").set_values(1, "SMI stats").get_query_string());

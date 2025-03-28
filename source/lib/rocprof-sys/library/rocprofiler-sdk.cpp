@@ -1086,7 +1086,7 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
                 .user_name = " ",
                 .extdata = " ",
             };
-            data_processor::get_instance().create_agent(description);
+            data_processor::get_instance().insert_agent(description);
         }
     };
 

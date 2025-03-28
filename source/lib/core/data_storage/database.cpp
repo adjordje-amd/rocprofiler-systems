@@ -27,10 +27,14 @@ namespace data_storage {
             ss << "rocprof-" << seconds << ".db";
             return ss.str();
         }();
-
+        
         printf("DATABASE NAME: %s\r\n", db_name.c_str());
         validate_sqlite3_result(sqlite3_open(db_name.c_str(), &_sqlite3_db), "database open failed!");
     };
+    
+    database::~database() {
+        sqlite3_close(_sqlite3_db);
+    }
 
     void database::initialize_schema() {
         auto get_file_path = [](const char* filename) {
@@ -66,11 +70,11 @@ namespace data_storage {
         file.close();
     }
 
-    database::~database() {
-        sqlite3_close(_sqlite3_db);
-    }
-
     void database::execute_query(const std::string& query) {
         validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.c_str(), 0, 0, 0), "Failed to execute query - ", query);
+    }
+
+    size_t database::get_last_insert_id() {
+        return sqlite3_last_insert_rowid(_sqlite3_db);
     }
 }
