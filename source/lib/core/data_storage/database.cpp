@@ -1,4 +1,5 @@
 #include "database.hpp"
+#include "debug.hpp"
 
 #include <timemory/environment/types.hpp>
 #include <chrono>
@@ -6,6 +7,7 @@
 #include <memory>
 #include <functional>
 #include <filesystem>
+#include <regex>
 
 namespace fs = std::filesystem;
 
@@ -28,8 +30,8 @@ namespace data_storage {
             return ss.str();
         }();
         
-        printf("DATABASE NAME: %s\r\n", db_name.c_str());
-        validate_sqlite3_result(sqlite3_open(":memory:", &_ram_sqlite_db), "database open failed!");
+        ROCPROFSYS_VERBOSE(0, "Database: %s\r\n", db_name.c_str());
+        validate_sqlite3_result(sqlite3_open("_ram_sqlite_db.db", &_ram_sqlite_db), "database open failed!");
         validate_sqlite3_result(sqlite3_open(db_name.c_str(), &_sqlite3_db), "database open failed!");
     };
     
@@ -62,26 +64,26 @@ namespace data_storage {
             throw std::runtime_error("Failed to open database schema file!");
         }
 
-        std::stringstream query;
-        query << file.rdbuf();
-        validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.str().c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
+        std::stringstream ss_query;
+        ss_query << file.rdbuf();
+        std::regex upid_pattern("\\{\\{upid\\}\\}");  
+        std::string query = std::regex_replace(ss_query.str(), upid_pattern, "_R4nd0m1D");
+        validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
         file.close();
         
-        file.open(get_file_path("utilitySchema.sql"));
-        if (!file.is_open()){
-            throw std::runtime_error("Failed to open utility schema file!");
-        }
-        query.str("");
-        query << file.rdbuf();
-        validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.str().c_str(), 0, 0, 0), "Invalid database utility file, init database failed!");
-        file.close();
+        // file.open(get_file_path("utilitySchema.sql"));
+        // if (!file.is_open()){
+        //     throw std::runtime_error("Failed to open utility schema file!");
+        // }
+        // ss_query.str("");
+        // ss_query << file.rdbuf();
+        // std::regex view_upid_pattern("\\{\\{upid\\}\\}");  
+        // query = std::regex_replace(ss_query.str(), view_upid_pattern, "_R4nd0m1D");
+        // validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Invalid database utility file, init database failed!");
+        // file.close();
     }
 
     void database::execute_query(const std::string& query) {
         validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Failed to execute query - ", query);
-    }
-
-    size_t database::get_last_insert_id() {
-        return sqlite3_last_insert_rowid(_ram_sqlite_db);
     }
 }

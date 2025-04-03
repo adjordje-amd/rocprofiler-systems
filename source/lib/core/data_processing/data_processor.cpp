@@ -3,22 +3,6 @@
 
 namespace rocprofsys {
 namespace data_processing {
-namespace {
-
-static inline constexpr const char*
-get_agent_type(const types::agent_type& agent_type)
-{
-    switch(agent_type)
-    {
-        case types::agent_type::cpu: return "CPU";
-
-        case types::agent_type::gpu: return "GPU";
-
-        default: return "UNKNOWN";
-    }
-}
-
-}  // namespace
 
 data_processor::data_processor()
 {
@@ -44,24 +28,54 @@ data_processor::insert_string(const char* str)
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance()
                             .execute_query(
-                                query.set_table_name("rocpd_string")
-                                    .set_columns("string")
-                                    .set_values(str)
+                                query.set_table_name("rocpd_string" + _upid)
+                                    .set_columns("id", "guid", "string")
+                                    .set_values(_string_id, _upid, str)
                                     .get_query_string());
 
-    return data_storage::database::get_instance().get_last_insert_id();
+    return _string_id++;
 }
 
 void
-data_processor::insert_agent(size_t node_id, const char* agent_type, size_t absolute_index, size_t logical_index, size_t type_index, uint64_t uuid, 
+data_processor::insert_node_info(size_t hash, const char* machine_id, const char* system_name, const char* host_name, const char* release, const char* version, const char* hardware_name, const char* domain_name)
+{
+    data_storage::queries::table_insert_query query;
+    data_storage::database::get_instance()
+                            .execute_query(
+                                query.set_table_name("rocpd_info_node" + _upid)
+                                    .set_columns("guid", "hash", "machine_id", "system_name", "host_name", "release",
+                                                "version", "hardware_name", "domain_name")
+                                    .set_values(_upid, hash, machine_id, system_name, host_name, release,
+                                                version, hardware_name, domain_name)
+                                    .get_query_string());
+}
+
+
+void 
+data_processor::insert_process_info(size_t nid, size_t ppid, size_t pid, size_t init, size_t fini, size_t start, size_t end, 
+                                    const char* command, const char* environment, const char* extdata) 
+{
+    data_storage::queries::table_insert_query query;
+    data_storage::database::get_instance()
+                            .execute_query(
+                                query.set_table_name("rocpd_info_process" + _upid)
+                                    .set_columns("guid", "nid", "ppid", "pid", "init", "fini",
+                                                "start", "end", "command", "environment", "extdata")
+                                    .set_values(_upid, nid, ppid, pid, init, fini,
+                                                start, end, command, environment, extdata)
+                                    .get_query_string());
+}
+
+void
+data_processor::insert_agent(size_t node_id, size_t pid, const char* agent_type, size_t absolute_index, size_t logical_index, size_t type_index, uint64_t uuid, 
                             const char* name, const char* model_name, const char* vendor_name, const char* product_name, const char* user_name, const char* extdata) {
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance().execute_query(
-        query.set_table_name("rocpd_agent")
-            .set_columns("id", "node_id", "type", "absolute_index", "logical_index",
+        query.set_table_name("rocpd_info_agent" + _upid)
+            .set_columns("id", "guid", "nid", "pid", "type", "absolute_index", "logical_index",
                          "type_index", "uuid", "name", "model_name", "vendor_name",
                          "product_name", "user_name", "extdata")
-            .set_values(_agent_id, node_id, agent_type, absolute_index, logical_index, type_index, 
+            .set_values(_agent_id, _upid, node_id, pid, agent_type, absolute_index, logical_index, type_index, 
                         uuid, name, model_name, vendor_name, product_name, user_name, extdata)
             .get_query_string());
     _agent_id_map.emplace(_agent_id, node_id);
@@ -81,9 +95,9 @@ data_processor::insert_track(const char* track_name, size_t node_id, int32_t pid
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance()
                             .execute_query(
-                                query.set_table_name("_rocpd_track")
-                                    .set_columns("node_id", "pid", "tid", "name_id", "extdata")
-                                    .set_values(node_id, pid, tid, name_id, extdata) .get_query_string());
+                                query.set_table_name("rocpd_track" + _upid)
+                                    .set_columns("guid", "nid", "pid", "tid", "name_id", "extdata")
+                                    .set_values(_upid, node_id, pid, tid, name_id, extdata) .get_query_string());
     _track_name_map.emplace(track_name, name_id);
 }
 
@@ -98,12 +112,12 @@ data_processor::insert_pmc_description(const char* target_arch, size_t agent_id,
         return;
     }
     data_storage::queries::table_insert_query query_builder;
-    auto query = query_builder.set_table_name("rocpd_pmc")
-                                .set_columns("id", "target_arch", "agent_id", "event_code", "instance_id",
+    auto query = query_builder.set_table_name("rocpd_pmc" + _upid)
+                                .set_columns("id", "guid", "target_arch", "agent_id", "event_code", "instance_id",
                                             "name", "symbol", "description", "long_description",
                                             "component", "units", "value_type", "block",
                                             "expression", "is_constant", "is_derived", "extdata")
-                                .set_values(_pmc_id, target_arch, agent_id, event_code, instance_id, name, symbol,
+                                .set_values(_pmc_id, _upid, target_arch, agent_id, event_code, instance_id, name, symbol,
                                             description, long_description, component, units, value_type,
                                             block, expression, is_constant, is_derived, extdata)
                                 .get_query_string();
@@ -123,7 +137,7 @@ data_processor::insert_pmc_event(size_t event_id, size_t agent_id, const char* p
     }
 
     const auto [_, pmc_description_id] = *it;
-    _insert_pmc_event_statement(_pmc_event_id, event_id, pmc_description_id, value, extdata);
+    _insert_pmc_event_statement(_pmc_event_id, _upid.c_str(), event_id, pmc_description_id, value, extdata);
     _pmc_event_id++;
 }
 
@@ -136,16 +150,15 @@ data_processor::insert_sample(const char* track, uint64_t timestamp, size_t even
         return;
     }
     auto [_, track_id] = *it;
-    _insert_sample_statement(track_id, timestamp, event_id, extdata);
+    _insert_sample_statement(_upid.c_str(), track_id, timestamp, event_id, extdata);
 }
 
 size_t
 data_processor::insert_event(size_t category_id, size_t correlation_id, size_t stack_id,
-                            size_t parent_stack_id, const char* args, const char* metrics,
-                            const char* call_stack, const char* line_info, const char* extdata)
+                            size_t parent_stack_id, const char* call_stack, const char* line_info, const char* extdata)
 {
-    _insert_event_statement(_event_id, category_id, correlation_id, stack_id,
-                            parent_stack_id, args, metrics, call_stack, line_info, extdata);
+    _insert_event_statement(_event_id, _upid.c_str(), category_id, stack_id,
+                            parent_stack_id, correlation_id, call_stack, line_info, extdata);
     return _event_id++;
 }
 
@@ -153,37 +166,37 @@ void
 data_processor::initialize_event_stmt()
 {
     data_storage::queries::table_insert_query query_builder;
-    auto query = query_builder.set_table_name("rocpd_event")
-                                .set_columns("id", "category_id", "correlation_id", "stack_id", "parent_stack_id",
-                                            "args", "metrics", "call_stack", "line_info", "extdata")
-                                .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?')
+    auto query = query_builder.set_table_name("rocpd_event" + _upid)
+                                .set_columns("id", "guid", "category_id", "stack_id", "parent_stack_id", "correlation_id",
+                                            "call_stack", "line_info", "extdata")
+                                .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?')
                                 .get_query_string();
     _insert_event_statement = data_storage::database::get_instance()
-                                                        .create_statment_executor<size_t, size_t, size_t, size_t, uint32_t, const char*,
-                                                                                const char*, const char*, const char*, const char*>(query);
+                                                        .create_statment_executor<size_t, const char*, size_t, size_t, size_t, size_t, const char*,
+                                                                                const char*, const char*>(query);
 }
 
 void
 data_processor::initialize_pmc_event_stmt()
 {
     data_storage::queries::table_insert_query query_builder;
-    auto query = query_builder.set_table_name("rocpd_pmc_event")
-                                .set_columns("id", "event_id", "pmc_id", "value", "extdata")
-                                .set_values('?', '?', '?', '?', '?')
+    auto query = query_builder.set_table_name("rocpd_pmc_event" + _upid)
+                                .set_columns("id", "guid", "event_id", "pmc_id", "value", "extdata")
+                                .set_values('?', '?', '?', '?', '?', '?')
                                 .get_query_string();
     _insert_pmc_event_statement = data_storage::database::get_instance()
-                                                        .create_statment_executor<size_t, size_t, size_t, double, const char*>(query);
+                                                        .create_statment_executor<size_t, const char*, size_t, size_t, double, const char*>(query);
 }
 
 void
 data_processor::initialize_sample_stmt()
 {
     data_storage::queries::table_insert_query query_builder;
-    auto query = query_builder.set_table_name("_rocpd_sample")
-                                .set_columns("track_id", "timestamp", "event_id", "extdata")
-                                .set_values('?', '?', '?', '?')
+    auto query = query_builder.set_table_name("rocpd_sample" + _upid)
+                                .set_columns("guid", "track_id", "timestamp", "event_id", "extdata")
+                                .set_values('?', '?', '?', '?', '?')
                                 .get_query_string();
-    _insert_sample_statement = data_storage::database::get_instance().create_statment_executor<size_t, uint64_t, size_t, const char*>(query);
+    _insert_sample_statement = data_storage::database::get_instance().create_statment_executor<const char*, size_t, uint64_t, size_t, const char*>(query);
 }
 
 } // namespace data_processing

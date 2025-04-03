@@ -31,7 +31,6 @@
 #include "core/rocprofiler-sdk.hpp"
 #include "core/state.hpp"
 #include "core/data_processing/data_processor.hpp"
-#include "core/data_processing/types.hpp"
 #include "library/components/category_region.hpp"
 #include "library/rocm_smi.hpp"
 #include "library/rocprofiler-sdk/counters.hpp"
@@ -1074,6 +1073,7 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
             data_processing::data_processor::get_instance().insert_agent(
                 static_cast<size_t>(itr.agent->node_id), 
+                static_cast<size_t>(process::get_id()), 
                 get_agent_type(itr.agent->type), 
                 static_cast<size_t>(itr.agent->node_id), 
                 static_cast<size_t>(itr.agent->logical_node_id), 

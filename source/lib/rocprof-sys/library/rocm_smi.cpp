@@ -31,7 +31,6 @@
 #endif
 
 #include "core/data_processing/data_processor.hpp"
-#include "core/data_processing/types.hpp"
 
 #include "library/rocm_smi.hpp"
 #include "core/common.hpp"
@@ -88,7 +87,7 @@ get_data_processor() {
 }
 
 
-void initialize_smi_rocpd_tracks(size_t node_id) {
+void rocpd_initialize_smi_tracks(size_t node_id) {
     auto& data_processor = get_data_processor();
     data_processor.insert_track(trait::name<category::rocm_smi_busy>::value, node_id, getpid(), get_tid());
     data_processor.insert_track(trait::name<category::rocm_smi_power>::value, node_id, getpid(), get_tid());
@@ -96,9 +95,9 @@ void initialize_smi_rocpd_tracks(size_t node_id) {
     data_processor.insert_track(trait::name<category::rocm_smi_memory_usage>::value, node_id, getpid(), get_tid());
 };
 
-void initialize_smi_rocpd_pmc(size_t agent_id) {
+void rocpd_initialize_smi_pmc(size_t agent_id) {
     auto& data_processor = get_data_processor();
-    // find the proper values for following definitions
+    // find the proper values for a following definitions
     size_t EVENT_CODE = 0;
     size_t INSTANCE_ID = 0;
     const char* LONG_DESCRIPTION = "";
@@ -114,6 +113,24 @@ void initialize_smi_rocpd_pmc(size_t agent_id) {
                                             trait::name<category::rocm_smi_temp>::description, LONG_DESCRIPTION, COMPONENT, "w", "ABS", BLOCK, EXPRESSION, 0, 0);
     data_processor.insert_pmc_description("GPU", agent_id, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_memory_usage>::value, "MemUsg", 
                                             trait::name<category::rocm_smi_memory_usage>::description, LONG_DESCRIPTION, COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0);
+};
+
+void rocpd_process_smi_pmc_events(const uint32_t device_id, const rocm_smi::settings& settings, double busy, double temp, double power, double usage) {
+    if (!(settings.busy || settings.temp || settings.power || settings.mem_usage)) return;
+
+    auto& data_processor = get_data_processor();
+    auto event_id = data_processor.insert_event(1, 0, 0, 0);
+
+    auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
+        if (!enabled) return;
+        data_processor.insert_pmc_event(event_id, device_id, name, value);
+        data_processor.insert_sample(name, 0, event_id);
+    };
+
+    insert_event_and_sample(settings.busy, trait::name<category::rocm_smi_busy>::value, busy);
+    insert_event_and_sample(settings.temp, trait::name<category::rocm_smi_temp>::value, temp);
+    insert_event_and_sample(settings.power, trait::name<category::rocm_smi_power>::value, power);
+    insert_event_and_sample(settings.mem_usage, trait::name<category::rocm_smi_memory_usage>::value, usage);
 };
 
 
@@ -331,8 +348,8 @@ data::post_process(uint32_t _dev_id)
         ROCPROFSYS_CI_THROW(!_thread_info, "Missing thread info for thread 0");
         if(!_thread_info) return;
         
-    initialize_smi_rocpd_pmc(_dev_id);
-    initialize_smi_rocpd_tracks(_dev_id);
+    rocpd_initialize_smi_tracks(_dev_id);
+    rocpd_initialize_smi_pmc(_dev_id);
     
     auto _settings = get_settings(_dev_id);
 
@@ -409,51 +426,8 @@ data::post_process(uint32_t _dev_id)
             double _temp  = itr.m_temp / 1.0e3;
             double _power = itr.m_power / 1.0e6;
             double _usage = itr.m_mem_usage / static_cast<double>(units::megabyte);
-            
 
-            // auto process_pmc_events = [](const uint32_t device_id, const rocm_smi::settings& settings, double busy, double temp, double power, double usage) {
-            //     if (!settings.busy && !settings.temp && !settings.power && !settings.mem_usage) return;
-
-            //     auto& data_processor = get_data_processor();
-            //     auto event_id = data_processor.insert_event(1, 0, 0, 0);
-            //     if (settings.busy) {
-            //         data_processor.insert_pmc_event(event_id, device_id, trait::name<category::rocm_smi_busy>::value, busy);
-            //         data_processor.insert_sample(trait::name<category::rocm_smi_busy>::value, 0, event_id);
-            //     }
-            //     if (settings.temp) {
-            //         data_processor.insert_pmc_event(event_id, device_id, trait::name<category::rocm_smi_temp>::value, temp);
-            //         data_processor.insert_sample(trait::name<category::rocm_smi_temp>::value, 0, event_id);
-            //     } 
-            //     if (settings.power) {
-            //         data_processor.insert_pmc_event(event_id, device_id, trait::name<category::rocm_smi_power>::value, power);
-            //         data_processor.insert_sample(trait::name<category::rocm_smi_power>::value, 0, event_id);
-            //     }
-            //     if (settings.mem_usage){
-            //         data_processor.insert_pmc_event(event_id, device_id, trait::name<category::rocm_smi_memory_usage>::value, usage);  
-            //         data_processor.insert_sample(trait::name<category::rocm_smi_memory_usage>::value, 0, event_id);
-            //     }
-            // };
-
-            auto process_pmc_events = [](const uint32_t device_id, const rocm_smi::settings& settings, double busy, double temp, double power, double usage) {
-                if (!(settings.busy || settings.temp || settings.power || settings.mem_usage)) return;
-
-                auto& data_processor = get_data_processor();
-                auto event_id = data_processor.insert_event(1, 0, 0, 0);
-
-                auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
-                    if (!enabled) return;
-                    data_processor.insert_pmc_event(event_id, device_id, name, value);
-                    data_processor.insert_sample(name, 0, event_id);
-                };
-
-                insert_event_and_sample(settings.busy, trait::name<category::rocm_smi_busy>::value, busy);
-                insert_event_and_sample(settings.temp, trait::name<category::rocm_smi_temp>::value, temp);
-                insert_event_and_sample(settings.power, trait::name<category::rocm_smi_power>::value, power);
-                insert_event_and_sample(settings.mem_usage, trait::name<category::rocm_smi_memory_usage>::value, usage);
-            };
-
-            process_pmc_events(_dev_id, _settings, _busy, _temp, _power, _usage);
-
+            rocpd_process_smi_pmc_events(_dev_id, _settings, _busy, _temp, _power, _usage);
 
             if(_settings.busy)
                 TRACE_COUNTER("device_busy", counter_track::at(_dev_id, _idx.at(0)), _ts,

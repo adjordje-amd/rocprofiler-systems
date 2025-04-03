@@ -7,7 +7,6 @@
 #include <functional>
 #include <any>
 
-#include "types.hpp"
 #include "core/data_storage/database.hpp"
 #include "core/data_storage/queries/table_insert_query.hpp"
 
@@ -39,9 +38,9 @@ namespace data_processing {
 
 struct data_processor {
 
-    using insert_event_stmt = std::function<void(size_t, size_t, size_t, size_t, size_t, const char*, const char*, const char*, const char*, const char*)>;
-    using insert_pmc_event_stms = std::function<void(size_t, size_t, size_t, double, const char*)>;
-    using insert_sample_stmt = std::function<void(size_t, uint64_t, size_t, const char*)>;
+    using insert_event_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, size_t, const char*, const char*, const char*)>;
+    using insert_pmc_event_stms = std::function<void(size_t, const char*, size_t, size_t, double, const char*)>;
+    using insert_sample_stmt = std::function<void(const char*, size_t, uint64_t, size_t, const char*)>;
 
     enum class category_id {
         smi_device_busy,
@@ -58,13 +57,19 @@ struct data_processor {
 
     size_t insert_string(const char* str);
 
-    void insert_agent(size_t node_id, const char* agent_type, size_t absolute_index, size_t logical_index, size_t type_index, uint64_t uuid, 
+    void insert_node_info(size_t hash, const char* machine_id, const char* system_name, const char* host_name, 
+                            const char* release, const char* version, const char* hardware_name, const char* domain_name);
+
+    void insert_process_info(size_t nid, size_t ppid, size_t pid, size_t init, size_t fini, size_t start, size_t end, 
+                                const char* command, const char* environment = "{}", const char* extdata = "{}");
+
+    void insert_agent(size_t node_id, size_t pid, const char* agent_type, size_t absolute_index, size_t logical_index, size_t type_index, uint64_t uuid, 
                         const char* name, const char* model_name, const char* vendor_name, const char* product_name, const char* user_name, const char* extdata = "{}");
     
     void insert_track(const char* track_name, size_t node_id, int32_t pid, int64_t tid, const char* extdata = "{}");
 
-    size_t insert_event(size_t category_id, size_t correlation_id, size_t stack_id, size_t parent_stack_id, const char* args = "[]", 
-                        const char* metrics = "{}", const char* call_stack = "{}", const char* line_info = "{}", const char* extdata = "{}");
+    size_t insert_event(size_t category_id, size_t stack_id, size_t parent_stack_id, size_t correlation_id, const char* call_stack = "{}", 
+                        const char* line_info = "{}", const char* extdata = "{}");
  
     void insert_pmc_event(size_t event_id, size_t agent_id, const char* pmc_descriptor, double value, const char* extdata = "{}");
 
@@ -100,6 +105,8 @@ private:
     size_t _pmc_event_id{1};
     size_t _sample_id{1};
     size_t _agent_id{1};
+    size_t _string_id{1};
+    const std::string _upid = "_R4nd0m1D";
 };
 
 

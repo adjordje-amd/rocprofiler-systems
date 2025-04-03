@@ -58,7 +58,7 @@ public:
                     database::validate_sqlite3_result(sqlite3_bind_int64(stmt.get(), position, value), "Failed to bind int64_t/uint64_t!");
                 } else if constexpr (std::is_floating_point_v<T>) {
                     database::validate_sqlite3_result(sqlite3_bind_double(stmt.get(), position, value), "Failed to bind double!");
-                } else if constexpr (utils::is_string_literal_v<T>) {
+                } else if constexpr (utils::is_string_literal_v<std::decay_t<T>>) {
                     database::validate_sqlite3_result(sqlite3_bind_text(stmt.get(), position, value, -1, SQLITE_STATIC), "Failed to bind text!");
                 } else {
                     throw std::runtime_error("Unsupported type for binding!");

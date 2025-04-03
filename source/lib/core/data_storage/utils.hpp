@@ -26,6 +26,9 @@ namespace utils {
     template <>  
     struct is_string_literal<std::string> : std::true_type {};
 
+    template <> 
+    struct is_string_literal<const std::string> : std::true_type {};
+
     template <>  
     struct is_string_literal<const char* const> : std::true_type {};
 

@@ -46,7 +46,6 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/utility.hpp
     ${CMAKE_CURRENT_LIST_DIR}/data_processing/data_processor.hpp
     ${CMAKE_CURRENT_LIST_DIR}/data_processing/json.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_processing/types.hpp
     ${CMAKE_CURRENT_LIST_DIR}/data_storage/database.hpp
     ${CMAKE_CURRENT_LIST_DIR}/data_storage/queries/table_insert_query.hpp
     ${CMAKE_CURRENT_LIST_DIR}/data_storage/queries/table_insert_query.hpp

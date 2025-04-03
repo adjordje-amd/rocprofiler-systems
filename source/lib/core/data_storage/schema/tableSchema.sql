@@ -1,19 +1,25 @@
+-- Enable foreign key support for cascading
+PRAGMA foreign_keys = ON;
+
 CREATE TABLE IF NOT EXISTS
-    "rocpd_metadata" (
+    "rocpd_metadata{{upid}}" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         "tag" TEXT NOT NULL,
         "value" TEXT NOT NULL
     );
 
 CREATE TABLE IF NOT EXISTS
-    "rocpd_string" (
-        "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-        "string" TEXT NOT NULL UNIQUE ON CONFLICT IGNORE
+    "rocpd_string{{upid}}" (
+        "id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "string" TEXT NOT NULL UNIQUE ON CONFLICT ABORT,
+        PRIMARY KEY (id)
     );
 
 CREATE TABLE IF NOT EXISTS
-    "_rocpd_node" (
+    "rocpd_info_node{{upid}}" (
         "id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
         "hash" BIGINT NOT NULL UNIQUE,
         "machine_id" TEXT NOT NULL UNIQUE,
         "system_name" TEXT,
@@ -26,10 +32,12 @@ CREATE TABLE IF NOT EXISTS
     );
 
 CREATE TABLE IF NOT EXISTS
-    "_rocpd_process" (
+    "rocpd_info_process{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
-        "parent_pid" INTEGER,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
+        "ppid" INTEGER,
+        "pid" INTEGER NOT NULL,
         "init" BIGINT,
         "fini" BIGINT,
         "start" BIGINT,
@@ -37,28 +45,33 @@ CREATE TABLE IF NOT EXISTS
         "command" TEXT,
         "environment" JSONB DEFAULT "{}" NOT NULL,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
-        PRIMARY KEY (id, node_id)
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        PRIMARY KEY (id)
     );
 
 CREATE TABLE IF NOT EXISTS
-    "_rocpd_thread" (
+    "rocpd_info_thread{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
-        "process_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
+        "ppid" INTEGER,
+        "pid" INTEGER NOT NULL,
+        "tid" INTEGER NOT NULL,
         "name" TEXT,
         "start" BIGINT,
         "end" BIGINT,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
-        FOREIGN KEY (process_id) REFERENCES rocpd_process (id),
-        PRIMARY KEY (id, process_id, node_id)
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
+        PRIMARY KEY (id)
     );
 
 CREATE TABLE IF NOT EXISTS
-    "rocpd_agent" (
+    "rocpd_info_agent{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
+        "pid" INTEGER NOT NULL,
         "type" TEXT CHECK ("type" IN ('CPU', 'GPU')),
         "absolute_index" INTEGER,
         "logical_index" INTEGER,
@@ -70,38 +83,48 @@ CREATE TABLE IF NOT EXISTS
         "product_name" TEXT,
         "user_name" TEXT,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 CREATE TABLE IF NOT EXISTS
-    "rocpd_queue" (
+    "rocpd_info_queue{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
         "pid" INTEGER NOT NULL,
         "name" TEXT,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 CREATE TABLE IF NOT EXISTS
-    "rocpd_stream" (
+    "rocpd_info_stream{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
         "pid" INTEGER NOT NULL,
         "name" TEXT,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
+-- 2993533, 2269219937, 2993533
+-- 2993533, 2269219937, 2993533
 -- Performance monitoring counters (PMC) descriptions
 CREATE TABLE IF NOT EXISTS
-    "rocpd_pmc" (
+    "rocpd_info_pmc{{upid}}" (
         "id" INTEGER NOT NULL,
-        "target_arch" TEXT CHECK ("target_arch" IN ('CPU', 'GPU')),
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
+        "pid" INTEGER NOT NULL,
         "agent_id" INTEGER,
+        "target_arch" TEXT CHECK ("target_arch" IN ('CPU', 'GPU')),
         "event_code" INT,
         "instance_id" INTEGER,
         "name" TEXT NOT NULL,
@@ -116,13 +139,18 @@ CREATE TABLE IF NOT EXISTS
         "is_constant" INTEGER,
         "is_derived" INTEGER,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        PRIMARY KEY (id, agent_id)
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (agent_id) REFERENCES rocpd_info_agent{{upid}} (id) ON UPDATE CASCADE,
+        PRIMARY KEY (id)
     );
 
 CREATE TABLE IF NOT EXISTS
-    "rocpd_code_object" (
+    "rocpd_info_code_object{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
+        "pid" INTEGER NOT NULL,
         "agent_id" INTEGER,
         "uri" TEXT,
         "load_base" BIGINT,
@@ -130,15 +158,18 @@ CREATE TABLE IF NOT EXISTS
         "load_delta" BIGINT,
         "storage_type" TEXT CHECK ("storage_type" IN ('FILE', 'MEMORY')),
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
-        FOREIGN KEY (agent_id) REFERENCES rocpd_agent (id),
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (agent_id) REFERENCES rocpd_info_agent{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 CREATE TABLE IF NOT EXISTS
-    "rocpd_kernel_symbol" (
+    "rocpd_info_kernel_symbol{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
+        "pid" INTEGER NOT NULL,
         "code_object_id" INTEGER NOT NULL,
         "kernel_name" TEXT,
         "display_name" TEXT,
@@ -151,73 +182,78 @@ CREATE TABLE IF NOT EXISTS
         "arch_vgpr_count" INTEGER,
         "accum_vgpr_count" INTEGER,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
-        FOREIGN KEY (code_object_id) REFERENCES rocpd_code_object (id),
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (code_object_id) REFERENCES rocpd_info_code_object{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 -- Stores repetitive info for samples
 CREATE TABLE IF NOT EXISTS
-    "_rocpd_track" (
+    "rocpd_track{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
         "pid" INTEGER,
         "tid" INTEGER,
-        "name_id" INTEGER NOT NULL,
+        "name_id" INTEGER,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
-        FOREIGN KEY (name_id) REFERENCES rocpd_string (id),
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (name_id) REFERENCES rocpd_string{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 -- Storage for a region, instant, and counter
 CREATE TABLE IF NOT EXISTS
-    "rocpd_event" (
+    "rocpd_event{{upid}}" (
         "id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
         "category_id" INTEGER,
-        "correlation_id" INTEGER,
         "stack_id" INTEGER,
         "parent_stack_id" INTEGER,
-        "args" JSONB DEFAULT "[]" NOT NULL, -- TODO this must be removed once rocpd_arg is setlled -- 
-        "metrics" JSONB DEFAULT "{}" NOT NULL,
+        "correlation_id" INTEGER,
         "call_stack" JSONB DEFAULT "{}" NOT NULL,
         "line_info" JSONB DEFAULT "{}" NOT NULL,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (category_id) REFERENCES rocpd_string (id),
+        FOREIGN KEY (category_id) REFERENCES rocpd_string{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 -- stores arguments for events
 CREATE TABLE IF NOT EXISTS
-    "rocpd_arg" (
+    "rocpd_arg{{upid}}" (
         "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+        "guid" TEXT NOT NULL,
         "event_id" INTEGER NOT NULL,
         "position" INTEGER NOT NULL,
         "type" TEXT NOT NULL,
         "name" TEXT NOT NULL,
-        "value" TEXT, -- TODO: discuss make it value_id and integer, refer to string table -- 
+        "value" TEXT, -- TODO: discuss make it value_id and integer, refer to string table --
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (event_id) REFERENCES rocpd_event (id)
+        FOREIGN KEY (event_id) REFERENCES rocpd_event{{upid}} (id) ON UPDATE CASCADE
     );
 
 -- Region with a start/stop on the same thread (CPU)
 CREATE TABLE IF NOT EXISTS
-    "rocpd_pmc_event" (
+    "rocpd_pmc_event{{upid}}" (
         "id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
         "event_id" INTEGER,
         "pmc_id" INTEGER NOT NULL,
         "value" REAL DEFAULT 0.0,
         "extdata" JSONB DEFAULT "{}",
-        FOREIGN KEY (pmc_id) REFERENCES rocpd_pmc (id),
-        FOREIGN KEY (event_id) REFERENCES rocpd_event (id),
-        PRIMARY KEY (id, event_id)
+        FOREIGN KEY (pmc_id) REFERENCES rocpd_info_pmc{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (event_id) REFERENCES rocpd_event{{upid}} (id) ON UPDATE CASCADE,
+        PRIMARY KEY (id)
     );
 
 -- Region with a start/stop on the same thread (CPU)
 CREATE TABLE IF NOT EXISTS
-    "_rocpd_region" (
+    "rocpd_region{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
         "pid" INTEGER NOT NULL,
         "tid" INTEGER NOT NULL,
         "start" BIGINT NOT NULL,
@@ -225,29 +261,35 @@ CREATE TABLE IF NOT EXISTS
         "name_id" INTEGER NOT NULL,
         "event_id" INTEGER,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
-        FOREIGN KEY (name_id) REFERENCES rocpd_string (id),
-        FOREIGN KEY (event_id) REFERENCES rocpd_event (id),
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (tid) REFERENCES rocpd_info_thread{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (name_id) REFERENCES rocpd_string{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (event_id) REFERENCES rocpd_event{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 -- Instantaneous sample
 CREATE TABLE IF NOT EXISTS
-    "_rocpd_sample" (
+    "rocpd_sample{{upid}}" (
         "id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
         "track_id" INTEGER NOT NULL,
         "timestamp" BIGINT NOT NULL,
         "event_id" INTEGER,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (track_id) REFERENCES _rocpd_track (id),
-        FOREIGN KEY (event_id) REFERENCES rocpd_event (id),
+        FOREIGN KEY (track_id) REFERENCES rocpd_track{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (event_id) REFERENCES rocpd_event{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 CREATE TABLE IF NOT EXISTS
-    "_rocpd_kernel_dispatch" (
+    "rocpd_kernel_dispatch{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
+        "pid" INTEGER NOT NULL,
+        "tid" INTEGER,
         "agent_id" INTEGER NOT NULL,
         "kernel_id" INTEGER NOT NULL,
         "dispatch_id" INTEGER NOT NULL,
@@ -266,20 +308,23 @@ CREATE TABLE IF NOT EXISTS
         "region_name_id" INTEGER,
         "event_id" INTEGER,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
-        FOREIGN KEY (agent_id) REFERENCES rocpd_agent (id),
-        FOREIGN KEY (kernel_id) REFERENCES rocpd_kernel_symbol (id),
-        FOREIGN KEY (queue_id) REFERENCES rocpd_queue (id),
-        FOREIGN KEY (stream_id) REFERENCES rocpd_stream (id),
-        FOREIGN KEY (region_name_id) REFERENCES rocpd_string (id),
-        FOREIGN KEY (event_id) REFERENCES rocpd_event (id),
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (tid) REFERENCES rocpd_info_thread{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (agent_id) REFERENCES rocpd_info_agent{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (kernel_id) REFERENCES rocpd_info_kernel_symbol{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (queue_id) REFERENCES rocpd_info_queue{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (stream_id) REFERENCES rocpd_info_stream{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (region_name_id) REFERENCES rocpd_string{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (event_id) REFERENCES rocpd_event{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 CREATE TABLE IF NOT EXISTS
-    "_rocpd_memory_copy" (
+    "rocpd_memory_copy{{upid}}" (
         "id" INTEGER NOT NULL,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
         "pid" INTEGER NOT NULL,
         "tid" INTEGER,
         "start" BIGINT NOT NULL,
@@ -295,22 +340,25 @@ CREATE TABLE IF NOT EXISTS
         "region_name_id" INTEGER,
         "event_id" INTEGER,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
-        FOREIGN KEY (name_id) REFERENCES rocpd_string (id),
-        FOREIGN KEY (dst_agent_id) REFERENCES rocpd_agent (id),
-        FOREIGN KEY (src_agent_id) REFERENCES rocpd_agent (id),
-        FOREIGN KEY (stream_id) REFERENCES rocpd_stream (id),
-        FOREIGN KEY (queue_id) REFERENCES rocpd_queue (id),
-        FOREIGN KEY (region_name_id) REFERENCES rocpd_string (id),
-        FOREIGN KEY (event_id) REFERENCES rocpd_event (id),
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (tid) REFERENCES rocpd_info_thread{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (name_id) REFERENCES rocpd_string{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (dst_agent_id) REFERENCES rocpd_info_agent{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (src_agent_id) REFERENCES rocpd_info_agent{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (stream_id) REFERENCES rocpd_info_stream{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (queue_id) REFERENCES rocpd_info_queue{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (region_name_id) REFERENCES rocpd_string{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (event_id) REFERENCES rocpd_event{{upid}} (id) ON UPDATE CASCADE,
         PRIMARY KEY (id)
     );
 
 -- Memory allocations (real memory, virtual memory, and scratch memory)
 CREATE TABLE IF NOT EXISTS
-    "_rocpd_memory_allocate" (
+    "rocpd_memory_allocate{{upid}}" (
         "id" INTEGER PRIMARY KEY AUTOINCREMENT,
-        "node_id" INTEGER NOT NULL,
+        "guid" TEXT NOT NULL,
+        "nid" INTEGER NOT NULL,
         "pid" INTEGER NOT NULL,
         "tid" INTEGER,
         "agent_id" INTEGER,
@@ -324,14 +372,30 @@ CREATE TABLE IF NOT EXISTS
         "stream_id" INTEGER,
         "event_id" INTEGER,
         "extdata" JSONB DEFAULT "{}" NOT NULL,
-        FOREIGN KEY (node_id) REFERENCES _rocpd_node (id),
-        FOREIGN KEY (agent_id) REFERENCES rocpd_agent (id),
-        FOREIGN KEY (stream_id) REFERENCES rocpd_stream (id),
-        FOREIGN KEY (queue_id) REFERENCES rocpd_queue (id),
-        FOREIGN KEY (event_id) REFERENCES rocpd_event (id)
+        FOREIGN KEY (nid) REFERENCES rocpd_info_node{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (pid) REFERENCES rocpd_info_process{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (tid) REFERENCES rocpd_info_thread{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (agent_id) REFERENCES rocpd_info_agent{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (stream_id) REFERENCES rocpd_info_stream{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (queue_id) REFERENCES rocpd_info_queue{{upid}} (id) ON UPDATE CASCADE,
+        FOREIGN KEY (event_id) REFERENCES rocpd_event{{upid}} (id) ON UPDATE CASCADE
     );
 
 INSERT INTO
-    "rocpd_metadata" (tag, value)
+    "rocpd_metadata{{upid}}" (tag, value)
 VALUES
-    ("schema_version", "3");
+    ("schema_version", "3"),
+    -- ("upid", "{{upid}}"),
+    -- foreign key tables (just base names)
+    ("fktable{{upid}}", "rocpd_string"),
+    ("fktable{{upid}}", "rocpd_info_node"),
+    ("fktable{{upid}}", "rocpd_info_process"),
+    ("fktable{{upid}}", "rocpd_info_thread"),
+    ("fktable{{upid}}", "rocpd_info_agent"),
+    ("fktable{{upid}}", "rocpd_info_queue"),
+    ("fktable{{upid}}", "rocpd_info_stream"),
+    ("fktable{{upid}}", "rocpd_info_pmc"),
+    ("fktable{{upid}}", "rocpd_info_code_object"),
+    ("fktable{{upid}}", "rocpd_info_kernel_symbol"),
+    ("fktable{{upid}}", "rocpd_track"),
+    ("fktable{{upid}}", "rocpd_event");

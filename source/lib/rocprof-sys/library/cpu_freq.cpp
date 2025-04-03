@@ -24,6 +24,7 @@
 #include "core/common.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
+#include "core/data_processing/data_processor.hpp"
 #include "core/debug.hpp"
 #include "core/defines.hpp"
 #include "core/perfetto.hpp"
@@ -64,6 +65,26 @@ void init_perfetto_counter_tracks(type_list<Types...>)
 {
     (perfetto_counter_track<Types>::init(), ...);
 }
+
+data_processing::data_processor&
+get_data_processor() {
+    return data_processing::data_processor::get_instance();
+}
+
+void rocpd_initialize_cpu_freq_tracks(size_t node_id)
+{
+    auto& data_processor = get_data_processor();
+    // data_processor.insert_track(trait::name<category::cpu_freq>::value, node_id, getpid(), threading::get_id());
+    // data_processor.insert_track(trait::name<category::process_page>::value, node_id, getpid(), threading::get_id());
+    // data_processor.insert_track(trait::name<category::process_virt>::value, node_id, getpid(), threading::get_id());
+    // data_processor.insert_track(trait::name<category::process_peak>::value, node_id, getpid(), threading::get_id());
+    // data_processor.insert_track(trait::name<category::process_context_switch>::value, node_id, getpid(), threading::get_id());
+    // data_processor.insert_track(trait::name<category::process_page_fault>::value, node_id, getpid(), threading::get_id());
+    // data_processor.insert_track(trait::name<category::process_user_mode_time>::value, node_id, getpid(), threading::get_id());
+    // data_processor.insert_track(trait::name<category::process_kernel_mode_time>::value, node_id, getpid(), threading::get_id());
+}
+
+
 }  // namespace
 }  // namespace cpu_freq
 }  // namespace rocprofsys
@@ -80,6 +101,8 @@ setup()
                   category::process_peak, category::process_context_switch,
                   category::process_page_fault, category::process_user_mode_time,
                   category::process_kernel_mode_time>{});
+    
+    rocpd_initialize_cpu_freq_tracks(0);
 }
 
 void
