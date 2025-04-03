@@ -31,6 +31,7 @@
 #include "core/rocprofiler-sdk.hpp"
 #include "core/state.hpp"
 #include "core/data_processing/data_processor.hpp"
+#include "core/data_processing/types.hpp"
 #include "library/components/category_region.hpp"
 #include "library/rocm_smi.hpp"
 #include "library/rocprofiler-sdk/counters.hpp"
@@ -1063,30 +1064,25 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
         for (const auto& itr : agents) {
             const auto get_agent_type = [](const auto& type){
                 if (type == ROCPROFILER_AGENT_TYPE_GPU) {
-                    return data_processor::agent_type::gpu;
+                    return "GPU";
                 }
                 if (type == ROCPROFILER_AGENT_TYPE_CPU) {
-                    return data_processor::agent_type::cpu;
+                    return "CPU";
                 }
-                return data_processor::agent_type::unknown;
+                throw std::runtime_error("Unknown agent type");
             };
 
-            data_processor::agent_descriptor description = {
-                .id = itr.agent->id.handle,
-                .node_id = itr.agent->node_id,
-                .type = get_agent_type(itr.agent->type),
-                .absolute_index = itr.agent->node_id,
-                .logical_index = itr.agent->logical_node_id,
-                .type_index = itr.agent->logical_node_type_id,
-                .uuid = itr.agent->device_id,
-                .name = itr.agent->name,
-                .model_name = itr.agent->model_name,
-                .vendor_name = itr.agent->vendor_name,
-                .product_name = itr.agent->product_name,
-                .user_name = " ",
-                .extdata = " ",
-            };
-            data_processor::get_instance().insert_agent(description);
+            data_processing::data_processor::get_instance().insert_agent(
+                static_cast<size_t>(itr.agent->node_id), 
+                get_agent_type(itr.agent->type), 
+                static_cast<size_t>(itr.agent->node_id), 
+                static_cast<size_t>(itr.agent->logical_node_id), 
+                static_cast<size_t>(itr.agent->logical_node_type_id), 
+                static_cast<uint64_t>(itr.agent->device_id), 
+                itr.agent->name, 
+                itr.agent->model_name, 
+                itr.agent->vendor_name, 
+                itr.agent->product_name, "");
         }
     };
 

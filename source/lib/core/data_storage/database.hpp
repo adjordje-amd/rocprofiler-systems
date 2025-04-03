@@ -45,19 +45,20 @@ public:
     template<typename ... Values>
     auto create_statment_executor(const std::string& query) {
         sqlite3_stmt* p_stmt;
-        validate_sqlite3_result(sqlite3_prepare_v2(_sqlite3_db, query.c_str(), -1, &p_stmt, nullptr), "Failed to create statement!", query);
+        validate_sqlite3_result(sqlite3_prepare_v2(_ram_sqlite_db, query.c_str(), -1, &p_stmt, nullptr), "Failed to create statement!", query);
         std::shared_ptr<sqlite3_stmt> stmt{p_stmt, sqlite3_finalize};
 
         return [stmt](Values ... value) {
             int position = 1;
             auto bind_value = [&](auto value) {
                 using T = decltype(value);
-                if constexpr (std::is_integral_v<T>){
-                    database::validate_sqlite3_result(sqlite3_bind_int(stmt.get(), position, value), "Failed to bind int!");
+                if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
+                    database::validate_sqlite3_result(sqlite3_bind_int(stmt.get(), position, value), "Failed to bind int32_t/uint32_t!");
+                }else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
+                    database::validate_sqlite3_result(sqlite3_bind_int64(stmt.get(), position, value), "Failed to bind int64_t/uint64_t!");
                 } else if constexpr (std::is_floating_point_v<T>) {
                     database::validate_sqlite3_result(sqlite3_bind_double(stmt.get(), position, value), "Failed to bind double!");
                 } else if constexpr (utils::is_string_literal_v<T>) {
-                    std::cout << "Binding text " << value << std::endl;
                     database::validate_sqlite3_result(sqlite3_bind_text(stmt.get(), position, value, -1, SQLITE_STATIC), "Failed to bind text!");
                 } else {
                     throw std::runtime_error("Unsupported type for binding!");
@@ -73,6 +74,7 @@ public:
 
 private:
     sqlite3* _sqlite3_db;
+    sqlite3* _ram_sqlite_db;
 };
 
 } // namespace data_storage

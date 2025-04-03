@@ -29,10 +29,17 @@ namespace data_storage {
         }();
         
         printf("DATABASE NAME: %s\r\n", db_name.c_str());
+        validate_sqlite3_result(sqlite3_open(":memory:", &_ram_sqlite_db), "database open failed!");
         validate_sqlite3_result(sqlite3_open(db_name.c_str(), &_sqlite3_db), "database open failed!");
     };
     
-    database::~database() {
+    database::~database() {     
+        auto backup = sqlite3_backup_init(_sqlite3_db, "main", _ram_sqlite_db, "main");
+        if (backup) {
+            sqlite3_backup_step(backup, -1);  // Copy all pages
+            sqlite3_backup_finish(backup);
+        }
+        sqlite3_close(_ram_sqlite_db);
         sqlite3_close(_sqlite3_db);
     }
 
@@ -57,7 +64,7 @@ namespace data_storage {
 
         std::stringstream query;
         query << file.rdbuf();
-        validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.str().c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
+        validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.str().c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
         file.close();
         
         file.open(get_file_path("utilitySchema.sql"));
@@ -66,15 +73,15 @@ namespace data_storage {
         }
         query.str("");
         query << file.rdbuf();
-        validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.str().c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
+        validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.str().c_str(), 0, 0, 0), "Invalid database utility file, init database failed!");
         file.close();
     }
 
     void database::execute_query(const std::string& query) {
-        validate_sqlite3_result(sqlite3_exec(_sqlite3_db, query.c_str(), 0, 0, 0), "Failed to execute query - ", query);
+        validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Failed to execute query - ", query);
     }
 
     size_t database::get_last_insert_id() {
-        return sqlite3_last_insert_rowid(_sqlite3_db);
+        return sqlite3_last_insert_rowid(_ram_sqlite_db);
     }
 }

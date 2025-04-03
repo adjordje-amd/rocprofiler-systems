@@ -7,18 +7,41 @@
 #include <functional>
 #include <any>
 
-#include "utils.hpp"
+#include "types.hpp"
 #include "core/data_storage/database.hpp"
 #include "core/data_storage/queries/table_insert_query.hpp"
 
+namespace {
+    struct pmc_identifier {
+        size_t agent_id;
+        std::string name;
+    };
+    
+
+    struct pmc_identifier_hash {
+        std::size_t operator()(const pmc_identifier& pmc) const noexcept {
+            std::size_t h1 = std::hash<size_t>{}(pmc.agent_id);
+            std::size_t h2 = std::hash<std::string>{}(pmc.name);
+            return h1 ^ (h2 << 1);
+        }
+    };
+
+    struct pmc_identifier_equal {
+        bool operator()(const pmc_identifier& lhs, const pmc_identifier& rhs) const noexcept {
+            return lhs.agent_id == rhs.agent_id && lhs.name == rhs.name;
+        }
+    };
+}
+
 
 namespace rocprofsys {
-    
+namespace data_processing {
+
 struct data_processor {
 
-    using insert_event_stmt = std::function<void(uint32_t, uint32_t, uint32_t, uint32_t, const char*, const char*, const char*, const char*, const char*)>;
-    using insert_pmc_event_stms = std::function<void(uint32_t, uint32_t, double, const char*)>;
-
+    using insert_event_stmt = std::function<void(size_t, size_t, size_t, size_t, size_t, const char*, const char*, const char*, const char*, const char*)>;
+    using insert_pmc_event_stms = std::function<void(size_t, size_t, size_t, double, const char*)>;
+    using insert_sample_stmt = std::function<void(size_t, uint64_t, size_t, const char*)>;
 
     enum class category_id {
         smi_device_busy,
@@ -31,59 +54,55 @@ struct data_processor {
         smi_unused
     };
 
-    enum class agent_type {
-        cpu,
-        gpu,
-        unknown
-    };
-
-    struct agent_descriptor {
-        uint64_t id;
-        uint32_t node_id;
-        agent_type type;
-        uint32_t absolute_index;
-        uint32_t logical_index;
-        uint32_t type_index;
-        uint32_t uuid;
-        const char* name;
-        const char* model_name;
-        const char* vendor_name;
-        const char* product_name;
-        const char* user_name;
-        const char* extdata;
-    };
-
     static data_processor& get_instance();
 
     size_t insert_string(const char* str);
 
-    void insert_agent(const agent_descriptor& agent);
+    void insert_agent(size_t node_id, const char* agent_type, size_t absolute_index, size_t logical_index, size_t type_index, uint64_t uuid, 
+                        const char* name, const char* model_name, const char* vendor_name, const char* product_name, const char* user_name, const char* extdata = "{}");
     
-    void insert_track(const char* name, uint32_t node_id, pid_t pid, std::thread::id tid);
+    void insert_track(const char* track_name, size_t node_id, int32_t pid, int64_t tid, const char* extdata = "{}");
+
+    size_t insert_event(size_t category_id, size_t correlation_id, size_t stack_id, size_t parent_stack_id, const char* args = "[]", 
+                        const char* metrics = "{}", const char* call_stack = "{}", const char* line_info = "{}", const char* extdata = "{}");
+ 
+    void insert_pmc_event(size_t event_id, size_t agent_id, const char* pmc_descriptor, double value, const char* extdata = "{}");
+
+    void insert_pmc_description(const char* target_arch, size_t agent_id, size_t event_code, size_t instance_id, const char* name, const char* symbol, 
+                                const char* description, const char* long_description, const char* component, const char* units, const char* value_type, 
+                                const char* block, const char* expression, uint32_t is_constant, uint32_t is_derived, const char* extdata = "{}");
+
+    void insert_sample(const char* track, uint64_t timestamp, size_t event_id, const char* extdata = "{}");
     
-    void initialize_event_stmt();
-
-    size_t insert_event(const data_processing::event& event);
-
-    void initialize_pmc_event_stmt();
-
-    void insert_pmc_event(const data_processing::pmc_event& event);
-        
-    void insert_sample(const char* track_name, uint64_t timestamp, size_t event_id);
-
 private:
     data_processor();
 
     data_processor(data_processor&) = delete;
-
+    
     data_processor& operator=(const data_processor&) = delete;
+    
+    void initialize_pmc_event_stmt();
+
+    void initialize_event_stmt();
+
+    void initialize_sample_stmt();
 
 private:
-    std::unordered_map<std::string, uint32_t> _track_name_map;
+    std::unordered_map<std::string, size_t> _track_name_map;
+    std::unordered_map<pmc_identifier, size_t, pmc_identifier_hash, pmc_identifier_equal> _pmc_descriptor_map;
+    std::unordered_map<size_t, size_t> _agent_id_map;
 
     insert_event_stmt _insert_event_statement;
     insert_pmc_event_stms _insert_pmc_event_statement;
+    insert_sample_stmt _insert_sample_statement;
+    size_t _pmc_id{1};
+    size_t _event_id{1};
+    size_t _pmc_event_id{1};
+    size_t _sample_id{1};
+    size_t _agent_id{1};
 };
 
+
+} // namespace data_processing
 } // namespace rocprofsys
 
