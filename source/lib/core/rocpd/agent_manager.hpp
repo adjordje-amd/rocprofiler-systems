@@ -9,10 +9,7 @@ using tool_agent_t = rocprofsys::rocprofiler_sdk::tool_agent;
 
 
 struct agent_manager {
-    static agent_manager& get_instance() {
-        static agent_manager instance;
-        return instance;
-    }
+    static agent_manager& get_instance();
 
     agent_manager(const agent_manager&) = delete;
     agent_manager& operator=(const agent_manager&) = delete;
@@ -20,19 +17,11 @@ struct agent_manager {
     agent_manager& operator=(agent_manager&&) = delete;
     ~agent_manager() = default;
 
-    void insert_agent(tool_agent_t agent) {
-        _agents.push_back(agent);
-    }
+    void insert_agent(tool_agent_t agent);
 
-    auto get_agent(size_t gpu_id) const {
-        auto it = std::find_if(_agents.begin(), _agents.end(),
-            [gpu_id](const tool_agent_t& agent) { return agent.device_id == gpu_id; });
-        if (it == _agents.end()) {
-            throw std::out_of_range("GPU ID not found");
-        }
+    const rocprofiler_agent_v0_t* get_gpu_agent(size_t id) const;
 
-        return it->agent;
-    }
+    const rocprofiler_agent_v0_t* get_cpu_agent(size_t id) const;
 
 private:
     std::vector<tool_agent_t> _agents;

@@ -1,6 +1,6 @@
 #include "json.hpp"
 
-namespace data_processing {
+namespace rocpd {
 
 std::shared_ptr<json> json::create(){
     return std::shared_ptr<json>(new json());
@@ -57,4 +57,4 @@ std::string json::stringify(const std::shared_ptr<json_value> value) {
     return oss.str();
 }
 
-} //namespace data_processing 
+} //namespace rocpd 

@@ -7,7 +7,7 @@
 #include <sstream>
 #include <memory>
 
-namespace data_processing {
+namespace rocpd {
 
 class json {
 public:
@@ -29,5 +29,5 @@ private:
 
 };
 
-} // namespace data_processing 
+} // namespace rocpd 
     

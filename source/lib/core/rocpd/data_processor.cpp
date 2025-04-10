@@ -2,7 +2,7 @@
 #include "debug.hpp"
 
 namespace rocprofsys {
-namespace data_processing {
+namespace rocpd {
 
 data_processor::data_processor()
 {
@@ -84,7 +84,7 @@ data_processor::insert_agent(size_t agent_id, size_t node_id, size_t pid, const 
 void
 data_processor::insert_track(const char* track_name, size_t node_id, size_t process_id, size_t thread_id, const char* extdata)
 {
-    if (_track_name_map.find(track_name) != _track_name_map.end()) {
+    if (_tracks.find(track_name) != _tracks.end()) {
         ROCPROFSYS_WARNING(0, "Fail to add track %s, already exist!\n", track_name);
         return;
     }
@@ -96,9 +96,10 @@ data_processor::insert_track(const char* track_name, size_t node_id, size_t proc
                                 query.set_table_name("rocpd_track" + _upid)
                                     .set_columns("guid", "nid", "pid", "tid", "name_id", "extdata")
                                     .set_values(_upid, node_id, process_id, thread_id, name_id, extdata) .get_query_string());
-    _track_name_map.emplace(track_name, name_id);
-}
 
+    _tracks[track_name] = track_name_map{_track_id, name_id};
+    _track_id++;
+}
 void
 data_processor::insert_pmc_description(size_t node_id, size_t process_id, size_t agent_id, const char* target_arch, size_t event_code, size_t instance_id, const char* name, const char* symbol, 
                                         const char* description, const char* long_description, const char* component, const char* units, const char* value_type, 
@@ -128,6 +129,7 @@ data_processor::insert_pmc_description(size_t node_id, size_t process_id, size_t
 void
 data_processor::insert_pmc_event(size_t event_id, size_t agent_id, const char* pmc_name, double value, const char* extdata)
 {
+    ROCPROFSYS_VERBOSE(2, "Insert PMC event: id %ld, agent id: %ld, pmc name: %s, value: %lf, extdata: %s\n", event_id, agent_id, pmc_name, value, extdata);
     auto it = _pmc_descriptor_map.find({agent_id, pmc_name});
     if (it == _pmc_descriptor_map.end()) {
         ROCPROFSYS_WARNING(0, "Insert PMC event failed! Error: unexisting PMC description agent id: %ld, pmc name: %s !\n", agent_id, pmc_name);  
@@ -142,20 +144,28 @@ data_processor::insert_pmc_event(size_t event_id, size_t agent_id, const char* p
 void
 data_processor::insert_sample(const char* track, uint64_t timestamp, size_t event_id, const char* extdata)
 {
-    auto it = _track_name_map.find(track);
-    if ( it == _track_name_map.end()) {
+    ROCPROFSYS_VERBOSE(3, "Insert sample: track: %s, timestamp: %lu, event id: %ld, extdata: %s\n", track, timestamp, event_id, extdata);
+    auto it = _tracks.find(track);
+    if ( it == _tracks.end()) {
         ROCPROFSYS_WARNING(0, "Insert sample failed! Error: Unexisting track %s!\n", track);
         return;
     }
-    auto [_, track_id] = *it;
-    _insert_sample_statement(_upid.c_str(), track_id, timestamp, event_id, extdata);
+    auto [_, track_info] = *it;
+    _insert_sample_statement(_upid.c_str(), track_info.track_id, timestamp, event_id, extdata);
 }
 
 size_t
 data_processor::insert_event(size_t category_id, size_t correlation_id, size_t stack_id,
                             size_t parent_stack_id, const char* call_stack, const char* line_info, const char* extdata)
 {
-    _insert_event_statement(_event_id, _upid.c_str(), category_id, stack_id,
+    auto it = _category_map.find(category_id);
+    if (it == _category_map.end()) {
+        throw std::runtime_error("Insert event: Unknown category id!");
+    }
+    
+    ROCPROFSYS_VERBOSE(2, "Insert event category id: %ld, string id: %ld\n", category_id, it->second);
+    
+    _insert_event_statement(_event_id, _upid.c_str(), it->second, stack_id,
                             parent_stack_id, correlation_id, call_stack, line_info, extdata);
     return _event_id++;
 }
@@ -197,5 +207,17 @@ data_processor::initialize_sample_stmt()
     _insert_sample_statement = data_storage::database::get_instance().create_statment_executor<const char*, size_t, uint64_t, size_t, const char*>(query);
 }
 
-} // namespace data_processing
+void 
+data_processor::insert_category(size_t category_id, const char* name) {
+    auto it = _category_map.find(category_id);
+    if (it != _category_map.end()) {
+        ROCPROFSYS_WARNING(0, "Insert category failed! Error: Category %s already exist!\n", name);
+        return;
+    }
+    auto name_id = insert_string(name);
+    ROCPROFSYS_VERBOSE(2, "Insert category: name: %s, id: %ld, name id: %ld\n", name, category_id, name_id);
+    _category_map.emplace(category_id, name_id);
+}
+
+} // namespace rocpd
 }  // namespace rocprofsys

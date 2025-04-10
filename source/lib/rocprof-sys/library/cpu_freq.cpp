@@ -24,7 +24,7 @@
 #include "core/common.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
-#include "core/data_processing/data_processor.hpp"
+#include "core/rocpd/data_processor.hpp"
 #include "core/debug.hpp"
 #include "core/defines.hpp"
 #include "core/perfetto.hpp"
@@ -66,9 +66,9 @@ void init_perfetto_counter_tracks(type_list<Types...>)
     (perfetto_counter_track<Types>::init(), ...);
 }
 
-data_processing::data_processor&
+rocpd::data_processor&
 get_data_processor() {
-    return data_processing::data_processor::get_instance();
+    return rocpd::data_processor::get_instance();
 }
 
 void rocpd_initialize_cpu_freq_tracks(size_t node_id)

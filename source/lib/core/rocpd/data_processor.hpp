@@ -11,21 +11,20 @@
 #include "core/data_storage/queries/table_insert_query.hpp"
 
 namespace rocprofsys {
-namespace data_processing {
+namespace rocpd {
 
 struct data_processor {
 
     using insert_event_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, size_t, const char*, const char*, const char*)>;
     using insert_pmc_event_stms = std::function<void(size_t, const char*, size_t, size_t, double, const char*)>;
     using insert_sample_stmt = std::function<void(const char*, size_t, uint64_t, size_t, const char*)>;
-
-    enum class category_id {
-        smi_device_busy,
-        smi_device_temperature,
-        smi_device_power,
-        smi_device_memory_usage,
-    };
+    
 private: 
+    struct track_name_map {
+        size_t track_id;
+        size_t name_id;
+    };
+
     struct pmc_identifier {
         size_t agent_id;
         std::string name;
@@ -76,6 +75,8 @@ public:
                                 const char* block, const char* expression, uint32_t is_constant, uint32_t is_derived, const char* extdata = "{}");
 
     void insert_sample(const char* track, uint64_t timestamp, size_t event_id, const char* extdata = "{}");
+
+    void insert_category(size_t category_id, const char* name);
     
 private:
     data_processor();
@@ -91,9 +92,10 @@ private:
     void initialize_sample_stmt();
 
 private:
-    std::unordered_map<std::string, size_t> _track_name_map;
+    std::unordered_map<std::string, track_name_map> _tracks;
     std::unordered_map<pmc_identifier, size_t, pmc_identifier_hash, pmc_identifier_equal> _pmc_descriptor_map;
     std::unordered_map<size_t, size_t> _agent_id_map;
+    std::unordered_map<size_t, size_t> _category_map;
 
     insert_event_stmt _insert_event_statement;
     insert_pmc_event_stms _insert_pmc_event_statement;
@@ -104,10 +106,11 @@ private:
     size_t _sample_id{1};
     size_t _agent_id{1};
     size_t _string_id{1};
+    size_t _track_id{1};
     const std::string _upid = "_R4nd0m1D";
 };
 
 
-} // namespace data_processing
+} // namespace rocpd
 } // namespace rocprofsys
 

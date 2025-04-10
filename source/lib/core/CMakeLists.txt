@@ -19,9 +19,10 @@ set(core_sources
     ${CMAKE_CURRENT_LIST_DIR}/timemory.cpp
     ${CMAKE_CURRENT_LIST_DIR}/utility.cpp
     ${CMAKE_CURRENT_LIST_DIR}/utility.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_processing/data_processor.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_processing/node_info.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_processing/json.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_processor.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/node_info.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/json.cpp
     ${CMAKE_CURRENT_LIST_DIR}/data_storage/database.cpp)
 
 set(core_headers
@@ -45,9 +46,10 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/state.hpp
     ${CMAKE_CURRENT_LIST_DIR}/timemory.hpp
     ${CMAKE_CURRENT_LIST_DIR}/utility.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_processing/data_processor.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_processing/node_info.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_processing/json.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_processor.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/node_info.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/json.hpp
     ${CMAKE_CURRENT_LIST_DIR}/data_storage/database.hpp
     ${CMAKE_CURRENT_LIST_DIR}/data_storage/queries/table_insert_query.hpp
     ${CMAKE_CURRENT_LIST_DIR}/data_storage/queries/query_builders/insert_query_builders.hpp)

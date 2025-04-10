@@ -84,8 +84,8 @@ FROM
 CREATE VIEW IF NOT EXISTS
     "samples{{view_upid}}" AS
 SELECT
-    R.id,
-    R.guid,
+    SMP.id,
+    SMP.guid,
     (
         SELECT
             string
@@ -94,18 +94,12 @@ SELECT
         WHERE
             RS.id = E.category_id AND RS.guid = E.guid
     ) AS category,
-    (
-        SELECT
-            string
-        FROM
-            rocpd_string{{view_upid}} RS
-        WHERE
-            RS.id = T.name_id AND RS.guid = T.guid
-    ) AS name,
+    PMC_I.name,
+    PMC_E.value,
     T.nid,
     T.pid,
     T.tid,
-    R.timestamp,
+    SMP.timestamp,
     E.stack_id AS stack_id,
     E.parent_stack_id AS parent_stack_id,
     E.correlation_id AS corr_id,
@@ -113,10 +107,12 @@ SELECT
     E.call_stack AS call_stack,
     E.line_info AS line_info
 FROM
-    rocpd_sample{{view_upid}} R
-    INNER JOIN rocpd_track{{view_upid}} T ON T.id = R.track_id AND T.guid = R.guid
-    INNER JOIN rocpd_event{{view_upid}} E ON E.id = R.event_id AND E.guid = R.guid;
-
+    rocpd_sample{{view_upid}} SMP
+    INNER JOIN rocpd_track{{view_upid}} T ON T.id = SMP.track_id AND T.guid = SMP.guid
+    INNER JOIN rocpd_event{{view_upid}} E ON E.id = SMP.event_id AND E.guid = SMP.guid
+    INNER JOIN rocpd_pmc_event{{view_upid}} PMC_E ON E.id = PMC_E.event_id AND SMP.guid = PMC_E.guid
+    INNER JOIN rocpd_info_pmc{{view_upid}} PMC_I ON PMC_E.pmc_id = PMC_I.id AND SMP.guid = T.guid;
+    
 --
 -- Kernel information
 CREATE VIEW

@@ -30,9 +30,9 @@
 #include "core/perfetto.hpp"
 #include "core/rocprofiler-sdk.hpp"
 #include "core/state.hpp"
-#include "core/data_processing/data_processor.hpp"
-#include "core/data_processing/node_info.hpp"
-#include "core/data_processing/agent_manager.hpp"
+#include "core/rocpd/data_processor.hpp"
+#include "core/rocpd/node_info.hpp"
+#include "core/rocpd/agent_manager.hpp"
 #include "library/components/category_region.hpp"
 #include "library/rocm_smi.hpp"
 #include "library/rocprofiler-sdk/counters.hpp"
@@ -1074,7 +1074,7 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
     auto& node = node_info::get_instance();
     auto& agent_info_manager = agent_manager::get_instance();
-    auto& data_processor = data_processing::data_processor::get_instance();
+    auto& data_processor = rocpd::data_processor::get_instance();
 
     auto insert_agent = [&](const auto& itr) {
         agent_info_manager.insert_agent(itr);
@@ -1245,6 +1245,8 @@ setup()
 void
 shutdown()
 {
+    std::cout << "ROCPROFSYS: shutting down SDK..." << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
     // shutdown
     if(tool_data && tool_data->client_id && tool_data->client_fini)
         tool_data->client_fini(*tool_data->client_id);
