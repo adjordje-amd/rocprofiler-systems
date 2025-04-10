@@ -194,6 +194,15 @@ client_data::get_gpu_tool_agent(rocprofiler_agent_id_t id) const
     return nullptr;
 }
 
+// inline const tool_agent*
+// client_data::get_gpu_tool_agent(size_t gpu_id) const
+// {
+//     for(const auto& itr : gpu_agents)
+//         if(gpu_id == itr.device_id) return &itr;
+//     return nullptr;
+// }
+
+
 inline const kernel_symbol_data_t*
 client_data::get_kernel_symbol_info(uint64_t _kernel_id) const
 {

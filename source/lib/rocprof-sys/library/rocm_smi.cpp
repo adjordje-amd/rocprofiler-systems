@@ -40,6 +40,8 @@
 #include "core/gpu.hpp"
 #include "core/perfetto.hpp"
 #include "core/state.hpp"
+#include "core/data_processing/node_info.hpp"
+#include "core/data_processing/agent_manager.hpp"
 #include "library/runtime.hpp"
 #include "library/thread_info.hpp"
 
@@ -86,16 +88,22 @@ get_data_processor() {
     return data_processing::data_processor::get_instance();
 }
 
-
-void rocpd_initialize_smi_tracks(size_t node_id) {
+void rocpd_initilaize_process_info() {
     auto& data_processor = get_data_processor();
-    data_processor.insert_track(trait::name<category::rocm_smi_busy>::value, node_id, getpid(), get_tid());
-    data_processor.insert_track(trait::name<category::rocm_smi_power>::value, node_id, getpid(), get_tid());
-    data_processor.insert_track(trait::name<category::rocm_smi_temp>::value, node_id, getpid(), get_tid());
-    data_processor.insert_track(trait::name<category::rocm_smi_memory_usage>::value, node_id, getpid(), get_tid());
+    auto& n_info = node_info::get_instance();
+    data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0, "", "{}");
+}
+
+void rocpd_initialize_smi_tracks() {
+    auto& data_processor = get_data_processor();
+    auto& n_info = node_info::get_instance();
+    data_processor.insert_track(trait::name<category::rocm_smi_busy>::value, n_info.id, getpid(), get_tid());
+    data_processor.insert_track(trait::name<category::rocm_smi_power>::value, n_info.id, getpid(), get_tid());
+    data_processor.insert_track(trait::name<category::rocm_smi_temp>::value, n_info.id, getpid(), get_tid());
+    data_processor.insert_track(trait::name<category::rocm_smi_memory_usage>::value, n_info.id, getpid(), get_tid());
 };
 
-void rocpd_initialize_smi_pmc(size_t agent_id) {
+void rocpd_initialize_smi_pmc(size_t gpu_id) {
     auto& data_processor = get_data_processor();
     // find the proper values for a following definitions
     size_t EVENT_CODE = 0;
@@ -105,13 +113,23 @@ void rocpd_initialize_smi_pmc(size_t agent_id) {
     const char* BLOCK = "";
     const char* EXPRESSION = "";
     const char* CELSIUS_DEGREES = "\u00B0C";
-    data_processor.insert_pmc_description("GPU", agent_id, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_busy>::value, "Busy", 
+    auto ni = node_info::get_instance();
+    const auto TARGET_ARCH = "GPU";
+
+    auto& agent_info_manager = agent_manager::get_instance();
+    auto agent = agent_info_manager.get_agent(gpu_id);
+    auto agent_id = agent->id.handle;
+
+    data_processor.insert_pmc_description(ni.id, getpid(), agent_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_busy>::value, "Busy", 
                                             trait::name<category::rocm_smi_busy>::description, LONG_DESCRIPTION, COMPONENT, "%", "ABS", BLOCK, EXPRESSION, 0, 0);
-    data_processor.insert_pmc_description("GPU", agent_id, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_power>::value, "Pow", 
-                                            trait::name<category::rocm_smi_power>::description, LONG_DESCRIPTION, COMPONENT, CELSIUS_DEGREES, "ABS", BLOCK, EXPRESSION, 0, 0);
-    data_processor.insert_pmc_description("GPU", agent_id, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_temp>::value, "Temp", 
-                                            trait::name<category::rocm_smi_temp>::description, LONG_DESCRIPTION, COMPONENT, "w", "ABS", BLOCK, EXPRESSION, 0, 0);
-    data_processor.insert_pmc_description("GPU", agent_id, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_memory_usage>::value, "MemUsg", 
+
+    data_processor.insert_pmc_description(ni.id, getpid(), agent_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_power>::value, "Pow", 
+                                            trait::name<category::rocm_smi_power>::description, LONG_DESCRIPTION, COMPONENT, "w", "ABS", BLOCK, EXPRESSION, 0, 0);
+
+    data_processor.insert_pmc_description(ni.id, getpid(), agent_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_temp>::value, "Temp", 
+                                            trait::name<category::rocm_smi_temp>::description, LONG_DESCRIPTION, COMPONENT, CELSIUS_DEGREES, "ABS", BLOCK, EXPRESSION, 0, 0);
+
+    data_processor.insert_pmc_description(ni.id, getpid(), agent_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_memory_usage>::value, "MemUsg", 
                                             trait::name<category::rocm_smi_memory_usage>::description, LONG_DESCRIPTION, COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0);
 };
 
@@ -121,9 +139,13 @@ void rocpd_process_smi_pmc_events(const uint32_t device_id, const rocm_smi::sett
     auto& data_processor = get_data_processor();
     auto event_id = data_processor.insert_event(1, 0, 0, 0);
 
+    auto& agent_info_manager = agent_manager::get_instance();
+    auto agent = agent_info_manager.get_agent(device_id);
+    auto agent_id = agent->id.handle;
+
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if (!enabled) return;
-        data_processor.insert_pmc_event(event_id, device_id, name, value);
+        data_processor.insert_pmc_event(event_id, agent_id, name, value);
         data_processor.insert_sample(name, 0, event_id);
     };
 
@@ -264,10 +286,11 @@ config()
                 *_bundle_data.at(i) = unique_ptr_t<bundle_t>{ new bundle_t{} };
         }
     }
-
     data::get_initial().resize(data::device_count);
     for(auto itr : data::device_list)
         data::get_initial().at(itr).sample(itr);
+    
+    rocpd_initialize_smi_tracks();
 }
 
 void
@@ -297,11 +320,30 @@ data::get_initial()
     return _v;
 }
 
+
+
 bool
 data::setup()
 {
     perfetto_counter_track<data>::init();
     rocm_smi::set_state(State::PreInit);
+
+    const auto& n_info = node_info::get_instance();
+    auto& data_processor = data_processing::data_processor::get_instance();
+
+    data_processor.insert_node_info(
+        n_info.id,
+        n_info.hash,
+        n_info.machine_id.c_str(),
+        n_info.system_name.c_str(),
+        n_info.node_name.c_str(),
+        n_info.release.c_str(),
+        n_info.version.c_str(),
+        n_info.machine.c_str(),
+        n_info.domain_name.c_str());
+    
+    rocpd_initilaize_process_info();
+
     return true;
 }
 
@@ -348,7 +390,7 @@ data::post_process(uint32_t _dev_id)
         ROCPROFSYS_CI_THROW(!_thread_info, "Missing thread info for thread 0");
         if(!_thread_info) return;
         
-    rocpd_initialize_smi_tracks(_dev_id);
+    
     rocpd_initialize_smi_pmc(_dev_id);
     
     auto _settings = get_settings(_dev_id);
@@ -484,6 +526,8 @@ setup()
 
     ROCPROFSYS_SCOPED_SAMPLING_ON_CHILD_THREADS(false);
 
+    // Init process info here!
+
     // assign the data value to determined by rocm-smi
     data::device_count = device_count();
 
@@ -610,6 +654,7 @@ shutdown()
 void
 post_process()
 {
+
     for(auto itr : data::device_list)
         data::post_process(itr);
 }

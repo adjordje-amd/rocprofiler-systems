@@ -10,29 +10,6 @@
 #include "core/data_storage/database.hpp"
 #include "core/data_storage/queries/table_insert_query.hpp"
 
-namespace {
-    struct pmc_identifier {
-        size_t agent_id;
-        std::string name;
-    };
-    
-
-    struct pmc_identifier_hash {
-        std::size_t operator()(const pmc_identifier& pmc) const noexcept {
-            std::size_t h1 = std::hash<size_t>{}(pmc.agent_id);
-            std::size_t h2 = std::hash<std::string>{}(pmc.name);
-            return h1 ^ (h2 << 1);
-        }
-    };
-
-    struct pmc_identifier_equal {
-        bool operator()(const pmc_identifier& lhs, const pmc_identifier& rhs) const noexcept {
-            return lhs.agent_id == rhs.agent_id && lhs.name == rhs.name;
-        }
-    };
-}
-
-
 namespace rocprofsys {
 namespace data_processing {
 
@@ -48,7 +25,28 @@ struct data_processor {
         smi_device_power,
         smi_device_memory_usage,
     };
+private: 
+    struct pmc_identifier {
+        size_t agent_id;
+        std::string name;
+    };
 
+
+    struct pmc_identifier_hash {
+        std::size_t operator()(const pmc_identifier& pmc) const noexcept {
+            std::size_t h1 = std::hash<size_t>{}(pmc.agent_id);
+            std::size_t h2 = std::hash<std::string>{}(pmc.name);
+            return h1 ^ (h2 << 1);
+        }
+    };
+
+    struct pmc_identifier_equal {
+        bool operator()(const pmc_identifier& lhs, const pmc_identifier& rhs) const noexcept {
+            return lhs.agent_id == rhs.agent_id && lhs.name == rhs.name;
+        }
+    };
+
+public:
     enum class correlation_id {
         smi_unused
     };
@@ -57,23 +55,23 @@ struct data_processor {
 
     size_t insert_string(const char* str);
 
-    void insert_node_info(size_t hash, const char* machine_id, const char* system_name, const char* host_name, 
+    void insert_node_info(size_t node_id, size_t hash, const char* machine_id, const char* system_name, const char* hostname, 
                             const char* release, const char* version, const char* hardware_name, const char* domain_name);
 
-    void insert_process_info(size_t nid, size_t ppid, size_t pid, size_t init, size_t fini, size_t start, size_t end, 
+    void insert_process_info(size_t node_id, size_t ppid, size_t pid, size_t init, size_t fini, size_t start, size_t end, 
                                 const char* command, const char* environment = "{}", const char* extdata = "{}");
 
-    void insert_agent(size_t node_id, size_t pid, const char* agent_type, size_t absolute_index, size_t logical_index, size_t type_index, uint64_t uuid, 
+    void insert_agent(size_t agent_id, size_t node_id, size_t pid, const char* agent_type, size_t absolute_index, size_t logical_index, size_t type_index, uint64_t uuid, 
                         const char* name, const char* model_name, const char* vendor_name, const char* product_name, const char* user_name, const char* extdata = "{}");
     
-    void insert_track(const char* track_name, size_t node_id, int32_t pid, int64_t tid, const char* extdata = "{}");
+    void insert_track(const char* track_name, size_t node_id, size_t process_id, size_t thread_id, const char* extdata = "{}");
 
     size_t insert_event(size_t category_id, size_t stack_id, size_t parent_stack_id, size_t correlation_id, const char* call_stack = "{}", 
                         const char* line_info = "{}", const char* extdata = "{}");
  
     void insert_pmc_event(size_t event_id, size_t agent_id, const char* pmc_descriptor, double value, const char* extdata = "{}");
 
-    void insert_pmc_description(const char* target_arch, size_t agent_id, size_t event_code, size_t instance_id, const char* name, const char* symbol, 
+    void insert_pmc_description(size_t node_id, size_t process_id, size_t agent_id, const char* target_arch, size_t event_code, size_t instance_id, const char* name, const char* symbol, 
                                 const char* description, const char* long_description, const char* component, const char* units, const char* value_type, 
                                 const char* block, const char* expression, uint32_t is_constant, uint32_t is_derived, const char* extdata = "{}");
 

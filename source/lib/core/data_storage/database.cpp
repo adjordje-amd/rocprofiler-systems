@@ -31,7 +31,7 @@ namespace data_storage {
         }();
         
         ROCPROFSYS_VERBOSE(0, "Database: %s\r\n", db_name.c_str());
-        validate_sqlite3_result(sqlite3_open("_ram_sqlite_db.db", &_ram_sqlite_db), "database open failed!");
+        validate_sqlite3_result(sqlite3_open(":memory:", &_ram_sqlite_db), "database open failed!");
         validate_sqlite3_result(sqlite3_open(db_name.c_str(), &_sqlite3_db), "database open failed!");
     };
     

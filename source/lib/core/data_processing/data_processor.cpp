@@ -37,15 +37,15 @@ data_processor::insert_string(const char* str)
 }
 
 void
-data_processor::insert_node_info(size_t hash, const char* machine_id, const char* system_name, const char* host_name, const char* release, const char* version, const char* hardware_name, const char* domain_name)
+data_processor::insert_node_info(size_t node_id, size_t hash, const char* machine_id, const char* system_name, const char* hostname, const char* release, const char* version, const char* hardware_name, const char* domain_name)
 {
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance()
                             .execute_query(
                                 query.set_table_name("rocpd_info_node" + _upid)
-                                    .set_columns("guid", "hash", "machine_id", "system_name", "host_name", "release",
+                                    .set_columns("id", "guid", "hash", "machine_id", "system_name", "hostname", "release",
                                                 "version", "hardware_name", "domain_name")
-                                    .set_values(_upid, hash, machine_id, system_name, host_name, release,
+                                    .set_values(node_id, _upid, hash, machine_id, system_name, hostname, release,
                                                 version, hardware_name, domain_name)
                                     .get_query_string());
 }
@@ -59,34 +59,32 @@ data_processor::insert_process_info(size_t nid, size_t ppid, size_t pid, size_t 
     data_storage::database::get_instance()
                             .execute_query(
                                 query.set_table_name("rocpd_info_process" + _upid)
-                                    .set_columns("guid", "nid", "ppid", "pid", "init", "fini",
+                                    .set_columns("id", "guid", "nid", "ppid", "pid", "init", "fini",
                                                 "start", "end", "command", "environment", "extdata")
-                                    .set_values(_upid, nid, ppid, pid, init, fini,
+                                    .set_values(pid, _upid, nid, ppid, pid, init, fini,
                                                 start, end, command, environment, extdata)
                                     .get_query_string());
 }
 
 void
-data_processor::insert_agent(size_t node_id, size_t pid, const char* agent_type, size_t absolute_index, size_t logical_index, size_t type_index, uint64_t uuid, 
-                            const char* name, const char* model_name, const char* vendor_name, const char* product_name, const char* user_name, const char* extdata) {
+data_processor::insert_agent(size_t agent_id, size_t node_id, size_t pid, const char* agent_type, size_t absolute_index, size_t logical_index, size_t type_index, uint64_t uuid, 
+                            const char* name, const char* model_name, const char* vendor_name, const char* product_name, const char* user_name, const char* extdata) 
+{
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance().execute_query(
         query.set_table_name("rocpd_info_agent" + _upid)
             .set_columns("id", "guid", "nid", "pid", "type", "absolute_index", "logical_index",
                          "type_index", "uuid", "name", "model_name", "vendor_name",
                          "product_name", "user_name", "extdata")
-            .set_values(_agent_id, _upid, node_id, pid, agent_type, absolute_index, logical_index, type_index, 
+            .set_values(agent_id, _upid, node_id, pid, agent_type, absolute_index, logical_index, type_index, 
                         uuid, name, model_name, vendor_name, product_name, user_name, extdata)
             .get_query_string());
-    _agent_id_map.emplace(_agent_id, node_id);
-    _agent_id++;
 }
 
 void
-data_processor::insert_track(const char* track_name, size_t node_id, int32_t pid, int64_t tid, const char* extdata)
+data_processor::insert_track(const char* track_name, size_t node_id, size_t process_id, size_t thread_id, const char* extdata)
 {
     if (_track_name_map.find(track_name) != _track_name_map.end()) {
-        // TODO: Add warning message
         ROCPROFSYS_WARNING(0, "Fail to add track %s, already exist!\n", track_name);
         return;
     }
@@ -97,27 +95,27 @@ data_processor::insert_track(const char* track_name, size_t node_id, int32_t pid
                             .execute_query(
                                 query.set_table_name("rocpd_track" + _upid)
                                     .set_columns("guid", "nid", "pid", "tid", "name_id", "extdata")
-                                    .set_values(_upid, node_id, pid, tid, name_id, extdata) .get_query_string());
+                                    .set_values(_upid, node_id, process_id, thread_id, name_id, extdata) .get_query_string());
     _track_name_map.emplace(track_name, name_id);
 }
 
 void
-data_processor::insert_pmc_description(const char* target_arch, size_t agent_id, size_t event_code, size_t instance_id, const char* name, const char* symbol, 
+data_processor::insert_pmc_description(size_t node_id, size_t process_id, size_t agent_id, const char* target_arch, size_t event_code, size_t instance_id, const char* name, const char* symbol, 
                                         const char* description, const char* long_description, const char* component, const char* units, const char* value_type, 
                                         const char* block, const char* expression, uint32_t is_constant, uint32_t is_derived, const char* extdata)
 {
     auto it = _pmc_descriptor_map.find({agent_id, name});
     if (it != _pmc_descriptor_map.end()) {
-        ROCPROFSYS_WARNING(0, "Insert PMC event failed! Error: PMC descriptor already exist!\n");  
+        ROCPROFSYS_WARNING(0, "Insert PMC description failed! Error: PMC descriptor already exist!\n");  
         return;
     }
     data_storage::queries::table_insert_query query_builder;
-    auto query = query_builder.set_table_name("rocpd_pmc" + _upid)
-                                .set_columns("id", "guid", "target_arch", "agent_id", "event_code", "instance_id",
+    auto query = query_builder.set_table_name("rocpd_info_pmc" + _upid)
+                                .set_columns("id", "guid", "nid", "pid", "agent_id", "target_arch", "event_code", "instance_id",
                                             "name", "symbol", "description", "long_description",
                                             "component", "units", "value_type", "block",
                                             "expression", "is_constant", "is_derived", "extdata")
-                                .set_values(_pmc_id, _upid, target_arch, agent_id, event_code, instance_id, name, symbol,
+                                .set_values(_pmc_id, _upid, node_id, process_id, agent_id, target_arch, event_code, instance_id, name, symbol,
                                             description, long_description, component, units, value_type,
                                             block, expression, is_constant, is_derived, extdata)
                                 .get_query_string();
