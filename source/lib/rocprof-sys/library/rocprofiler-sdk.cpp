@@ -1063,22 +1063,26 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
 
     const auto get_agent_type = [](const auto& type){
-        if (type == ROCPROFILER_AGENT_TYPE_GPU) {
+        if (type == rocpd::agent::device_type::gpu) {
             return "GPU";
         }
-        if (type == ROCPROFILER_AGENT_TYPE_CPU) {
+        if (type == rocpd::agent::device_type::cpu) {
             return "CPU";
         }
         throw std::runtime_error("Unknown agent type");
     };
 
     auto& node = node_info::get_instance();
-    auto& agent_info_manager = agent_manager::get_instance();
+    auto& agent_m = rocpd::agent_manager::get_instance();
     auto& data_processor = rocpd::data_processor::get_instance();
 
     auto insert_agent = [&](const auto& itr) {
-        agent_info_manager.insert_agent(itr);
-        data_processor.insert_agent(itr.agent->id.handle, node.id, getpid(), get_agent_type(itr.agent->type), itr.agent->node_id, itr.agent->logical_node_id, itr.agent->logical_node_type_id, 
+        rocpd::agent agent;
+        agent.id = itr.agent->id.handle;
+        agent.device_id = itr.device_id;
+        agent.type = itr.agent->type == ROCPROFILER_AGENT_TYPE_GPU ? rocpd::agent::device_type::gpu : rocpd::agent::device_type::cpu;
+        agent_m.insert_agent(agent);
+        data_processor.insert_agent(agent.id, node.id, getpid(), get_agent_type(agent.type), itr.agent->node_id, itr.agent->logical_node_id, itr.agent->logical_node_type_id, 
                                     itr.agent->device_id, itr.agent->name, itr.agent->model_name, itr.agent->vendor_name, itr.agent->product_name, "");
     };
 
@@ -1245,8 +1249,6 @@ setup()
 void
 shutdown()
 {
-    std::cout << "ROCPROFSYS: shutting down SDK..." << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(300));
     // shutdown
     if(tool_data && tool_data->client_id && tool_data->client_fini)
         tool_data->client_fini(*tool_data->client_id);

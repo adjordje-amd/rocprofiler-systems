@@ -3,10 +3,11 @@
 #include <vector>
 #include <stdexcept>
 
+#include "agent.hpp"
 #include "library/rocprofiler-sdk/fwd.hpp"
 
-using tool_agent_t = rocprofsys::rocprofiler_sdk::tool_agent;
-
+namespace rocprofsys {
+namespace rocpd {
 
 struct agent_manager {
     static agent_manager& get_instance();
@@ -17,13 +18,14 @@ struct agent_manager {
     agent_manager& operator=(agent_manager&&) = delete;
     ~agent_manager() = default;
 
-    void insert_agent(tool_agent_t agent);
+    void insert_agent(agent _agent);
 
-    const rocprofiler_agent_v0_t* get_gpu_agent(size_t id) const;
-
-    const rocprofiler_agent_v0_t* get_cpu_agent(size_t id) const;
+    const agent& get_agent(size_t device_id, agent::device_type type) const;
 
 private:
-    std::vector<tool_agent_t> _agents;
+    std::vector<agent> _agents;
     agent_manager() = default;
 };
+
+} // namespace rocpd
+} // namespace rocprofsys

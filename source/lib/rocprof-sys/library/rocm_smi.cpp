@@ -120,20 +120,19 @@ void rocpd_initialize_smi_pmc(size_t gpu_id) {
     auto ni = node_info::get_instance();
     const auto TARGET_ARCH = "GPU";
 
-    auto& agent_info_manager = agent_manager::get_instance();
-    auto agent = agent_info_manager.get_gpu_agent(gpu_id);
-    auto agent_id = agent->id.handle;
+    auto& agents = rocpd::agent_manager::get_instance();
+    auto agent = agents.get_agent(gpu_id, rocpd::agent::device_type::gpu);
 
-    data_processor.insert_pmc_description(ni.id, getpid(), agent_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_busy>::value, "Busy", 
+    data_processor.insert_pmc_description(ni.id, getpid(), agent.id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_busy>::value, "Busy", 
                                             trait::name<category::rocm_smi_busy>::description, LONG_DESCRIPTION, COMPONENT, "%", "ABS", BLOCK, EXPRESSION, 0, 0);
 
-    data_processor.insert_pmc_description(ni.id, getpid(), agent_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_temp>::value, "Temp", 
+    data_processor.insert_pmc_description(ni.id, getpid(), agent.id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_temp>::value, "Temp", 
                                             trait::name<category::rocm_smi_temp>::description, LONG_DESCRIPTION, COMPONENT, CELSIUS_DEGREES, "ABS", BLOCK, EXPRESSION, 0, 0);
     
-    data_processor.insert_pmc_description(ni.id, getpid(), agent_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_power>::value, "Pow", 
+    data_processor.insert_pmc_description(ni.id, getpid(), agent.id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_power>::value, "Pow", 
                                             trait::name<category::rocm_smi_power>::description, LONG_DESCRIPTION, COMPONENT, "w", "ABS", BLOCK, EXPRESSION, 0, 0);
 
-    data_processor.insert_pmc_description(ni.id, getpid(), agent_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_memory_usage>::value, "MemUsg", 
+    data_processor.insert_pmc_description(ni.id, getpid(), agent.id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID, trait::name<category::rocm_smi_memory_usage>::value, "MemUsg", 
                                             trait::name<category::rocm_smi_memory_usage>::description, LONG_DESCRIPTION, COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0);
 };
 
@@ -143,13 +142,12 @@ void rocpd_process_smi_pmc_events(const uint32_t device_id, const rocm_smi::sett
     auto& data_processor = get_data_processor();
     auto event_id = data_processor.insert_event(ROCPROFSYS_CATEGORY_ROCM_SMI, 0, 0, 0);
 
-    auto& agent_info_manager = agent_manager::get_instance();
-    auto agent = agent_info_manager.get_gpu_agent(device_id);
-    auto agent_id = agent->id.handle;
+    auto& agents = rocpd::agent_manager::get_instance();
+    auto agent = agents.get_agent(device_id, rocpd::agent::device_type::gpu);
 
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if (!enabled) return;
-        data_processor.insert_pmc_event(event_id, agent_id, name, value);
+        data_processor.insert_pmc_event(event_id, agent.id, name, value);
         data_processor.insert_sample(name, 0, event_id);
     };
 
