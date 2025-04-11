@@ -25,6 +25,7 @@
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
 #include "core/rocpd/data_processor.hpp"
+#include "core/rocpd/node_info.hpp"
 #include "core/debug.hpp"
 #include "core/defines.hpp"
 #include "core/perfetto.hpp"
@@ -74,14 +75,15 @@ get_data_processor() {
 void rocpd_initialize_cpu_freq_tracks(size_t node_id)
 {
     auto& data_processor = get_data_processor();
-    // data_processor.insert_track(trait::name<category::cpu_freq>::value, node_id, getpid(), threading::get_id());
-    // data_processor.insert_track(trait::name<category::process_page>::value, node_id, getpid(), threading::get_id());
-    // data_processor.insert_track(trait::name<category::process_virt>::value, node_id, getpid(), threading::get_id());
-    // data_processor.insert_track(trait::name<category::process_peak>::value, node_id, getpid(), threading::get_id());
-    // data_processor.insert_track(trait::name<category::process_context_switch>::value, node_id, getpid(), threading::get_id());
-    // data_processor.insert_track(trait::name<category::process_page_fault>::value, node_id, getpid(), threading::get_id());
-    // data_processor.insert_track(trait::name<category::process_user_mode_time>::value, node_id, getpid(), threading::get_id());
-    // data_processor.insert_track(trait::name<category::process_kernel_mode_time>::value, node_id, getpid(), threading::get_id());
+    auto& n_info = node_info::get_instance();
+    data_processor.insert_track(trait::name<category::cpu_freq>::value, n_info.id, getpid(), gettid());
+    data_processor.insert_track(trait::name<category::process_page>::value, n_info.id, getpid(), gettid());
+    data_processor.insert_track(trait::name<category::process_virt>::value, n_info.id, getpid(), gettid());
+    data_processor.insert_track(trait::name<category::process_peak>::value, n_info.id, getpid(), gettid());
+    data_processor.insert_track(trait::name<category::process_context_switch>::value, n_info.id, getpid(), gettid());
+    data_processor.insert_track(trait::name<category::process_page_fault>::value, n_info.id, getpid(), gettid());
+    data_processor.insert_track(trait::name<category::process_user_mode_time>::value,n_info.id, getpid(), gettid());
+    data_processor.insert_track(trait::name<category::process_kernel_mode_time>::value, n_info.id, getpid(), gettid());
 }
 
 

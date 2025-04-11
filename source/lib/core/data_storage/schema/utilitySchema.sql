@@ -112,7 +112,27 @@ FROM
     INNER JOIN rocpd_event{{view_upid}} E ON E.id = SMP.event_id AND E.guid = SMP.guid
     INNER JOIN rocpd_pmc_event{{view_upid}} PMC_E ON E.id = PMC_E.event_id AND SMP.guid = PMC_E.guid
     INNER JOIN rocpd_info_pmc{{view_upid}} PMC_I ON PMC_E.pmc_id = PMC_I.id AND SMP.guid = T.guid;
-    
+
+--
+-- Track infromation
+CREATE VIEW IF NOT EXISTS
+    "tracks{{view_upid}}" AS
+SELECT
+    T.id,
+    (
+        SELECT
+            string
+        FROM
+            rocpd_string{{view_upid}} RS
+        WHERE
+            RS.id = T.name_id AND RS.guid = T.guid
+    ) AS name,
+    T.nid,
+    T.pid,
+    T.tid
+FROM
+    rocpd_track{{view_upid}} T;
+
 --
 -- Kernel information
 CREATE VIEW

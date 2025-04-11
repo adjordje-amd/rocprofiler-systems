@@ -136,7 +136,7 @@ void rocpd_initialize_smi_pmc(size_t gpu_id) {
                                             trait::name<category::rocm_smi_memory_usage>::description, LONG_DESCRIPTION, COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0);
 };
 
-void rocpd_process_smi_pmc_events(const uint32_t device_id, const rocm_smi::settings& settings, double busy, double temp, double power, double usage) {
+void rocpd_process_smi_pmc_events(const uint32_t device_id, const rocm_smi::settings& settings, uint64_t timestamp, double busy, double temp, double power, double usage) {
     if (!(settings.busy || settings.temp || settings.power || settings.mem_usage)) return;
 
     auto& data_processor = get_data_processor();
@@ -148,7 +148,7 @@ void rocpd_process_smi_pmc_events(const uint32_t device_id, const rocm_smi::sett
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if (!enabled) return;
         data_processor.insert_pmc_event(event_id, agent.id, name, value);
-        data_processor.insert_sample(name, 0, event_id);
+        data_processor.insert_sample(name, timestamp, event_id);
     };
 
     insert_event_and_sample(settings.busy, trait::name<category::rocm_smi_busy>::value, busy);
@@ -472,7 +472,7 @@ data::post_process(uint32_t _dev_id)
             double _power = itr.m_power / 1.0e6;
             double _usage = itr.m_mem_usage / static_cast<double>(units::megabyte);
 
-            rocpd_process_smi_pmc_events(_dev_id, _settings, _busy, _temp, _power, _usage);
+            rocpd_process_smi_pmc_events(_dev_id, _settings, _ts, _busy, _temp, _power, _usage);
 
             if(_settings.busy)
                 TRACE_COUNTER("device_busy", counter_track::at(_dev_id, _idx.at(0)), _ts,
