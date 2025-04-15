@@ -132,7 +132,7 @@ data_processor::insert_pmc_event(size_t event_id, size_t agent_id, const char* p
     ROCPROFSYS_VERBOSE(2, "Insert PMC event: id %ld, agent id: %ld, pmc name: %s, value: %lf, extdata: %s\n", event_id, agent_id, pmc_name, value, extdata);
     auto it = _pmc_descriptor_map.find({agent_id, pmc_name});
     if (it == _pmc_descriptor_map.end()) {
-        ROCPROFSYS_WARNING(0, "Insert PMC event failed! Error: unexisting PMC description agent id: %ld, pmc name: %s !\n", agent_id, pmc_name);  
+        ROCPROFSYS_WARNING(0, "Insert PMC event failed! Error: non-existing PMC description agent id: %ld, pmc name: %s !\n", agent_id, pmc_name);  
         return;
     }
 
