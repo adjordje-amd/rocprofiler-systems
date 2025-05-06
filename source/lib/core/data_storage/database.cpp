@@ -94,6 +94,7 @@ namespace data_storage {
     }
 
     void database::execute_query(const std::string& query) {
+        // std::cout << "EXECUTING QUERY :\n" << query.c_str() << "\n"; 
         validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Failed to execute query - ", query);
     }
 }
