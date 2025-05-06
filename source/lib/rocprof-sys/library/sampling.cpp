@@ -1712,6 +1712,27 @@ rocpd_post_process_overflow_data(int64_t _tid, const std::vector<overflow_sampli
 }
 
 void
+rocpd_post_process_backtrace_metrix(int64_t _tid, const std::vector<timer_sampling_data>& _timer_data)
+{
+    auto _valid_metrics = backtrace_metrics::valid_array_t{};
+
+    for(const auto& itr : _timer_data)
+    {
+        _valid_metrics |= itr.m_metrics.get_valid();
+    }
+
+    if(trait::runtime_enabled<backtrace_metrics>::get())
+    {
+        ROCPROFSYS_VERBOSE(3 || get_debug_sampling(),
+                           "[%li] Post-processing metrics for rocpd...\n", _tid);
+        backtrace_metrics::init_rocpd(_tid, _valid_metrics);
+        for(const auto& itr : _timer_data)
+            itr.m_metrics.post_process_rocpd(_tid, 0.5 * (itr.m_beg + itr.m_end));
+        backtrace_metrics::fini_rocpd(_tid, _valid_metrics);
+    }
+}
+
+void
 rocpd_post_process_timer_data(int64_t _tid, const std::vector<timer_sampling_data>& _timer_data)
 {
     auto& data_processor = get_data_processor();
@@ -1722,6 +1743,8 @@ rocpd_post_process_timer_data(int64_t _tid, const std::vector<timer_sampling_dat
 
     if(!_timer_data.empty())
     {
+        rocpd_post_process_backtrace_metrix(_tid, _timer_data);
+
         auto _beg_ns = std::max(_timer_data.front().m_beg, _thread_info->get_start());
         auto _end_ns = std::min(_timer_data.back().m_end, _thread_info->get_stop());
 

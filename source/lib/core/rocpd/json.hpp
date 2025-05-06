@@ -13,7 +13,7 @@ class json {
 public:
     static std::shared_ptr<json> create();
 
-    using json_value = std::variant<std::string, int, double, bool, std::vector<json>, std::nullptr_t, std::shared_ptr<json>>;
+    using json_value = std::variant<std::string, int, double, long long, bool, std::vector<json>, std::nullptr_t, std::shared_ptr<json>>;
 
     void set(const std::string& key, const json_value& value);
 
