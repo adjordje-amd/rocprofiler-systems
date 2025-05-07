@@ -12,6 +12,7 @@ data_processor::data_processor()
     initialize_event_stmt();
     initialize_pmc_event_stmt();
     initialize_sample_stmt();
+    initialize_region_stmt();
 
 }
 
@@ -25,6 +26,11 @@ data_processor::get_instance()
 size_t
 data_processor::insert_string(const char* str)
 {
+    std::lock_guard<std::mutex> lock(_data_mutex);
+    auto it = _string_map.find(str);
+    if (it != _string_map.end())
+        return _string_map.at(str);
+
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance()
                             .execute_query(
@@ -33,6 +39,7 @@ data_processor::insert_string(const char* str)
                                     .set_values(_string_id, _upid, str)
                                     .get_query_string());
 
+    _string_map.emplace(str, _string_id);
     return _string_id++;
 }
 
@@ -207,8 +214,21 @@ data_processor::initialize_sample_stmt()
     _insert_sample_statement = data_storage::database::get_instance().create_statment_executor<const char*, size_t, uint64_t, size_t, const char*>(query);
 }
 
-void 
-data_processor::insert_category(size_t category_id, const char* name) {
+void
+data_processor::initialize_region_stmt()
+{
+    data_storage::queries::table_insert_query query_builder;
+    auto query = query_builder.set_table_name("rocpd_region" + _upid)
+                                .set_columns("id", "guid", "nid", "pid", "tid", "start", "end", "name_id", "event_id", "extdata")
+                                .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?')
+                                .get_query_string();
+    _insert_region_statement = data_storage::database::get_instance().create_statment_executor<size_t, const char*, size_t, size_t, size_t, uint64_t, uint64_t,
+                                                                                             size_t, size_t, const char*>(query);
+}
+
+void
+data_processor::insert_category(size_t category_id, const char* name)
+{
     auto it = _category_map.find(category_id);
     if (it != _category_map.end()) {
         ROCPROFSYS_WARNING(0, "Insert category failed! Error: Category %s already exist!\n", name);
@@ -217,6 +237,32 @@ data_processor::insert_category(size_t category_id, const char* name) {
     auto name_id = insert_string(name);
     ROCPROFSYS_VERBOSE(2, "Insert category: name: %s, id: %ld, name id: %ld\n", name, category_id, name_id);
     _category_map.emplace(category_id, name_id);
+}
+
+void 
+data_processor::insert_region(size_t node_id, size_t process_id, size_t thread_id, uint64_t start, uint64_t end, 
+    size_t name_id, size_t event_id, const char* extdata) {
+    ROCPROFSYS_VERBOSE(2, "Insert region for event id: %ld\n", event_id);
+    
+    _insert_region_statement(_region_id, _upid.c_str(), node_id, process_id, thread_id,
+                            start, end, name_id, event_id, extdata);
+    _region_id++;
+}
+
+void
+data_processor::insert_thread_info(size_t node_id, size_t parent_process_id,
+    size_t process_id, size_t thread_id, const char* name, uint64_t start,
+    uint64_t end, const char* extdata)
+{
+    data_storage::queries::table_insert_query query;
+    data_storage::database::get_instance()
+                            .execute_query(
+                                query.set_table_name("rocpd_info_thread" + _upid)
+                                    .set_columns("id", "guid", "nid", "ppid", "pid", "tid", "name",
+                                                "start", "end", "extdata")
+                                    .set_values(thread_id, _upid.c_str(), node_id, parent_process_id,
+                                                process_id, thread_id, name, start, end, extdata)
+                                    .get_query_string());
 }
 
 } // namespace rocpd

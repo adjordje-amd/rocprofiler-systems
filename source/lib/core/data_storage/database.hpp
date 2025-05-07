@@ -66,6 +66,7 @@ public:
                 position++;
             };
 
+
             (bind_value(value),...);
             validate_sqlite3_result(sqlite3_step(stmt.get()), "Failed to execute step!");
             sqlite3_reset(stmt.get());
