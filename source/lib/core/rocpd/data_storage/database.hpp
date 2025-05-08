@@ -1,10 +1,12 @@
 #pragma once
 #include "queries/table_insert_query.hpp"
-#include "utils.hpp"
+#include "common/traits.hpp"
 #include <sqlite3.h>
 #include <memory>
 #include <functional>
 
+namespace rocprofsys {
+namespace rocpd {
 namespace data_storage {
 
 class database {
@@ -58,7 +60,7 @@ public:
                     database::validate_sqlite3_result(sqlite3_bind_int64(stmt.get(), position, value), "Failed to bind int64_t/uint64_t!");
                 } else if constexpr (std::is_floating_point_v<T>) {
                     database::validate_sqlite3_result(sqlite3_bind_double(stmt.get(), position, value), "Failed to bind double!");
-                } else if constexpr (utils::is_string_literal_v<std::decay_t<T>>) {
+                } else if constexpr (common::traits::is_string_literal_v<std::decay_t<T>>) {
                     database::validate_sqlite3_result(sqlite3_bind_text(stmt.get(), position, value, -1, SQLITE_STATIC), "Failed to bind text!");
                 } else {
                     throw std::runtime_error("Unsupported type for binding!");
@@ -72,12 +74,15 @@ public:
             sqlite3_reset(stmt.get());
         };
     }
+    
+    static std::string get_upid();
 
 private:
-    sqlite3* _sqlite3_db;
-    sqlite3* _ram_sqlite_db;
+    sqlite3* _sqlite3_db{nullptr};
+    sqlite3* _ram_sqlite_db{nullptr};
 };
 
 } // namespace data_storage
-
+} // namespace rocpd 
+} // namespace rocprofsys 
     

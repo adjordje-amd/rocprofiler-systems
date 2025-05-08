@@ -2,8 +2,9 @@
 #include <string>
 #include <type_traits>
 
-namespace data_storage {
-namespace utils {
+namespace rocprofsys {
+inline namespace common {
+namespace traits {
     
     template <typename T>  
     struct is_string_literal : std::false_type {};  
@@ -38,5 +39,6 @@ namespace utils {
     template<typename T>
     inline constexpr bool is_string_literal_v = is_string_literal<T>::value;
 
-} //namespace data_storage
-} //namespace utils
+} // namespace traits
+} // namespace common
+} // namespace rocprofsys

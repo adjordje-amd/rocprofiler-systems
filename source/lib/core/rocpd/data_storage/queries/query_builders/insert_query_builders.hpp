@@ -1,6 +1,6 @@
 #pragma once
 
-#include "core/data_storage/utils.hpp"
+#include "common/traits.hpp"
 
 #include <sstream>
 #include <type_traits>
@@ -8,6 +8,8 @@
 #include <iostream>
 
 
+namespace rocprofsys {
+namespace rocpd {
 namespace data_storage {
 namespace queries {
 namespace query_builders {
@@ -19,9 +21,9 @@ namespace query_builders {
         query_value_builder& set_values(Values&& ... values) {
             auto i = sizeof ...(values);
             _ss << "( ";
-            ((_ss << (utils::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
+            ((_ss << (common::traits::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
                     << values  
-                    << (utils::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
+                    << (common::traits::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
                     << (i-- > 1 ? ", " : " ")), ...) << ")";       
             return *this;
         }
@@ -38,7 +40,7 @@ namespace query_builders {
     struct query_columns_builder {
         query_columns_builder(std::stringstream& ss) :_ss{ss}, _query_value_builder{_ss} {}
 
-        template <typename ... Columns, typename = std::enable_if_t<(utils::is_string_literal<Columns>::value && ...)>>
+        template <typename ... Columns, typename = std::enable_if_t<(common::traits::is_string_literal<Columns>::value && ...)>>
         query_value_builder& set_columns(Columns& ... columns) {
             auto i = sizeof ...(columns);
             _ss << "( ";
@@ -51,8 +53,9 @@ namespace query_builders {
         query_value_builder _query_value_builder;
     };
 
+
 } // namespace query_builders
 } // namespace queries
 } // namespace data_storage
-
-
+} // namespace rocpd
+} // namespace rocprofsys

@@ -2,6 +2,8 @@
 
 #include "query_builders/insert_query_builders.hpp"
 
+namespace rocprofsys {
+namespace rocpd {
 namespace data_storage {
 namespace queries {
 
@@ -19,5 +21,7 @@ namespace queries {
         query_builders::query_columns_builder _query_columns_builder;
     };
 
-} // namepsace queries
-} // namespace database
+} // namespace queries
+} // namespace data_storage
+} // namespace rocpd
+} // namespace rocprofsys

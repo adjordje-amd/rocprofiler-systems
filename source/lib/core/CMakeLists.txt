@@ -23,7 +23,7 @@ set(core_sources
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/node_info.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/json.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_storage/database.cpp)
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.cpp)
 
 set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/argparse.hpp
@@ -50,9 +50,9 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/node_info.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/json.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_storage/database.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_storage/queries/table_insert_query.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/data_storage/queries/query_builders/insert_query_builders.hpp)
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/table_insert_query.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/query_builders/insert_query_builders.hpp)
 
 add_library(rocprofiler-systems-core-library STATIC)
 add_library(rocprofiler-systems::rocprofiler-systems-core ALIAS
@@ -95,7 +95,7 @@ target_link_libraries(
 
 
 
-file(GLOB ROCPD_SCHEMA_FILES "${CMAKE_CURRENT_LIST_DIR}/data_storage/schema/*.sql")
+file(GLOB ROCPD_SCHEMA_FILES "${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/schema/*.sql")
 
 foreach(_SRC ${ROCPD_SCHEMA_FILES})
     cmake_path(GET _SRC FILENAME _BASE)

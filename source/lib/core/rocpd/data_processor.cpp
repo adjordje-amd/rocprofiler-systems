@@ -7,6 +7,7 @@ namespace rocpd {
 data_processor::data_processor()
 {
     data_storage::database::get_instance().initialize_schema();
+    _upid = data_storage::database::get_instance().get_upid();
 
     // Initialize event statement
     initialize_event_stmt();

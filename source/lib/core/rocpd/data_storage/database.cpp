@@ -1,5 +1,7 @@
 #include "database.hpp"
 #include "debug.hpp"
+#include "rocpd/node_info.hpp"
+#include "common/md5sum.hpp"
 
 #include <timemory/environment/types.hpp>
 #include <chrono>
@@ -13,6 +15,8 @@
 
 namespace fs = std::filesystem;
 
+namespace rocprofsys {
+namespace rocpd {
 namespace data_storage {
 
     database& database::get_instance() {
@@ -21,17 +25,19 @@ namespace data_storage {
     }
 
     database::database() {
-        auto db_name = [] {
+        auto db_name = [&]() {
             auto now = std::chrono::system_clock::now();
             // Convert the time point to a duration since the epoch
             auto time_since_epoch = now.time_since_epoch();
             // Convert the duration to seconds
             auto seconds = std::chrono::duration_cast<std::chrono::seconds>(time_since_epoch).count();
             std::stringstream ss;
-            ss << "rocprof-" << seconds << ".db";
+            ss << "rocprof-" << get_upid() << "-" << seconds << ".db";
             return ss.str();
         }();
         
+        
+
         ROCPROFSYS_VERBOSE(0, "Database: %s\r\n", db_name.c_str());
 #ifdef USE_RAM_DB
         validate_sqlite3_result(sqlite3_open(":memory:", &_ram_sqlite_db), "database open failed!");
@@ -66,7 +72,7 @@ namespace data_storage {
                     return new_file_path;
                 }
             }
-            return std::string("rocprof-sys-source/source/lib/core/data_storage/schema/").append(filename);
+            return std::string("rocprofiler-systems/source/lib/core/rocpd/data_storage/schema/").append(filename);
         };
 
         std::ifstream file(get_file_path("tableSchema.sql"));
@@ -77,7 +83,7 @@ namespace data_storage {
         std::stringstream ss_query;
         ss_query << file.rdbuf();
         std::regex upid_pattern("\\{\\{upid\\}\\}");  
-        std::string query = std::regex_replace(ss_query.str(), upid_pattern, "_R4nd0m1D");
+        std::string query = std::regex_replace(ss_query.str(), upid_pattern, get_upid());
         validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
         file.close();
         
@@ -88,7 +94,7 @@ namespace data_storage {
         ss_query.str("");
         ss_query << file.rdbuf();
         std::regex view_upid_pattern("\\{\\{view_upid\\}\\}");  
-        query = std::regex_replace(ss_query.str(), view_upid_pattern, "_R4nd0m1D");
+        query = std::regex_replace(ss_query.str(), view_upid_pattern, get_upid());
         validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Invalid database utility file, init database failed!");
         file.close();
     }
@@ -96,4 +102,16 @@ namespace data_storage {
     void database::execute_query(const std::string& query) {
         validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Failed to execute query - ", query);
     }
-}
+
+    std::string database::get_upid() {
+        static std::string _upid = []() {
+            auto n_info = node_info::get_instance();
+            auto guid = common::md5sum{n_info.id, getpid(), getppid()};
+            return guid.hexdigest();
+        }();
+        return _upid;
+    }
+
+} // namespace data_storage 
+} // namespace rocpd 
+} // namespace rocprofsys 
