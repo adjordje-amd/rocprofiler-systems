@@ -4,6 +4,7 @@
 #include "common/md5sum.hpp"
 
 #include <timemory/environment/types.hpp>
+#include <fmt/format.h>
 #include <chrono>
 #include <fstream>
 #include <memory>
@@ -72,31 +73,45 @@ namespace data_storage {
                     return new_file_path;
                 }
             }
+            //return std::string("/developemnt/adjordje-amd/rocprofsys-sdk-source/source/lib/core/rocpd/data_storage/schema/").append(filename);
             return std::string("rocprofiler-systems/source/lib/core/rocpd/data_storage/schema/").append(filename);
         };
 
-        std::ifstream file(get_file_path("tableSchema.sql"));
-        if (!file.is_open()){
-            throw std::runtime_error("Failed to open database schema file!");
+        std::vector<std::string> schema_files = {
+            "rocpd_tables.sql",
+            "rocpd_views.sql",
+            "data_views.sql",
+            "marker_views.sql",
+            "summary_views.sql"
+        };
+
+        // Process each schema file
+        for (const auto& schema_file : schema_files) {
+
+            auto file_path = get_file_path(schema_file.c_str());
+            std::ifstream file(file_path);
+            if (!file.is_open()) {
+                throw std::runtime_error(std::string("Failed to open schema file ").append(file_path));
+            }
+            
+            std::stringstream ss_query;
+            ss_query << file.rdbuf();
+            std::string query = ss_query.str();
+            
+            std::regex upid_pattern;
+            if (schema_file == "rocpd_tables.sql") {
+                upid_pattern = std::regex("\\{\\{upid\\}\\}");
+            } else {
+                upid_pattern = std::regex("\\{\\{view_upid\\}\\}");
+            }
+           
+            query = std::regex_replace(query, upid_pattern, get_upid());
+           
+            validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), 
+                       std::string("Invalid schema file, init database failed!").append(file_path));
+            file.close();
         }
 
-        std::stringstream ss_query;
-        ss_query << file.rdbuf();
-        std::regex upid_pattern("\\{\\{upid\\}\\}");  
-        std::string query = std::regex_replace(ss_query.str(), upid_pattern, get_upid());
-        validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Invalid database schema file, init database failed!");
-        file.close();
-        
-        file.open(get_file_path("utilitySchema.sql"));
-        if (!file.is_open()){
-            throw std::runtime_error("Failed to open utility schema file!");
-        }
-        ss_query.str("");
-        ss_query << file.rdbuf();
-        std::regex view_upid_pattern("\\{\\{view_upid\\}\\}");  
-        query = std::regex_replace(ss_query.str(), view_upid_pattern, get_upid());
-        validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), "Invalid database utility file, init database failed!");
-        file.close();
     }
 
     void database::execute_query(const std::string& query) {
