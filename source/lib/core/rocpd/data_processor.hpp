@@ -20,6 +20,15 @@ struct data_processor {
     using insert_pmc_event_stms = std::function<void(size_t, const char*, size_t, size_t, double, const char*)>;
     using insert_sample_stmt = std::function<void(const char*, size_t, uint64_t, size_t, const char*)>;
     using insert_region_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t, const char*)>;
+    using insert_kernel_dispatch_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+                                                            uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+                                                            size_t, size_t, const char*)>;
+    using insert_memory_copy_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t, size_t, 
+                                                        size_t, size_t, size_t, size_t, size_t, size_t, size_t, const char*)>;
+    using insert_kernel_symbol_stmt = std::function<void(size_t, const char*, size_t, size_t, uint64_t, const char*, const char*, 
+                                                        uint64_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, const char*)>;
+    using insert_code_object_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, const char*, uint64_t, uint64_t, uint64_t, 
+                                                        const char*, const char*)>;
 
 private:
     struct track_name_map {
@@ -87,13 +96,29 @@ public:
                             size_t process_id, size_t thread_id, const char* name, uint64_t start,
                             uint64_t end, const char* extdata = "{}");
 
+    void insert_stream_info(size_t stream_id, size_t node_id, size_t process_id, const char* name, const char* extdata = "{}");
+
+    void insert_kernel_dispatch(size_t node_id, size_t process_id, size_t thread_id, size_t agent_id, size_t kernel_id, size_t dispatch_id,
+                                size_t queue_id, size_t stream_id, uint64_t start, uint64_t end, size_t private_segment_size,
+                                size_t group_segment_size, size_t workgroup_size_x, size_t workgroup_size_y, size_t workgroup_size_z,
+                                size_t grid_size_x, size_t grid_size_y, size_t grid_size_z, size_t region_name_id, size_t event_id,
+                                const char* extdata = "{}");
+
+    size_t insert_kernel_symbol(size_t id, size_t node_id, size_t process_id, uint64_t code_obj_id, const char* name, uint32_t kernel_obj,
+                                uint32_t kernarg_segmnt_size, uint32_t kernarg_segment_alignment, uint32_t group_segment_size,
+                                uint32_t private_segment_size, uint32_t sgrp_count, uint32_t arch_vgrp_count, uint32_t accum_vgrp_count,
+                                const char* extdata = "{}");
+
+    void insert_code_object(size_t id, size_t node_id, size_t process_id, size_t agent_id, const char* uri, uint64_t ld_base, uint64_t ld_size,
+                            uint64_t ld_delta, const char* storage_type, const char* extdata = "{}");
+
 private:
     data_processor();
 
     data_processor(data_processor&) = delete;
-    
+
     data_processor& operator=(const data_processor&) = delete;
-    
+
     void initialize_pmc_event_stmt();
 
     void initialize_event_stmt();
@@ -102,18 +127,34 @@ private:
 
     void initialize_region_stmt();
 
+    void initialize_kernel_dispatch_stmt();
+
+    void initialize_memory_copy_stmt();
+
+    void initialize_kernel_symbol_stmt();
+
+    void inintialize_code_object_stmt();
+
 private:
     std::unordered_map<std::string, track_name_map> _tracks;
     std::unordered_map<pmc_identifier, size_t, pmc_identifier_hash, pmc_identifier_equal> _pmc_descriptor_map;
     std::unordered_map<size_t, size_t> _agent_id_map;
     std::unordered_map<size_t, size_t> _category_map;
     std::unordered_map<std::string, size_t> _string_map;
+    std::unordered_map<size_t, const char*> _kernel_symbol_map;
 
     insert_event_stmt _insert_event_statement;
     insert_pmc_event_stms _insert_pmc_event_statement;
     insert_sample_stmt _insert_sample_statement;
     insert_region_stmt _insert_region_statement;
+    insert_kernel_dispatch_stmt _insert_kernel_dispatch_statement;
+    insert_memory_copy_stmt _insert_memory_copy_statement;
+    insert_kernel_symbol_stmt _insert_kernel_symbol_statement;
+    insert_code_object_stmt _insert_code_object_statement;
+
     size_t _region_id{1};
+    size_t _kernel_dispatch_id{1};
+    size_t memory_copy_id{1};
     size_t _pmc_id{1};
     size_t _event_id{1};
     size_t _pmc_event_id{1};

@@ -14,6 +14,10 @@ data_processor::data_processor()
     initialize_pmc_event_stmt();
     initialize_sample_stmt();
     initialize_region_stmt();
+    initialize_kernel_dispatch_stmt();
+    initialize_memory_copy_stmt();
+    inintialize_code_object_stmt();
+    initialize_kernel_symbol_stmt();
 
 }
 
@@ -228,6 +232,107 @@ data_processor::initialize_region_stmt()
 }
 
 void
+data_processor::initialize_kernel_dispatch_stmt()
+{
+    data_storage::queries::table_insert_query query_builder;
+    auto query = query_builder.set_table_name("rocpd_kernel_dispatch_" + _upid)
+                                .set_columns("id", "guid", "nid", "pid", "tid", "agent_id", "kernel_id", "dispatch_id", "queue_id",
+                                            "stream_id", "start", "end", "private_segment_size", "group_segment_size",
+                                            "workgroup_size_x", "workgroup_size_y", "workgroup_size_z", "grid_size_x", "grid_size_y", "grid_size_z",
+                                            "region_name_id", "event_id", "extdata")
+                                .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?')
+                                .get_query_string();
+    _insert_kernel_dispatch_statement = data_storage::database::get_instance().create_statment_executor<size_t, const char*, size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+                                                                                                        uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+                                                                                                        size_t, size_t, const char*>(query);
+}
+
+void
+data_processor::initialize_memory_copy_stmt()
+{
+    data_storage::queries::table_insert_query query_builder;
+    auto query = query_builder.set_table_name("rocpd_memory_copy_" + _upid)
+                                .set_columns("id", "guid", "nid", "pid", "tid", "start", "end", "name_id", "dst_agent_id", "dst_address",
+                                            "src_agent_id", "src_address", "size", "queue_id", "stream_id", "region_name_id",
+                                            "event_id", "extdata")
+                                .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?')
+                                .get_query_string();
+    _insert_memory_copy_statement = data_storage::database::get_instance().create_statment_executor<size_t, const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t, size_t,
+                                                                                                    size_t, size_t, size_t, size_t, size_t, size_t, size_t, const char*>(query);
+}
+
+void
+data_processor::initialize_kernel_symbol_stmt()
+{
+    data_storage::queries::table_insert_query query_builder;
+    auto query = query_builder.set_table_name("rocpd_info_kernel_symbol_" + _upid)
+                                .set_columns("id", "guid", "nid", "pid", "code_object_id", "kernel_name", "display_name", "kernel_object",
+                                            "kernarg_segment_size", "kernarg_segment_alignment", "group_segment_size", "private_segment_size",
+                                            "sgpr_count", "arch_vgpr_count", "accum_vgpr_count", "extdata")
+                                .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?')
+                                .get_query_string();
+    _insert_kernel_symbol_statement = data_storage::database::get_instance().create_statment_executor<size_t, const char*, size_t, size_t, uint64_t, const char*, const char*,
+                                                                                                    uint64_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, const char*>(query);
+}
+
+void
+data_processor::inintialize_code_object_stmt()
+{
+    data_storage::queries::table_insert_query query_builder;
+    auto query = query_builder.set_table_name("rocpd_info_code_object_" + _upid)
+                                .set_columns("id", "guid", "nid", "pid", "agent_id", "uri", "load_base", "load_size", "load_delta", "storage_type", "extdata")
+                                .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?')
+                                .get_query_string();
+    _insert_code_object_statement = data_storage::database::get_instance().create_statment_executor<size_t, const char*, size_t, size_t, size_t, const char*,
+                                                                                                    uint64_t, uint64_t, uint64_t, const char*, const char*>(query);
+}
+
+void
+data_processor::insert_stream_info(size_t stream_id, size_t node_id, size_t process_id, const char* name, const char* extdata)
+{
+
+    data_storage::queries::table_insert_query query;
+    data_storage::database::get_instance()
+                            .execute_query(
+                                query.set_table_name("rocpd_info_stream_" + _upid)
+                                    .set_columns("id", "guid", "nid", "pid", "name", "extdata")
+                                    .set_values(stream_id, _upid, node_id, process_id, name, extdata)
+                                    .get_query_string());
+
+}
+
+void 
+data_processor::insert_code_object(size_t id, size_t node_id, size_t process_id, size_t agent_id, const char* uri, uint64_t ld_base, uint64_t ld_size,
+                                uint64_t ld_delta, const char* storage_type, const char* extdata)
+{
+    ROCPROFSYS_VERBOSE(2, "Insert code object with ID: %ld\n", id);
+
+    _insert_code_object_statement(id, _upid.c_str(), node_id, process_id, agent_id,
+                                    uri, ld_base, ld_size, ld_delta, storage_type, extdata);
+}
+
+size_t
+data_processor::insert_kernel_symbol(size_t id, size_t node_id, size_t process_id, uint64_t code_obj_id, const char* name, uint32_t kernel_obj,
+    uint32_t kernarg_segmnt_size, uint32_t kernarg_segment_alignment, uint32_t group_segment_size,
+    uint32_t private_segment_size, uint32_t sgrp_count, uint32_t arch_vgrp_count, uint32_t accum_vgrp_count,
+    const char* extdata)
+{
+    auto it = _kernel_symbol_map.find(id);
+    if (it != _kernel_symbol_map.end()) {
+        return id;
+    }
+
+    ROCPROFSYS_VERBOSE(2, "Insert kernel symbol: %s with ID: %ld\n", name, id);
+    _insert_kernel_symbol_statement(id, _upid.c_str(), node_id, process_id,
+                                    code_obj_id, name, name, kernel_obj,
+                                    kernarg_segmnt_size, kernarg_segment_alignment,
+                                    group_segment_size, private_segment_size,
+                                    sgrp_count, arch_vgrp_count,
+                                    accum_vgrp_count, extdata);
+    return id;
+}
+
+void
 data_processor::insert_category(size_t category_id, const char* name)
 {
     auto it = _category_map.find(category_id);
@@ -248,6 +353,27 @@ data_processor::insert_region(size_t node_id, size_t process_id, size_t thread_i
     _insert_region_statement(_region_id, _upid.c_str(), node_id, process_id, thread_id,
                             start, end, name_id, event_id, extdata);
     _region_id++;
+}
+
+void 
+data_processor::insert_kernel_dispatch(size_t node_id, size_t process_id, size_t thread_id, size_t agent_id, size_t kernel_id, size_t dispatch_id,
+    size_t queue_id, size_t stream_id, uint64_t start, uint64_t end, size_t private_segment_size,
+    size_t group_segment_size, size_t workgroup_size_x, size_t workgroup_size_y, size_t workgroup_size_z,
+    size_t grid_size_x, size_t grid_size_y, size_t grid_size_z, size_t region_name_id, size_t event_id,
+    const char* extdata)
+{
+    ROCPROFSYS_VERBOSE(2, "Insert kernel dispatch for event id: %ld\n", event_id);
+
+    _insert_kernel_dispatch_statement(_kernel_dispatch_id, _upid.c_str(), node_id, process_id,
+        thread_id, agent_id, kernel_id, dispatch_id, queue_id,
+        stream_id, start, end, private_segment_size,
+        group_segment_size, workgroup_size_x,
+        workgroup_size_y, workgroup_size_z,
+        grid_size_x, grid_size_y,
+        grid_size_z, region_name_id, event_id,
+        extdata);
+
+    _kernel_dispatch_id++;
 }
 
 void
