@@ -1,0 +1,27 @@
+--
+-- Indexes for the various fields
+--
+
+-- string field
+-- CREATE INDEX "rocpd_string{{upid}}_string_idx" ON "rocpd_string{{upid}}" ("string");
+
+-- guid field
+-- CREATE INDEX "rocpd_string{{upid}}_guid_idx" ON "rocpd_string{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_info_node{{upid}}_guid_idx" ON "rocpd_info_node{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_info_process{{upid}}_guid_idx" ON "rocpd_info_process{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_info_thread{{upid}}_guid_idx" ON "rocpd_info_thread{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_info_agent{{upid}}_guid_idx" ON "rocpd_info_agent{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_info_queue{{upid}}_guid_idx" ON "rocpd_info_queue{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_info_stream{{upid}}_guid_idx" ON "rocpd_info_stream{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_info_pmc{{upid}}_guid_idx" ON "rocpd_info_pmc{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_info_code_object{{upid}}_guid_idx" ON "rocpd_info_code_object{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_info_kernel_symbol{{upid}}_guid_idx" ON "rocpd_info_kernel_symbol{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_track{{upid}}_guid_idx" ON "rocpd_track{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_event{{upid}}_guid_idx" ON "rocpd_event{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_arg{{upid}}_guid_idx" ON "rocpd_arg{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_pmc_event{{upid}}_guid_idx" ON "rocpd_pmc_event{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_region{{upid}}_guid_idx" ON "rocpd_region{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_sample{{upid}}_guid_idx" ON "rocpd_sample{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_kernel_dispatch{{upid}}_guid_idx" ON "rocpd_kernel_dispatch{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_memory_copy{{upid}}_guid_idx" ON "rocpd_memory_copy{{upid}}" ("guid");
+-- CREATE INDEX "rocpd_memory_allocate{{upid}}_guid_idx" ON "rocpd_memory_allocate{{upid}}" ("guid");
