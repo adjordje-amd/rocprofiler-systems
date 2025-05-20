@@ -73,7 +73,6 @@ namespace data_storage {
                     return new_file_path;
                 }
             }
-            //return std::string("/developemnt/adjordje-amd/rocprofsys-sdk-source/source/lib/core/rocpd/data_storage/schema/").append(filename);
             return std::string("rocprofiler-systems/source/lib/core/rocpd/data_storage/schema/").append(filename);
         };
 
