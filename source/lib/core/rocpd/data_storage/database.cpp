@@ -105,7 +105,7 @@ namespace data_storage {
                 upid_pattern = std::regex("\\{\\{view_upid\\}\\}");
             }
            
-            query = std::regex_replace(query, upid_pattern, get_upid());
+            query = std::regex_replace(query, upid_pattern, "_" + get_upid());
            
             validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), 
                        std::string("Invalid schema file, init database failed!").append(file_path));

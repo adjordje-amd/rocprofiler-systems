@@ -39,11 +39,13 @@ FROM
     (
         SELECT
             agent_id,
+            guid, 
             SUM(end - start) AS GpuTime
         FROM
             (
                 SELECT
                     agent_id,
+                    guid, 
                     end,
                     start
                 FROM
@@ -51,13 +53,14 @@ FROM
                 UNION ALL
                 SELECT
                     dst_agent_id AS agent_id,
+                    guid,  
                     end,
                     start
                 FROM
                     rocpd_memory_copy{{view_upid}}
             )
         GROUP BY
-            agent_id
+            agent_id, guid 
     ) A
     INNER JOIN (
         SELECT
@@ -167,12 +170,12 @@ WITH
             K.name,
             COUNT(*) AS calls,
             SUM(K.duration) AS total_duration,
-            CAST(SUM(K.duration * K.duration) AS REAL) AS sqr_duration, 
+            SUM(CAST(K.duration AS REAL) * CAST(K.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(K.duration) AS min_duration,
             MAX(K.duration) AS max_duration,
-            SUM((K.duration - A.avg_duration) * (K.duration - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((K.duration - A.avg_duration) * (K.duration - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration  
+            SUM(CAST((K.duration - A.avg_duration) AS REAL) * CAST((K.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((K.duration - A.avg_duration) AS REAL) * CAST((K.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM
             kernels{{view_upid}} K
             JOIN avg_data A ON K.name = A.name
@@ -219,12 +222,12 @@ WITH
             K.region as name,
             COUNT(*) AS calls,
             SUM(K.duration) AS total_duration,
-            CAST(SUM(K.duration * K.duration) AS REAL) AS sqr_duration,
+            SUM(CAST(K.duration AS REAL) * CAST(K.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(K.duration) AS min_duration,
             MAX(K.duration) AS max_duration,
-            SUM((K.duration - A.avg_duration) * (K.duration - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((K.duration - A.avg_duration) * (K.duration - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration  
+            SUM(CAST((K.duration - A.avg_duration) AS REAL) * CAST((K.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((K.duration - A.avg_duration) AS REAL) * CAST((K.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM
             kernels{{view_upid}} K
             JOIN avg_data A ON K.region = A.region
@@ -272,12 +275,12 @@ WITH
             MC.name,
             COUNT(*) AS calls,
             SUM(MC.duration) AS total_duration,
-            CAST(SUM(MC.duration * MC.duration) AS REAL) AS sqr_duration, 
+            SUM(CAST(MC.duration AS REAL) * CAST(MC.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(MC.duration) AS min_duration,
             MAX(MC.duration) AS max_duration,
-            SUM((MC.duration - A.avg_duration) * (MC.duration - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((MC.duration - A.avg_duration) * (MC.duration - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration  
+            SUM(CAST((MC.duration - A.avg_duration) AS REAL) * CAST((MC.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((MC.duration - A.avg_duration) AS REAL) * CAST((MC.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM
             memory_copies{{view_upid}} MC
             JOIN avg_data A ON MC.name = A.name
@@ -325,12 +328,12 @@ WITH
             MA.type AS name,
             COUNT(*) AS calls,
             SUM(MA.duration) AS total_duration,
-            CAST(SUM(MA.duration * MA.duration)  AS REAL) AS sqr_duration,
+            SUM(CAST(MA.duration AS REAL) * CAST(MA.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(MA.duration) AS min_duration,
             MAX(MA.duration) AS max_duration,
-            SUM((MA.duration - A.avg_duration) * (MA.duration - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((MA.duration - A.avg_duration) * (MA.duration - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration  
+            SUM(CAST((MA.duration - A.avg_duration) AS REAL) * CAST((MA.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((MA.duration - A.avg_duration) AS REAL) * CAST((MA.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM
             memory_allocations{{view_upid}} MA
             JOIN avg_data A ON MA.type = A.name
@@ -379,12 +382,12 @@ WITH
             SM.operation AS name,
             COUNT(*) AS calls,
             SUM(SM.end - SM.start) AS total_duration,
-            CAST(SUM((SM.end - SM.start) * (SM.end - SM.start)) AS REAL) AS sqr_duration,
+            SUM(CAST((SM.end - SM.start) AS REAL) * CAST((SM.end - SM.start) AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(SM.end - SM.start) AS min_duration,
             MAX(SM.end - SM.start) AS max_duration,
-            SUM((SM.end - SM.start - A.avg_duration) * (SM.end - SM.start - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((SM.end - SM.start - A.avg_duration) * (SM.end - SM.start - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration  
+            SUM(CAST((SM.end - SM.start - A.avg_duration) AS REAL) * CAST((SM.end - SM.start - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((SM.end - SM.start - A.avg_duration) AS REAL) * CAST((SM.end - SM.start - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM
             scratch_memory{{view_upid}} SM
             JOIN avg_data A ON SM.operation = A.name
@@ -438,12 +441,12 @@ WITH
             R.name,
             COUNT(*) AS calls,
             SUM(R.duration) AS total_duration,
-            CAST(SUM(R.duration * R.duration)  AS REAL) AS sqr_duration,
+            SUM(CAST(R.duration AS REAL) * CAST(R.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(R.duration) AS min_duration,
             MAX(R.duration) AS max_duration,
-            SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration 
+            SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,  
+            SQRT(SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration 
         FROM
             regions{{view_upid}} R
             JOIN avg_data A ON R.name = A.name
@@ -494,12 +497,12 @@ WITH
             R.name,
             COUNT(*) AS calls,
             SUM(R.duration) AS total_duration,
-            CAST(SUM(R.duration * R.duration)  AS REAL) AS sqr_duration,
+            SUM(CAST(R.duration AS REAL) * CAST(R.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(R.duration) AS min_duration,
             MAX(R.duration) AS max_duration,
-            SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration  
+            SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,  
+            SQRT(SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM
             regions{{view_upid}} R
             JOIN avg_data A ON R.name = A.name
@@ -551,12 +554,12 @@ WITH
             R.name,
             COUNT(*) AS calls,
             SUM(R.duration) AS total_duration,
-            CAST(SUM(R.duration * R.duration)  AS REAL) AS sqr_duration,
+            SUM(CAST(R.duration AS REAL) * CAST(R.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(R.duration) AS min_duration,
             MAX(R.duration) AS max_duration,
-            SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration  
+            SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,  
+            SQRT(SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM
             regions{{view_upid}} R
             JOIN avg_data A ON R.name = A.name
@@ -613,12 +616,12 @@ WITH
             R.name,
             COUNT(*) AS calls,
             SUM(R.duration) AS total_duration,
-            CAST(SUM(R.duration * R.duration)  AS REAL) AS sqr_duration,
+            SUM(CAST(R.duration AS REAL) * CAST(R.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(R.duration) AS min_duration,
             MAX(R.duration) AS max_duration,
-            SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration  
+            SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM
             regions{{view_upid}} R
             JOIN avg_data A ON R.name = A.name
@@ -672,12 +675,12 @@ WITH
             R.name,
             COUNT(*) AS calls,
             SUM(R.duration) AS total_duration,
-            CAST(SUM(R.duration * R.duration) AS REAL) AS sqr_duration,
+            SUM(CAST(R.duration AS REAL) * CAST(R.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(R.duration) AS min_duration,
             MAX(R.duration) AS max_duration,
-            SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1) AS variance_duration,  
-            SQRT(SUM((R.duration - A.avg_duration) * (R.duration - A.avg_duration)) / (COUNT(*) - 1)) AS std_dev_duration  
+            SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((R.duration - A.avg_duration) AS REAL) * CAST((R.duration - A.avg_duration) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM
             regions{{view_upid}} R
             JOIN avg_data A ON R.name = A.name
@@ -727,14 +730,14 @@ WITH
             'KERNEL_DISPATCH' AS domain,
             COUNT(*) AS calls,
             SUM(duration) AS total_duration,
-            CAST(SUM(duration * duration) AS REAL) AS sqr_duration,
+            SUM(CAST(duration AS REAL) * CAST(duration AS REAL)) AS sqr_duration,
             (SELECT avg_duration FROM kernel_avg) AS avg_duration,
             MIN(duration) AS min_duration,
             MAX(duration) AS max_duration,
-            SUM((duration - (SELECT avg_duration FROM kernel_avg)) * 
-                (duration - (SELECT avg_duration FROM kernel_avg))) / (COUNT(*) - 1) AS variance_duration,
-            SQRT(SUM((duration - (SELECT avg_duration FROM kernel_avg)) * 
-                (duration - (SELECT avg_duration FROM kernel_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+            SUM(CAST((duration - (SELECT avg_duration FROM kernel_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM kernel_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((duration - (SELECT avg_duration FROM kernel_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM kernel_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM 
             kernels{{view_upid}}
     ),
@@ -750,14 +753,14 @@ WITH
             'MEMORY_COPY' AS domain,
             COUNT(*) AS calls,
             SUM(duration) AS total_duration,
-            CAST(SUM(duration * duration) AS REAL) AS sqr_duration,
+            SUM(CAST(duration AS REAL) * CAST(duration AS REAL)) AS sqr_duration,
             (SELECT avg_duration FROM mcopy_avg) AS avg_duration,
             MIN(duration) AS min_duration,
             MAX(duration) AS max_duration,
-            SUM((duration - (SELECT avg_duration FROM mcopy_avg)) * 
-                (duration - (SELECT avg_duration FROM mcopy_avg))) / (COUNT(*) - 1) AS variance_duration,
-            SQRT(SUM((duration - (SELECT avg_duration FROM mcopy_avg)) * 
-                (duration - (SELECT avg_duration FROM mcopy_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+            SUM(CAST((duration - (SELECT avg_duration FROM mcopy_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM mcopy_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((duration - (SELECT avg_duration FROM mcopy_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM mcopy_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM 
             memory_copies{{view_upid}}
     ),
@@ -773,14 +776,14 @@ WITH
                 'MEMORY_ALLOCATION' AS domain,
                 COUNT(*) AS calls,
                 SUM(duration) AS total_duration,
-                CAST(SUM(duration * duration) AS REAL) AS sqr_duration,
+                SUM(CAST(duration AS REAL) * CAST(duration AS REAL)) AS sqr_duration,
                 (SELECT avg_duration FROM malloc_avg) AS avg_duration,
                 MIN(duration) AS min_duration,
                 MAX(duration) AS max_duration,
-                SUM((duration - (SELECT avg_duration FROM malloc_avg)) * 
-                    (duration - (SELECT avg_duration FROM malloc_avg))) / (COUNT(*) - 1) AS variance_duration,
-                SQRT(SUM((duration - (SELECT avg_duration FROM malloc_avg)) * 
-                    (duration - (SELECT avg_duration FROM malloc_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+                SUM(CAST((duration - (SELECT avg_duration FROM malloc_avg)) AS REAL) * 
+                    CAST((duration - (SELECT avg_duration FROM malloc_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+                SQRT(SUM(CAST((duration - (SELECT avg_duration FROM malloc_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM malloc_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
             FROM 
                 memory_allocations{{view_upid}}
     ),
@@ -796,14 +799,14 @@ WITH
             'SCRATCH_MEMORY' AS domain,
             COUNT(*) AS calls,
             SUM(end - start) AS total_duration,
-            CAST(SUM((end - start) * (end - start)) AS REAL) AS sqr_duration,
+            SUM(CAST((end - start) AS REAL) * CAST((end - start) AS REAL)) AS sqr_duration,
             (SELECT avg_duration FROM scratch_avg) AS avg_duration,
             MIN(end - start) AS min_duration,
             MAX(end - start) AS max_duration,
-            SUM((end - start - (SELECT avg_duration FROM scratch_avg)) * 
-                (end - start - (SELECT avg_duration FROM scratch_avg))) / (COUNT(*) - 1) AS variance_duration,
-            SQRT(SUM((end - start - (SELECT avg_duration FROM scratch_avg)) * 
-                (end - start - (SELECT avg_duration FROM scratch_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+            SUM(CAST((end - start - (SELECT avg_duration FROM scratch_avg)) AS REAL) * 
+                CAST((end - start - (SELECT avg_duration FROM scratch_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((end - start - (SELECT avg_duration FROM scratch_avg)) AS REAL) * 
+                CAST((end - start - (SELECT avg_duration FROM scratch_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM 
             scratch_memory{{view_upid}}
     ),
@@ -821,14 +824,14 @@ WITH
             'HIP_API' AS domain,
             COUNT(*) AS calls,
             SUM(duration) AS total_duration,
-            CAST(SUM(duration * duration) AS REAL) AS sqr_duration,
+            SUM(CAST(duration AS REAL) * CAST(duration AS REAL)) AS sqr_duration,
             (SELECT avg_duration FROM hip_avg) AS avg_duration,
             MIN(duration) AS min_duration,
             MAX(duration) AS max_duration,
-            SUM((duration - (SELECT avg_duration FROM hip_avg)) * 
-                (duration - (SELECT avg_duration FROM hip_avg))) / (COUNT(*) - 1) AS variance_duration,
-            SQRT(SUM((duration - (SELECT avg_duration FROM hip_avg)) * 
-                (duration - (SELECT avg_duration FROM hip_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+            SUM(CAST((duration - (SELECT avg_duration FROM hip_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM hip_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((duration - (SELECT avg_duration FROM hip_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM hip_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM 
             regions{{view_upid}}
         WHERE 
@@ -848,14 +851,14 @@ WITH
             'HSA_API' AS domain,
             COUNT(*) AS calls,
             SUM(duration) AS total_duration,
-            CAST(SUM(duration * duration) AS REAL) AS sqr_duration,
+            SUM(CAST(duration AS REAL) * CAST(duration AS REAL)) AS sqr_duration,
             (SELECT avg_duration FROM hsa_avg) AS avg_duration,
             MIN(duration) AS min_duration,
             MAX(duration) AS max_duration,
-            SUM((duration - (SELECT avg_duration FROM hsa_avg)) * 
-                (duration - (SELECT avg_duration FROM hsa_avg))) / (COUNT(*) - 1) AS variance_duration,
-            SQRT(SUM((duration - (SELECT avg_duration FROM hsa_avg)) * 
-                (duration - (SELECT avg_duration FROM hsa_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+            SUM(CAST((duration - (SELECT avg_duration FROM hsa_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM hsa_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((duration - (SELECT avg_duration FROM hsa_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM hsa_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM 
             regions{{view_upid}}
         WHERE 
@@ -873,14 +876,14 @@ WITH
             'MARKER_API' AS domain,
             COUNT(*) AS calls,
             SUM(duration) AS total_duration,
-            CAST(SUM(duration * duration) AS REAL) AS sqr_duration,
+            SUM(CAST(duration AS REAL) * CAST(duration AS REAL)) AS sqr_duration,
             (SELECT avg_duration FROM marker_avg) AS avg_duration,
             MIN(duration) AS min_duration,
             MAX(duration) AS max_duration,
-            SUM((duration - (SELECT avg_duration FROM marker_avg)) * 
-                (duration - (SELECT avg_duration FROM marker_avg))) / (COUNT(*) - 1) AS variance_duration,
-            SQRT(SUM((duration - (SELECT avg_duration FROM marker_avg)) * 
-                (duration - (SELECT avg_duration FROM marker_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+            SUM(CAST((duration - (SELECT avg_duration FROM marker_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM marker_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((duration - (SELECT avg_duration FROM marker_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM marker_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM 
             markers{{view_upid}}
     ),
@@ -895,14 +898,14 @@ WITH
             'RCCL_API' AS domain,
             COUNT(*) AS calls,
             SUM(duration) AS total_duration,
-            CAST(SUM(duration * duration) AS REAL) AS sqr_duration,
+            SUM(CAST(duration AS REAL) * CAST(duration AS REAL)) AS sqr_duration,
             (SELECT avg_duration FROM rccl_avg) AS avg_duration,
             MIN(duration) AS min_duration,
             MAX(duration) AS max_duration,
-            SUM((duration - (SELECT avg_duration FROM rccl_avg)) * 
-                (duration - (SELECT avg_duration FROM rccl_avg))) / (COUNT(*) - 1) AS variance_duration,
-            SQRT(SUM((duration - (SELECT avg_duration FROM rccl_avg)) * 
-                (duration - (SELECT avg_duration FROM rccl_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+            SUM(CAST((duration - (SELECT avg_duration FROM rccl_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM rccl_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((duration - (SELECT avg_duration FROM rccl_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM rccl_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM 
             rccl{{view_upid}}
     ),
@@ -918,14 +921,14 @@ WITH
             'ROCDECODE_API' AS domain,
             COUNT(*) AS calls,
             SUM(duration) AS total_duration,
-            CAST(SUM(duration * duration) AS REAL) AS sqr_duration,
+            SUM(CAST(duration AS REAL) * CAST(duration AS REAL)) AS sqr_duration,
             (SELECT avg_duration FROM rocdecode_avg) AS avg_duration,
             MIN(duration) AS min_duration,
             MAX(duration) AS max_duration,
-            SUM((duration - (SELECT avg_duration FROM rocdecode_avg)) * 
-                (duration - (SELECT avg_duration FROM rocdecode_avg))) / (COUNT(*) - 1) AS variance_duration,
-            SQRT(SUM((duration - (SELECT avg_duration FROM rocdecode_avg)) * 
-                (duration - (SELECT avg_duration FROM rocdecode_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+            SUM(CAST((duration - (SELECT avg_duration FROM rocdecode_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM rocdecode_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((duration - (SELECT avg_duration FROM rocdecode_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM rocdecode_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM 
             rocdecode{{view_upid}}
     ),
@@ -940,14 +943,14 @@ WITH
             'ROCJPEG_API' AS domain,
             COUNT(*) AS calls,
             SUM(duration) AS total_duration,
-            CAST(SUM(duration * duration) AS REAL) AS sqr_duration,
+            SUM(CAST(duration AS REAL) * CAST(duration AS REAL)) AS sqr_duration,
             (SELECT avg_duration FROM rocjpeg_avg) AS avg_duration,
             MIN(duration) AS min_duration,
             MAX(duration) AS max_duration,
-            SUM((duration - (SELECT avg_duration FROM rocjpeg_avg)) * 
-                (duration - (SELECT avg_duration FROM rocjpeg_avg))) / (COUNT(*) - 1) AS variance_duration,
-            SQRT(SUM((duration - (SELECT avg_duration FROM rocjpeg_avg)) * 
-                (duration - (SELECT avg_duration FROM rocjpeg_avg))) / (COUNT(*) - 1)) AS std_dev_duration
+            SUM(CAST((duration - (SELECT avg_duration FROM rocjpeg_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM rocjpeg_avg)) AS REAL)) / (COUNT(*) - 1) AS variance_duration,
+            SQRT(SUM(CAST((duration - (SELECT avg_duration FROM rocjpeg_avg)) AS REAL) * 
+                CAST((duration - (SELECT avg_duration FROM rocjpeg_avg)) AS REAL)) / (COUNT(*) - 1)) AS std_dev_duration
         FROM 
             rocjpeg{{view_upid}}
     ),
