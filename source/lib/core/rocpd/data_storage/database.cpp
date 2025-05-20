@@ -4,7 +4,6 @@
 #include "common/md5sum.hpp"
 
 #include <timemory/environment/types.hpp>
-#include <fmt/format.h>
 #include <chrono>
 #include <fstream>
 #include <memory>
@@ -63,7 +62,7 @@ namespace data_storage {
     }
 
     void database::initialize_schema() {
-        auto get_file_path = [](const char* filename) {
+        auto get_file_path = [](const std::string_view filename) {
             auto _rocprofsys_root = tim::get_env<std::string>(
                 "rocprofiler_systems_ROOT", tim::get_env<std::string>("ROCPROFSYS_ROOT", ""));
             if(!_rocprofsys_root.empty() && fs::exists(std::string(_rocprofsys_root)))
@@ -87,7 +86,7 @@ namespace data_storage {
         // Process each schema file
         for (const auto& schema_file : schema_files) {
 
-            auto file_path = get_file_path(schema_file.c_str());
+            auto file_path = get_file_path(schema_file);
             std::ifstream file(file_path);
             if (!file.is_open()) {
                 throw std::runtime_error(std::string("Failed to open schema file ").append(file_path));
