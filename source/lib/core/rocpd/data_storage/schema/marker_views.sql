@@ -110,7 +110,7 @@ WITH
             A.avg_duration AS average_duration,
             MIN(RM.duration) AS min_duration,
             MAX(RM.duration) AS max_duration,
-            SQRT(AVG((RM.duration - A.avg_duration) * (RM.duration - A.avg_duration))) AS std_dev_duration
+            SQRT(AVG(CAST((RM.duration - A.avg_duration) AS REAL) * CAST((RM.duration - A.avg_duration) AS REAL))) AS std_dev_duration
         FROM
             range_markers{{view_upid}} RM
             JOIN avg_data A ON RM.name = A.name
@@ -182,12 +182,12 @@ WITH
             M.name,
             COUNT(*) AS calls,
             SUM(M.duration) AS total_duration,
-            CAST(SUM(M.duration * M.duration) AS REAL) AS sqr_duration,
+            SUM(CAST(M.duration AS REAL) * CAST(M.duration AS REAL)) AS sqr_duration,
             A.avg_duration AS average_duration,
             MIN(M.duration) AS min_duration,
             MAX(M.duration) AS max_duration,
-            AVG((M.duration - A.avg_duration) * (M.duration - A.avg_duration)) AS variance_duration,
-            SQRT(AVG((M.duration - A.avg_duration) * (M.duration - A.avg_duration))) AS std_dev_duration
+            AVG(CAST((M.duration - A.avg_duration) AS REAL) * CAST((M.duration - A.avg_duration) AS REAL)) AS variance_duration,
+            SQRT(AVG(CAST((M.duration - A.avg_duration) AS REAL) * CAST((M.duration - A.avg_duration) AS REAL))) AS std_dev_duration
         FROM
             all_markers M
             JOIN avg_data A ON M.name = A.name
