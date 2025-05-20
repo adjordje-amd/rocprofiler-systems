@@ -97,12 +97,7 @@ namespace data_storage {
             ss_query << file.rdbuf();
             std::string query = ss_query.str();
             
-            std::regex upid_pattern;
-            if (schema_file == "rocpd_tables.sql") {
-                upid_pattern = std::regex("\\{\\{upid\\}\\}");
-            } else {
-                upid_pattern = std::regex("\\{\\{view_upid\\}\\}");
-            }
+            std::regex upid_pattern(schema_file == "rocpd_tables.sql" ? "\\{\\{upid\\}\\}" : "\\{\\{view_upid\\}\\}");
            
             query = std::regex_replace(query, upid_pattern, "_" + get_upid());
            
