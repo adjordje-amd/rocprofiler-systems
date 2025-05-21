@@ -42,6 +42,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED On)
 
 list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/../../cmake)
+list(APPEND CMAKE_PREFIX_PATH ${ROCmVersion_DIR}/lib/cmake ${ROCmVersion_DIR})
 list(APPEND CMAKE_PREFIX_PATH ${ROCmVersion_DIR}/hip ${ROCmVersion_DIR})
 list(APPEND CMAKE_MODULE_PATH ${ROCmVersion_DIR}/share/rocjpeg/cmake)
 
@@ -57,32 +58,34 @@ if(ROCPROFSYS_DISABLE_EXAMPLES)
     endif()
 endif()
 
-# Copy image files to build directory
-if(EXISTS "${ROCmVersion_DIR}/share/rocjpeg/images")
-    if(NOT EXISTS "${CMAKE_BINARY_DIR}/images")
-        file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/images")
-    endif()
-
-    file(GLOB_RECURSE image_files "${ROCmVersion_DIR}/share/rocjpeg/images/*")
-    file(COPY ${image_files} DESTINATION ${CMAKE_BINARY_DIR}/images)
-    set(NUM_COPIES 20)
-
-    # Loop over each file and make additional copies
-    foreach(file ${image_files})
-        get_filename_component(filename ${file} NAME)
-        foreach(i RANGE 1 ${NUM_COPIES})
-            file(COPY ${file}
-                 DESTINATION ${CMAKE_BINARY_DIR}/images/${filename}_copy${i}.jpg)
-        endforeach()
-    endforeach()
-else()
-    message(
-        AUTHOR_WARNING
-            "Source directory ${ROCmVersion_DIR}/share/rocjpeg/images does not exist")
-endif()
-
-find_package(rocJPEG QUIET)
+find_package(ROCJPEG QUIET)
 find_package(rocprofiler-register QUIET)
+
+# Copy image files to build directory
+function(copy_image_files_and_make_copies)
+    if(EXISTS "${ROCmVersion_DIR}/share/rocjpeg/images")
+        if(NOT EXISTS "${CMAKE_BINARY_DIR}/images")
+            file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/images")
+        endif()
+
+        file(GLOB_RECURSE image_files "${ROCmVersion_DIR}/share/rocjpeg/images/*")
+        file(COPY ${image_files} DESTINATION ${CMAKE_BINARY_DIR}/images)
+        set(NUM_COPIES 20)
+
+        # Loop over each file and make additional copies
+        foreach(file ${image_files})
+            get_filename_component(filename ${file} NAME)
+            foreach(i RANGE 1 ${NUM_COPIES})
+                file(COPY ${file}
+                     DESTINATION ${CMAKE_BINARY_DIR}/images/${filename}_copy${i}.jpg)
+            endforeach()
+        endforeach()
+    else()
+        message(
+            AUTHOR_WARNING
+                "Source directory ${ROCmVersion_DIR}/share/rocjpeg/images does not exist")
+    endif()
+endfunction()
 
 # threads
 find_package(Threads REQUIRED)
@@ -102,6 +105,7 @@ if(HIP_FOUND
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} rocprofiler-register::rocprofiler-register)
 
     # rocJPEG
+    message(STATUS "RocJPEG library found: ${ROCJPEG_LIBRARY}")
     include_directories(${ROCJPEG_INCLUDE_DIR})
     set(LINK_LIBRARY_LIST ${LINK_LIBRARY_LIST} ${ROCJPEG_LIBRARY})
     list(APPEND SOURCES ${PROJECT_SOURCE_DIR} jpegdecodeperf.cpp)
@@ -109,6 +113,7 @@ if(HIP_FOUND
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++17")
     target_link_libraries(jpegdecode ${LINK_LIBRARY_LIST})
     target_compile_options(jpegdecode PRIVATE ${_FLAGS})
+    copy_image_files_and_make_copies()
 
     if(ROCPROFSYS_INSTALL_EXAMPLES)
         install(

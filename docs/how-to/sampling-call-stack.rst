@@ -213,9 +213,9 @@ View the help menu of ``rocprof-sys-sample`` with the ``-h`` / ``--help`` option
 
       [BACKEND OPTIONS]  These options control region information captured w/o sampling or instrumentation
 
-      -I, --include [ all | kokkosp | mpip | mutex-locks | ompt | rcclp | rocm-smi | rocprofiler-sdk | rw-locks | spin-locks ]
+      -I, --include [ all | kokkosp | mpip | mutex-locks | ompt | rcclp | amd-smi | rocprofiler-sdk | rw-locks | spin-locks ]
                                     Include data from these backends (count: unlimited)
-      -E, --exclude [ all | kokkosp | mpip | mutex-locks | ompt | rcclp | rocm-smi | rocprofiler-sdk | rw-locks | spin-locks ]
+      -E, --exclude [ all | kokkosp | mpip | mutex-locks | ompt | rcclp | amd-smi | rocprofiler-sdk | rw-locks | spin-locks ]
                                     Exclude data from these backends (count: unlimited)
 
       [HARDWARE COUNTER OPTIONS] See also: rocprof-sys-avail -H
@@ -275,7 +275,24 @@ The following snippets show how ``rocprof-sys-sample`` runs with various environ
       ROCP_TOOL_LIB=/opt/rocprofiler-systems/lib/librocprof-sys.so.1.7.1
 
 *  The next snippet shows the environment updates when ``rocprof-sys-sample`` enables
-   profiling, tracing, host process-sampling, device process-sampling, and all the available backends:
+   profiling, tracing, device process-sampling, and does not enable host process-sampling:
+
+   .. code-block:: shell
+
+      $ rocprof-sys-sample -PTD -- ./parallel-overhead-locks 30 4 100
+
+      LD_PRELOAD=/opt/rocprofiler-systems/lib/librocprof-sys-dl.so.1.7.1
+      ROCPROFSYS_CPU_FREQ_ENABLED=false
+      ROCPROFSYS_PROFILE=true
+      ROCPROFSYS_TRACE=true
+      ROCPROFSYS_USE_AMD_SMI=true
+      ROCPROFSYS_USE_PROCESS_SAMPLING=true
+      ROCPROFSYS_USE_SAMPLING=true
+      OMP_TOOL_LIBRARIES=/opt/rocprofiler-systems/lib/librocprof-sys-dl.so.1.7.1
+      ROCP_TOOL_LIB=/opt/rocprofiler-systems/lib/librocprof-sys.so.1.7.1
+
+*  The next snippet shows the environment updates when ``rocprof-sys-sample`` enables
+   profiling, tracing, device process-sampling, host process-sampling, and all the available backends:
 
    .. code-block:: shell
 
@@ -293,7 +310,7 @@ The following snippets show how ``rocprof-sys-sample`` runs with various environ
       ROCPROFSYS_TRACE=true
       ROCPROFSYS_USE_PROCESS_SAMPLING=true
       ROCPROFSYS_USE_RCCLP=true
-      ROCPROFSYS_USE_ROCM_SMI=true
+      ROCPROFSYS_USE_AMD_SMI=true
       ROCPROFSYS_USE_ROCM=true
       ROCPROFSYS_USE_SAMPLING=true
       ROCPROFSYS_PROFILE=true
@@ -302,7 +319,7 @@ The following snippets show how ``rocprof-sys-sample`` runs with various environ
       ...
 
 *  The final snippet shows the environment updates when ``rocprof-sys-sample`` enables
-   profiling, tracing, host process-sampling, and device process-sampling,
+   profiling, tracing, device process-sampling, and host process-sampling,
    sets the output path to ``rocprof-sys-output`` and the output prefix to ``%tag%``, and disables
    all the available backends:
 
@@ -323,13 +340,13 @@ The following snippets show how ``rocprof-sys-sample`` runs with various environ
       ROCPROFSYS_TRACE=true
       ROCPROFSYS_USE_PROCESS_SAMPLING=true
       ROCPROFSYS_USE_RCCLP=false
-      ROCPROFSYS_USE_ROCM_SMI=false
+      ROCPROFSYS_USE_AMD_SMI=false
       ROCPROFSYS_USE_ROCM=false
       ROCPROFSYS_USE_SAMPLING=true
       ROCPROFSYS_PROFILE=true
       ...
 
-An rocprof-sys-sample example
+A rocprof-sys-sample example
 ========================================
 
 Here is the full output from the previous
@@ -354,7 +371,7 @@ Here is the full output from the previous
    ROCPROFSYS_USE_OMPT=false
    ROCPROFSYS_USE_PROCESS_SAMPLING=true
    ROCPROFSYS_USE_RCCLP=false
-   ROCPROFSYS_USE_ROCM_SMI=false
+   ROCPROFSYS_USE_AMD_SMI=false
    ROCPROFSYS_USE_ROCM=false
    ROCPROFSYS_USE_SAMPLING=true
    [rocprof-sys][dl][1785877] rocprofsys_main

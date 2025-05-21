@@ -15,6 +15,7 @@ on:
       - '.github/workflows/formatting.yml'
       - '.github/workflows/weekly-mainline-sync.yml'
       - 'docker/**'
+      - .wordlist.txt
   pull_request:
     branches: [ amd-mainline, amd-staging, release/** ]
     paths-ignore:
@@ -28,6 +29,7 @@ on:
       - '.github/workflows/formatting.yml'
       - '.github/workflows/weekly-mainline-sync.yml'
       - 'docker/**'
+      - .wordlist.txt
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -49,7 +51,7 @@ jobs:
         build-type: ['Release', 'Debug']
         strip: ['OFF']
         build-dyninst: ['OFF']
-        rocm-version: ['0.0', '6.3']
+        rocm-version: ['0.0','6.3','6.4']
 
     env:
       ROCPROFSYS_CI: 'ON'
@@ -84,7 +86,7 @@ jobs:
         wget -q https://repo.radeon.com/amdgpu-install/${{ matrix.rocm-version }}/ubuntu/noble/amdgpu-install_${ROCM_MAJOR}.${ROCM_MINOR}.${ROCM_VERSN}-1_all.deb
         apt-get install -y ./amdgpu-install_${ROCM_MAJOR}.${ROCM_MINOR}.${ROCM_VERSN}-1_all.deb
         apt-get update
-        apt-get install -y rocm-dev rocdecode-dev libavformat-dev libavcodec-dev 
+        apt-get install -y rocm-dev rocdecode-dev libavformat-dev libavcodec-dev
 
     - name: Configure
       timeout-minutes: 30
@@ -100,7 +102,7 @@ jobs:
           -DCMAKE_BUILD_TYPE=${{ matrix.build-type }} \
           -DCMAKE_INSTALL_PREFIX=/opt/rocprofiler-systems \
           -DROCPROFSYS_BUILD_TESTING=ON \
-          -DROCPROFSYS_DISABLE_EXAMPLES="transpose;rccl" \
+          -DROCPROFSYS_DISABLE_EXAMPLES="transpose;rccl;openmp-target" \
           -DROCPROFSYS_USE_ROCM=${USE_ROCM} \
           -DRCOPROFSYS_USE_PYTHON=ON \
           -DROCPROFSYS_STRIP_LIBRARIES=${{ matrix.strip }} \

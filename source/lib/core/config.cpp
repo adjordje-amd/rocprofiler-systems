@@ -315,10 +315,10 @@ configure_settings(bool _init)
                               "Enable ROCm API and kernel tracing", true, "backend",
                               "rocm");
 
-    ROCPROFSYS_CONFIG_SETTING(bool, "ROCPROFSYS_USE_ROCM_SMI",
+    ROCPROFSYS_CONFIG_SETTING(bool, "ROCPROFSYS_USE_AMD_SMI",
                               "Enable sampling GPU power, temp, utilization, "
                               "vcn_activity, jpeg_activity and memory usage",
-                              true, "backend", "rocm_smi", "rocm", "process_sampling");
+                              true, "backend", "amd_smi", "rocm", "process_sampling");
 
     ROCPROFSYS_CONFIG_SETTING(bool, "ROCPROFSYS_USE_SAMPLING",
                               "Enable statistical sampling of call-stack", false,
@@ -419,7 +419,7 @@ configure_settings(bool _init)
 
     ROCPROFSYS_CONFIG_SETTING(
         double, "ROCPROFSYS_SAMPLING_FREQ",
-        "Number of software interrupts per second when OMNITTRACE_USE_SAMPLING=ON", 300.0,
+        "Number of software interrupts per second when ROCPROFSYS_USE_SAMPLING=ON", 300.0,
         "sampling", "process_sampling");
 
     ROCPROFSYS_CONFIG_SETTING(double, "ROCPROFSYS_SAMPLING_CPUTIME_FREQ",
@@ -460,9 +460,15 @@ configure_settings(bool _init)
                               "If > 0.0, time (in seconds) to sample before stopping",
                               0.0, "sampling", "process_sampling");
 
+    ROCPROFSYS_CONFIG_SETTING(bool, "ROCPROFSYS_CPU_FREQ_ENABLED",
+                              "Enable tracking for CPU frequency, memory usage, virtual "
+                              "memory usage, peak memory, context switches, page faults, "
+                              "user time, and kernel time",
+                              false, "process_sampling");
+
     ROCPROFSYS_CONFIG_SETTING(
         double, "ROCPROFSYS_PROCESS_SAMPLING_FREQ",
-        "Number of measurements per second when OMNITTRACE_USE_PROCESS_SAMPLING=ON. If "
+        "Number of measurements per second when ROCPROFSYS_USE_PROCESS_SAMPLING=ON. If "
         "set to zero, uses ROCPROFSYS_SAMPLING_FREQ value",
         0.0, "process_sampling");
 
@@ -476,19 +482,14 @@ configure_settings(bool _init)
         "CPUs to collect frequency information for. Values should be separated by commas "
         "and can be explicit or ranges, e.g. 0,1,5-8. An empty value implies 'all' and "
         "'none' suppresses all CPU frequency sampling",
-        std::string{}, "process_sampling");
-
-    ROCPROFSYS_CONFIG_SETTING(std::string, "ROCPROFSYS_ROCM_SMI_DEVICES",
-                              "[DEPRECATED] Renamed to ROCPROFSYS_SAMPLING_GPUS",
-                              std::string{ "all" }, "rocm_smi", "rocm",
-                              "process_sampling", "deprecated", "advanced");
+        std::string{ "none" }, "process_sampling");
 
     ROCPROFSYS_CONFIG_SETTING(
         std::string, "ROCPROFSYS_SAMPLING_GPUS",
-        "Devices to query when ROCPROFSYS_USE_ROCM_SMI=ON. Values should be separated by "
+        "Devices to query when ROCPROFSYS_USE_AMD_SMI=ON. Values should be separated by "
         "commas and can be explicit or ranges, e.g. 0,1,5-8. An empty value implies "
         "'all' and 'none' suppresses all GPU sampling",
-        std::string{ "all" }, "rocm_smi", "rocm", "process_sampling");
+        std::string{ "all" }, "amd_smi", "rocm", "process_sampling");
 
     ROCPROFSYS_CONFIG_SETTING(
         std::string, "ROCPROFSYS_SAMPLING_TIDS",
@@ -626,11 +627,12 @@ configure_settings(bool _init)
 
     rocprofiler_sdk::config_settings(_config);
 
-    ROCPROFSYS_CONFIG_SETTING(std::string, "ROCPROFSYS_ROCM_SMI_METRICS",
-                              "rocm-smi metrics to collect: busy, temp, power, "
-                              "vcn_activity, jpeg_activity, mem_usage",
-                              "busy,temp,power,mem_usage", "backend", "rocm_smi", "rocm",
-                              "process_sampling", "advanced");
+    ROCPROFSYS_CONFIG_SETTING(std::string, "ROCPROFSYS_AMD_SMI_METRICS",
+                              "amd-smi metrics to collect: busy, temp, power, "
+                              "vcn_activity, jpeg_activity, mem_usage. "
+                              "An empty value implies 'all' and 'none' suppresses all.",
+                              "busy, temp, power, mem_usage", "backend", "amd_smi",
+                              "rocm", "process_sampling");
 
     ROCPROFSYS_CONFIG_SETTING(size_t, "ROCPROFSYS_PERFETTO_SHMEM_SIZE_HINT_KB",
                               "Hint for shared-memory buffer size in perfetto (in KB)",
@@ -1030,7 +1032,7 @@ configure_settings(bool _init)
         _combine_perfetto_traces->second->set(_config->get<bool>("collapse_processes"));
     }
 
-    handle_deprecated_setting("ROCPROFSYS_ROCM_SMI_DEVICES", "ROCPROFSYS_SAMPLING_GPUS");
+    handle_deprecated_setting("ROCPROFSYS_AMD_SMI_DEVICES", "ROCPROFSYS_SAMPLING_GPUS");
     handle_deprecated_setting("ROCPROFSYS_USE_THREAD_SAMPLING",
                               "ROCPROFSYS_USE_PROCESS_SAMPLING");
     handle_deprecated_setting("ROCPROFSYS_OUTPUT_FILE", "ROCPROFSYS_PERFETTO_FILE");
@@ -1104,7 +1106,7 @@ configure_mode_settings(const std::shared_ptr<settings>& _config)
         _set("ROCPROFSYS_TRACE", false);
         _set("ROCPROFSYS_PROFILE", false);
         _set("ROCPROFSYS_USE_CAUSAL", false);
-        _set("ROCPROFSYS_USE_ROCM_SMI", false);
+        _set("ROCPROFSYS_USE_AMD_SMI", false);
         _set("ROCPROFSYS_USE_KOKKOSP", false);
         _set("ROCPROFSYS_USE_RCCLP", false);
         _set("ROCPROFSYS_USE_OMPT", false);
@@ -1129,10 +1131,10 @@ configure_mode_settings(const std::shared_ptr<settings>& _config)
     {
 #if ROCPROFSYS_ROCM_VERSION > 0
         ROCPROFSYS_BASIC_VERBOSE(
-            1, "No ROCm devices were found: disabling rocm and rocm_smi...\n");
+            1, "No ROCm devices were found: disabling rocm and amd_smi...\n");
 #endif
         _set("ROCPROFSYS_USE_ROCM", false);
-        _set("ROCPROFSYS_USE_ROCM_SMI", false);
+        _set("ROCPROFSYS_USE_AMD_SMI", false);
     }
 
     if(_config->get<bool>("ROCPROFSYS_USE_KOKKOSP"))
@@ -1165,13 +1167,14 @@ configure_mode_settings(const std::shared_ptr<settings>& _config)
         _set("ROCPROFSYS_PROFILE", false);
         _set("ROCPROFSYS_USE_CAUSAL", false);
         _set("ROCPROFSYS_USE_ROCM", false);
-        _set("ROCPROFSYS_USE_ROCM_SMI", false);
+        _set("ROCPROFSYS_USE_AMD_SMI", false);
         _set("ROCPROFSYS_USE_KOKKOSP", false);
         _set("ROCPROFSYS_USE_RCCLP", false);
         _set("ROCPROFSYS_USE_OMPT", false);
         _set("ROCPROFSYS_USE_SAMPLING", false);
         _set("ROCPROFSYS_USE_PROCESS_SAMPLING", false);
         _set("ROCPROFSYS_USE_CODE_COVERAGE", false);
+        _set("ROCPROFSYS_CPU_FREQ_ENABLED", false);
         set_setting_value("ROCPROFSYS_TIMEMORY_COMPONENTS", std::string{});
         set_setting_value("ROCPROFSYS_PAPI_EVENTS", std::string{});
     }
@@ -1349,12 +1352,12 @@ configure_disabled_settings(const std::shared_ptr<settings>& _config)
     _handle_use_option("ROCPROFSYS_PROFILE", "timemory");
     _handle_use_option("ROCPROFSYS_USE_OMPT", "ompt");
     _handle_use_option("ROCPROFSYS_USE_RCCLP", "rcclp");
-    _handle_use_option("ROCPROFSYS_USE_ROCM_SMI", "rocm_smi");
+    _handle_use_option("ROCPROFSYS_USE_AMD_SMI", "amd_smi");
     _handle_use_option("ROCPROFSYS_USE_ROCM", "rocm");
 
 #if !defined(ROCPROFSYS_USE_ROCM) || ROCPROFSYS_USE_ROCM == 0
-    _config->find("ROCPROFSYS_USE_ROCM_SMI")->second->set_hidden(true);
-    for(const auto& itr : _config->disable_category("rocm_smi"))
+    _config->find("ROCPROFSYS_USE_AMD_SMI")->second->set_hidden(true);
+    for(const auto& itr : _config->disable_category("amd_smi"))
         _config->find(itr)->second->set_hidden(true);
 #endif
 
@@ -1813,10 +1816,21 @@ get_use_causal()
 }
 
 bool
-get_use_rocm_smi()
+get_use_amd_smi()
 {
 #if defined(ROCPROFSYS_USE_ROCM) && ROCPROFSYS_USE_ROCM > 0
-    static auto _v = get_config()->find("ROCPROFSYS_USE_ROCM_SMI");
+    static auto _v = get_config()->find("ROCPROFSYS_USE_AMD_SMI");
+    return static_cast<tim::tsettings<bool>&>(*_v->second).get();
+#else
+    return false;
+#endif
+}
+
+bool
+get_use_rocm()
+{
+#if defined(ROCPROFSYS_USE_ROCM) && ROCPROFSYS_USE_ROCM > 0
+    static auto _v = get_config()->find("ROCPROFSYS_USE_ROCM");
     return static_cast<tim::tsettings<bool>&>(*_v->second).get();
 #else
     return false;
@@ -1841,6 +1855,13 @@ bool&
 get_use_process_sampling()
 {
     static auto _v = get_config()->find("ROCPROFSYS_USE_PROCESS_SAMPLING");
+    return static_cast<tim::tsettings<bool>&>(*_v->second).get();
+}
+
+bool&
+get_cpu_freq_enabled()
+{
+    static auto _v = get_config()->find("ROCPROFSYS_CPU_FREQ_ENABLED");
     return static_cast<tim::tsettings<bool>&>(*_v->second).get();
 }
 

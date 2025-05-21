@@ -143,10 +143,14 @@ regexvec_t       file_internal_include         = {};
 regexvec_t       instruction_exclude           = {};
 CodeCoverageMode coverage_mode                 = CODECOV_NONE;
 
-symtab_data_s                 symtab_data        = {};
-std::set<symbol_linkage_t>    enabled_linkage    = { SL_GLOBAL, SL_LOCAL, SL_UNIQUE };
-std::set<symbol_visibility_t> enabled_visibility = { SV_DEFAULT, SV_HIDDEN, SV_INTERNAL,
-                                                     SV_PROTECTED };
+symtab_data_s                       symtab_data                = {};
+std::set<symbol_linkage_t>          enabled_linkage            = {};
+std::set<symbol_visibility_t>       enabled_visibility         = {};
+const std::set<symbol_linkage_t>    default_enabled_linkage    = { SL_GLOBAL, SL_LOCAL,
+                                                             SL_UNIQUE };
+const std::set<symbol_visibility_t> default_enabled_visibility = { SV_DEFAULT, SV_HIDDEN,
+                                                                   SV_INTERNAL,
+                                                                   SV_PROTECTED };
 
 std::unique_ptr<std::ofstream> log_ofs = {};
 
@@ -348,8 +352,14 @@ main(int argc, char** argv)
     lib_search_paths.emplace_back(
         JOIN('/', _omni_lib_path, "rocprofiler-systems", "lib64"));
 
+    auto _omni_internal_libexec_path =
+        JOIN('/', filepath::dirname(filepath::dirname(_omni_exe_path)), "libexec",
+             "rocprofiler-systems");
+
     ROCPROFSYS_ADD_LOG_ENTRY(argv[0], "::", "rocprofsys bin path: ", _omni_exe_path);
     ROCPROFSYS_ADD_LOG_ENTRY(argv[0], "::", "rocprofsys lib path: ", _omni_lib_path);
+    ROCPROFSYS_ADD_LOG_ENTRY(
+        argv[0], "::", "rocprofsys libexec path: ", _omni_internal_libexec_path);
 
     for(const auto& itr : rocprofsys_get_link_map(nullptr))
     {
@@ -361,8 +371,8 @@ main(int argc, char** argv)
                         "lib(dyninstAPI|stackwalk|pcontrol|patchAPI|parseAPI|"
                         "instructionAPI|symtabAPI|dynDwarf|common|dynElf|tbb|tbbmalloc|"
                         "tbbmalloc_proxy|gotcha|libunwind|hsa-runtime|amdhip|"
-                        "amd_comgr|rocm_smi64|rocprofiler-register|"
-                        "rocprofiler-sdk|rocprofiler-sdk-roctx|amd_smi)\\.(so|a)" }))
+                        "amd_comgr|amd_smi|rocprofiler-register|"
+                        "rocprofiler-sdk|rocprofiler-sdk-roctx)\\.(so|a)" }))
         {
             if(!find(filepath::dirname(itr), lib_search_paths))
                 lib_search_paths.emplace_back(filepath::dirname(itr));
@@ -835,32 +845,45 @@ main(int argc, char** argv)
         return _ret;
     };
 
+    enabled_linkage = default_enabled_linkage;
     parser
-        .add_argument({ "--linkage" },
-                      join("",
-                           "Only instrument functions with specified linkage (default: ",
-                           join(array_config{ ", ", "", "" }, enabled_linkage), ")"))
+        .add_argument(
+            { "--linkage" },
+            join("", "Only instrument functions with specified linkage (default: ",
+                 join(array_config{ ", ", "", "" }, _get_strvec(default_enabled_linkage)),
+                 ")"))
         .min_count(1)
-        .choices(available_linkage)
-        .set_default(_get_strvec(enabled_linkage))
+        .choices(_get_strvec(available_linkage))
+        .set_default(_get_strvec(default_enabled_linkage))
         .action([](parser_t& p) {
-            enabled_linkage.clear();
-            for(const auto& itr : p.get<std::set<std::string>>("linkage"))
-                enabled_linkage.emplace(from_string<symbol_linkage_t>(itr));
+            auto selected_linkage = p.get<std::set<std::string>>("linkage");
+            if(!selected_linkage.empty())
+            {
+                enabled_linkage.clear();
+                for(const auto& itr : selected_linkage)
+                    enabled_linkage.emplace(from_string<symbol_linkage_t>(itr));
+            }
         });
 
+    enabled_visibility = default_enabled_visibility;
     parser
         .add_argument(
             { "--visibility" },
             join("", "Only instrument functions with specified visibility (default: ",
-                 join(array_config{ ", ", "", "" }, enabled_visibility), ")"))
+                 join(array_config{ ", ", "", "" },
+                      _get_strvec(default_enabled_visibility)),
+                 ")"))
         .min_count(1)
-        .choices(available_visibility)
-        .set_default(_get_strvec(enabled_visibility))
+        .choices(_get_strvec(available_visibility))
+        .set_default(_get_strvec(default_enabled_visibility))
         .action([](parser_t& p) {
-            enabled_visibility.clear();
-            for(const auto& itr : p.get<std::set<std::string>>("visibility"))
-                enabled_visibility.emplace(from_string<symbol_visibility_t>(itr));
+            auto selected_visibility = p.get<std::set<std::string>>("visibility");
+            if(!selected_visibility.empty())
+            {
+                enabled_visibility.clear();
+                for(const auto& itr : selected_visibility)
+                    enabled_visibility.emplace(from_string<symbol_visibility_t>(itr));
+            }
         });
 
     parser.add_argument({ "" }, "");
@@ -1425,7 +1448,6 @@ main(int argc, char** argv)
     env_vars.emplace_back(TIMEMORY_JOIN('=', "ROCPROFSYS_MPI_FINALIZE", "OFF"));
     env_vars.emplace_back(TIMEMORY_JOIN('=', "ROCPROFSYS_USE_CODE_COVERAGE",
                                         (coverage_mode != CODECOV_NONE) ? "ON" : "OFF"));
-
     addr_space = rocprofsys_get_address_space(bpatch, _cmdc, _cmdv, env_vars,
                                               binary_rewrite, _pid, mutname);
 
@@ -1952,6 +1974,9 @@ main(int argc, char** argv)
     env_vars.emplace_back(TIMEMORY_JOIN('=', "ROCPROFSYS_USE_MPIP",
                                         (binary_rewrite && use_mpi) ? "ON" : "OFF"));
     if(use_mpi) env_vars.emplace_back(TIMEMORY_JOIN('=', "ROCPROFSYS_USE_PID", "ON"));
+
+    env_vars.emplace_back(
+        TIMEMORY_JOIN('=', "ROCPROFSYS_SCRIPT_PATH", _omni_internal_libexec_path));
 
     for(auto& itr : env_vars)
     {

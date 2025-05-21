@@ -1,5 +1,27 @@
+# MIT License
 #
-#   configuration and functions for testing
+# Copyright (c) 2025 Advanced Micro Devices, Inc. All rights reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+#
+# configuration and functions for testing
 #
 include_guard(DIRECTORY)
 
@@ -229,19 +251,19 @@ set(_VALID_GPU OFF)
 if(ROCPROFSYS_USE_ROCM AND (NOT DEFINED ROCPROFSYS_CI_GPU OR ROCPROFSYS_CI_GPU))
     set(_VALID_GPU ON)
     find_program(
-        ROCPROFSYS_ROCM_SMI_EXE
-        NAMES rocm-smi
+        ROCPROFSYS_AMD_SMI_EXE
+        NAMES amd-smi
         HINTS ${ROCmVersion_DIR}
         PATHS ${ROCmVersion_DIR}
         PATH_SUFFIXES bin)
-    if(ROCPROFSYS_ROCM_SMI_EXE)
+    if(ROCPROFSYS_AMD_SMI_EXE)
         execute_process(
-            COMMAND ${ROCPROFSYS_ROCM_SMI_EXE}
-            OUTPUT_VARIABLE _RSMI_OUT
-            ERROR_VARIABLE _RSMI_ERR
-            RESULT_VARIABLE _RSMI_RET)
-        if(_RSMI_RET EQUAL 0)
-            if("${_RSMI_OUTPUT}" MATCHES "ERROR" OR "${_RSMI_ERR}" MATCHES "ERROR")
+            COMMAND ${ROCPROFSYS_AMD_SMI_EXE}
+            OUTPUT_VARIABLE _AMDSMI_OUT
+            ERROR_VARIABLE _AMDSMI_ERR
+            RESULT_VARIABLE _AMDSMI_RET)
+        if(_AMDSMI_RET EQUAL 0)
+            if("${_AMDSMI_OUTPUT}" MATCHES "ERROR" OR "${_AMDSMI_ERR}" MATCHES "ERROR")
                 set(_VALID_GPU OFF)
             endif()
         else()
@@ -250,7 +272,7 @@ if(ROCPROFSYS_USE_ROCM AND (NOT DEFINED ROCPROFSYS_CI_GPU OR ROCPROFSYS_CI_GPU))
     endif()
     if(NOT _VALID_GPU)
         rocprofiler_systems_message(
-            AUTHOR_WARNING "rocm-smi did not successfully run. Disabling GPU tests...")
+            AUTHOR_WARNING "amd-smi did not successfully run. Disabling GPU tests...")
     endif()
 endif()
 
@@ -279,6 +301,33 @@ macro(ROCPROFILER_SYSTEMS_CHECK_PASS_FAIL_REGEX NAME PASS FAIL)
                        ${FAIL} "${${FAIL}}")
     endif()
 endmacro()
+
+# -------------------------------------------------------------------------------------- #
+
+# Define the function to check for a specific GPU
+function(check_gpu gpu_name return_var)
+    # Run the rocminfo command and capture the output
+    execute_process(
+        COMMAND bash -c "rocminfo | grep ${gpu_name}"
+        OUTPUT_VARIABLE ROCMINFO_OUTPUT
+        RESULT_VARIABLE ROCMINFO_RESULT
+        OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+    string(REGEX MATCH "${gpu_name}" gpu_matches "${ROCMINFO_OUTPUT}")
+
+    # Check if the specified GPU is present
+    if(ROCMINFO_RESULT EQUAL 0 AND gpu_matches)
+        message(STATUS "${gpu_name} GPU detected")
+        set(${return_var}
+            TRUE
+            PARENT_SCOPE)
+    else()
+        message(STATUS "${gpu_name} GPU not detected")
+        set(${return_var}
+            FALSE
+            PARENT_SCOPE)
+    endif()
+endfunction()
 
 # -------------------------------------------------------------------------------------- #
 
@@ -433,7 +482,7 @@ function(ROCPROFILER_SYSTEMS_ADD_TEST)
         endif()
 
         if(NOT "ROCPROFSYS_USE_ROCM=OFF" IN_LIST TEST_ENVIRONMENT)
-            list(APPEND TEST_LABELS "rocm-smi")
+            list(APPEND TEST_LABELS "amd-smi")
         endif()
     endif()
 
@@ -442,9 +491,9 @@ function(ROCPROFILER_SYSTEMS_ADD_TEST)
         list(APPEND TEST_LABELS "rocm")
     endif()
 
-    if("ROCPROFSYS_USE_ROCM_SMI=ON" IN_LIST TEST_ENVIRONMENT AND NOT "rocm-smi" IN_LIST
-                                                                 TEST_ENVIRONMENT)
-        list(APPEND TEST_LABELS "rocm-smi")
+    if("ROCPROFSYS_USE_AMD_SMI=ON" IN_LIST TEST_ENVIRONMENT AND NOT "amd-smi" IN_LIST
+                                                                TEST_ENVIRONMENT)
+        list(APPEND TEST_LABELS "amd-smi")
     endif()
 
     if(TARGET ${TEST_TARGET})

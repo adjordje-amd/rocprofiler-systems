@@ -52,13 +52,17 @@ GPU metrics
 * HIP kernel tracing
 * HSA API tracing
 * HSA operation tracing
-* System-level sampling (via rocm-smi)
+* rocDecode API tracing
+* rocJPEG API tracing
+* System-level sampling (via AMD-SMI)
 
   * Memory usage
   * Power usage
   * Temperature
   * Utilization
   * VCN activity
+  * JPEG activity
+    Note: The availability of VCN and JPEG engine activity depends on device support for different ASICs. If unsupported, all values for VCN_ACTIVITY and JPEG_ACTIVITY will be reported as N/A in the output of amd-smi metric--usage.
 
 CPU metrics
 ========================================

@@ -33,8 +33,8 @@
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
 #include "core/rocpd/agent_manager.hpp"
+#include "library/amd_smi.hpp"
 #include "library/components/category_region.hpp"
-#include "library/rocm_smi.hpp"
 #include "library/rocprofiler-sdk/counters.hpp"
 #include "library/rocprofiler-sdk/fwd.hpp"
 #include "library/thread_info.hpp"
@@ -511,14 +511,15 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                                             user_data, ts);
                 break;
             }
-#if(ROCPROFILER_VERSION_MAJOR == 0 && ROCPROFILER_VERSION_MINOR >= 7) ||                 \
-    ROCPROFILER_VERSION_MAJOR >= 1
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API:
             {
                 tool_tracing_callback_start(category::rocm_rocdecode_api{}, record,
                                             user_data, ts);
                 break;
             }
+#endif
+#if(ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API:
             {
                 tool_tracing_callback_start(category::rocm_rocjpeg_api{}, record,
@@ -535,6 +536,11 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
             case ROCPROFILER_CALLBACK_TRACING_RCCL_API:
+#if(ROCPROFILER_VERSION >= 600)
+            case ROCPROFILER_CALLBACK_TRACING_OMPT:
+            case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
+            case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
+#endif
             {
                 ROCPROFSYS_CI_ABORT(true, "unhandled callback record kind: %i\n",
                                     record.kind);
@@ -596,14 +602,15 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                                            ts, _bt_data);
                 break;
             }
-#if(ROCPROFILER_VERSION_MAJOR == 0 && ROCPROFILER_VERSION_MINOR >= 7) ||                 \
-    ROCPROFILER_VERSION_MAJOR >= 1
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API:
             {
                 tool_tracing_callback_stop(category::rocm_rocdecode_api{}, record,
                                            user_data, ts, _bt_data);
                 break;
             }
+#endif
+#if(ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API:
             {
                 tool_tracing_callback_stop(category::rocm_rocjpeg_api{}, record,
@@ -620,6 +627,11 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
             case ROCPROFILER_CALLBACK_TRACING_RCCL_API:
+#if(ROCPROFILER_VERSION >= 600)
+            case ROCPROFILER_CALLBACK_TRACING_OMPT:
+            case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
+            case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
+#endif
             {
                 ROCPROFSYS_CI_ABORT(true, "unhandled callback record kind: %i\n",
                                     record.kind);
@@ -1042,8 +1054,7 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
                 ROCPROFILER_CALLBACK_TRACING_HSA_FINALIZE_EXT_API,
                 ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API,
                 ROCPROFILER_CALLBACK_TRACING_HIP_COMPILER_API,
-#if(ROCPROFILER_VERSION_MAJOR == 0 && ROCPROFILER_VERSION_MINOR >= 7) ||                 \
-    ROCPROFILER_VERSION_MAJOR >= 1
+#if(ROCPROFILER_VERSION >= 700)
                 ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API,
                 ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API,
 #endif
@@ -1196,10 +1207,10 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
     gpu::add_device_metadata();
 
-    if(config::get_use_process_sampling() && config::get_use_rocm_smi())
+    if(config::get_use_process_sampling() && config::get_use_amd_smi())
     {
-        ROCPROFSYS_VERBOSE_F(1, "Setting rocm_smi state to active...\n");
-        rocm_smi::set_state(State::Active);
+        ROCPROFSYS_VERBOSE_F(1, "Setting amd_smi state to active...\n");
+        amd_smi::set_state(State::Active);
     }
 
     start();
@@ -1217,8 +1228,8 @@ tool_fini(void* callback_data)
     flush();
     stop();
 
-    if(config::get_use_process_sampling() && config::get_use_rocm_smi())
-        rocm_smi::shutdown();
+    if(config::get_use_process_sampling() && config::get_use_amd_smi())
+        amd_smi::shutdown();
 
     if(get_counter_storage())
     {
@@ -1328,6 +1339,11 @@ rocprofiler_configure(uint32_t version, const char* runtime_version, uint32_t pr
     if(!rocprofsys::config::settings_are_configured() &&
        rocprofsys::get_state() < rocprofsys::State::Active)
         rocprofsys_init_tooling_hidden();
+
+    if(!rocprofsys::config::get_use_rocm())
+    {
+        return nullptr;
+    }
 
     // set the client name
     id->name = "rocprofsys";

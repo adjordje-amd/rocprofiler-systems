@@ -179,8 +179,7 @@ rocprofiler_systems_add_option(ROCPROFSYS_USE_MPI "Enable MPI support" OFF)
 rocprofiler_systems_add_option(ROCPROFSYS_USE_ROCM "Enable ROCm support" ON)
 rocprofiler_systems_add_option(ROCPROFSYS_USE_PAPI "Enable HW counter support via PAPI"
                                ON)
-rocprofiler_systems_add_option(ROCPROFSYS_USE_RCCL "Enable RCCL support"
-                               ${ROCPROFSYS_USE_ROCM})
+rocprofiler_systems_add_option(ROCPROFSYS_USE_RCCL "Enable RCCL support" OFF)
 rocprofiler_systems_add_option(
     ROCPROFSYS_USE_MPI_HEADERS
     "Enable wrapping MPI functions w/o enabling MPI dependency" ON)
@@ -374,7 +373,7 @@ configure_file(
 
 configure_file(
     ${PROJECT_SOURCE_DIR}/scripts/merge-multiprocess-output.sh
-    ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/bin/merge-multiprocess-output.sh
+    ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBEXECDIR}/${PROJECT_NAME}/rocprof-sys-merge-output.sh
     COPYONLY)
 
 install(
@@ -396,8 +395,8 @@ install(
 
 install(
     PROGRAMS
-        ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/bin/merge-multiprocess-output.sh
-    DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/bin/
+        ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_LIBEXECDIR}/${PROJECT_NAME}/rocprof-sys-merge-output.sh
+    DESTINATION ${CMAKE_INSTALL_LIBEXECDIR}/${PROJECT_NAME}
     COMPONENT setup)
 
 # ------------------------------------------------------------------------------#

@@ -205,13 +205,19 @@ bool&
 get_use_causal() ROCPROFSYS_HOT;
 
 bool
-get_use_rocm_smi() ROCPROFSYS_HOT;
+get_use_rocm() ROCPROFSYS_HOT;
+
+bool
+get_use_amd_smi() ROCPROFSYS_HOT;
 
 bool&
 get_use_sampling() ROCPROFSYS_HOT;
 
 bool&
 get_use_process_sampling() ROCPROFSYS_HOT;
+
+bool&
+get_cpu_freq_enabled();
 
 bool&
 get_use_pid();
