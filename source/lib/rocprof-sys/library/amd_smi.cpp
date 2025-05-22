@@ -253,9 +253,8 @@ data::sample(uint32_t _dev_id)
     }
 
     amdsmi_processor_handle sample_handle = gpu::get_handle_from_id(_dev_id);
-
-    ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).busy, amdsmi_get_gpu_activity,
-                          sample_handle, &m_busy_perc);
+    // TODO: the line below must be uncommented once the amd-smi bug is fixed, otherwise it causes runtime error on MI30XXX
+    //ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).busy, amdsmi_get_gpu_activity, sample_handle, &m_busy_perc);
     ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).temp, amdsmi_get_temp_metric,
                           sample_handle, AMDSMI_TEMPERATURE_TYPE_JUNCTION,
                           AMDSMI_TEMP_CURRENT, &m_temp);
