@@ -208,6 +208,12 @@ get_kernel_symbol_info(uint64_t _kernel_id)
     return tool_data->get_kernel_symbol_info(_kernel_id);
 }
 
+const rocprofiler_callback_tracing_code_object_load_data_t*
+get_code_object_info(uint64_t _code_object_id)
+{
+    return tool_data->get_code_object_info(_code_object_id);
+}
+
 // Implementation of rocprofiler_callback_tracing_operation_args_cb_t
 int
 save_args(rocprofiler_callback_tracing_kind_t /*kind*/, int32_t /*operation*/,
@@ -233,6 +239,113 @@ get_marker_started_ranges()
 {
     static thread_local auto _v = std::vector<tim::hash_value_t>{};
     return _v;
+}
+
+rocpd::data_processor&
+get_data_processor() {
+    return rocpd::data_processor::get_instance();
+}
+
+void 
+rocpd_initialize_categories()
+{
+    auto& data_processor = get_data_processor();
+    data_processor.insert_category(category_enum_id<category::rocm_kernel_dispatch>::value, trait::name<category::rocm_kernel_dispatch>::value);
+    data_processor.insert_category(category_enum_id<category::rocm_memory_copy>::value, trait::name<category::rocm_memory_copy>::value);
+}
+
+void rocpd_insert_thread_info(size_t tid) {
+    const auto& _thread_info = thread_info::get(tid, SequentTID);
+    ROCPROFSYS_CI_THROW(!_thread_info, "No valid thread info for tid=%li\n", tid);
+    if (!_thread_info) return;
+
+    auto& data_processor = get_data_processor();
+    auto& n_info = node_info::get_instance();
+    
+    data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid, threading::get_thread_name().c_str(),
+                                      _thread_info->get_start(), _thread_info->get_stop(), "{}");
+}
+
+void rocpd_init_track(const char* track_name, int64_t tid)
+{
+    auto& data_processor = get_data_processor();
+    auto& n_info = node_info::get_instance();
+
+    data_processor.insert_track(
+        track_name, n_info.id, getpid(), tid, "{}");
+
+}
+
+void
+rocpd_insert_code_object_info(const rocprofiler_callback_tracing_code_object_load_data_t* code_obj_data)
+{
+    auto& data_processor = get_data_processor();
+    auto& n_info = node_info::get_instance();
+    const char* strg_type = "UNKNOWN";
+
+    switch (code_obj_data->storage_type)
+    {
+        case ROCPROFILER_CODE_OBJECT_STORAGE_TYPE_FILE:
+            strg_type = "FILE";
+            break;
+        case ROCPROFILER_CODE_OBJECT_STORAGE_TYPE_MEMORY:
+            strg_type = "MEMORY";
+            break;
+        default:
+            break;
+    }
+    data_processor.insert_code_object(code_obj_data->code_object_id, n_info.id, getpid(),
+                                       code_obj_data->rocp_agent.handle, code_obj_data->uri,
+                                       code_obj_data->load_base, code_obj_data->load_size, code_obj_data->load_delta,
+                                       strg_type);
+
+}
+
+void
+rocpd_insert_kernel_symbol_info(const kernel_symbol_data_t* sym_data)
+{
+    auto& data_processor = get_data_processor();
+    auto& n_info = node_info::get_instance();
+
+    data_processor.insert_kernel_symbol(sym_data->kernel_id, n_info.id, getpid(),
+                                        sym_data->code_object_id, sym_data->kernel_name, sym_data->kernel_object,
+                                        sym_data->kernarg_segment_size, sym_data->kernarg_segment_alignment,
+                                        sym_data->group_segment_size, sym_data->private_segment_size,
+                                        sym_data->sgpr_count, sym_data->arch_vgpr_count, sym_data->accum_vgpr_count);
+}
+
+template <typename Category>
+void
+rocpd_insert_region(size_t stream_id, uint64_t start_time, uint64_t end_time, const char* track, rocprofiler_buffer_tracing_kernel_dispatch_record_t* record,
+                    const char* call_stack = "{}", const char* line_info = "{}", const char* extdata = "{}")
+{
+    auto& data_processor = get_data_processor();
+    auto& n_info = node_info::get_instance();
+
+    auto event_id = data_processor.insert_event(category_enum_id<Category>::value,
+                                                0, 0, 0,
+                                                call_stack, line_info, extdata);
+    auto name_id = data_processor.insert_string(tim::demangle(get_kernel_symbol_info(record->dispatch_info.kernel_id)->kernel_name).c_str());
+
+    rocpd_insert_thread_info(record->thread_id);
+    data_processor.insert_region(n_info.id, getpid(), record->thread_id, start_time, end_time, name_id, event_id);
+    data_processor.insert_kernel_dispatch(n_info.id, getpid(),
+                                         record->thread_id,
+                                         record->dispatch_info.agent_id,
+                                         record->dispatch_info.kernel_id,
+                                         record->dispatch_info.dispatch_id,
+                                         record->dispatch_info.queue_id,
+                                         stream_id,
+                                         record->start_timestamp, record->end_timestamp,
+                                         record->dispatch_info.private_segment_size,
+                                         record->dispatch_info.group_segment_size,
+                                         record->dispatch_info.workgroup_size.x,
+                                         record->dispatch_info.workgroup_size.y,
+                                         record->dispatch_info.workgroup_size.z,
+                                         record->dispatch_info.grid_size.x,
+                                         record->dispatch_info.grid_size.y,
+                                         record->dispatch_info.grid_size.z,
+                                         name_id, event_id, extdata);
 }
 
 template <typename CategoryT>
@@ -356,6 +469,10 @@ tool_tracing_callback_stop(
             rocprofiler_iterate_callback_tracing_kind_operation_args(record, save_args, 2,
                                                                      &args);
         }
+        // for(const auto& [key, val] : args)
+        // {
+        //     std::cout << "KEY: " << key << " VAL: " << val << std::endl;
+        // }
 
         uint64_t _beg_ts = user_data->value;
         uint64_t _end_ts = ts;
@@ -684,6 +801,11 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                 const auto* _kern_sym_data =
                     get_kernel_symbol_info(record->dispatch_info.kernel_id);
+                const auto* _code_obj_data = get_code_object_info(_kern_sym_data->code_object_id);
+
+                // if(_kern_sym_data->code_object_id == _code_obj_data->code_object_id)
+                //         printf("Code object id %lu matches with kernel symbol id %lu\n",
+                //                _code_obj_data->code_object_id, _kern_sym_data->code_object_id);
 
                 auto        _name     = tim::demangle(_kern_sym_data->kernel_name);
                 auto        _corr_id  = record->correlation_id.internal;

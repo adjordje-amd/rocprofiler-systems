@@ -158,6 +158,8 @@ struct client_data
     const kernel_symbol_data_t* get_kernel_symbol_info(uint64_t _kernel_id) const;
     const rocprofiler_tool_counter_info_t* get_tool_counter_info(
         rocprofiler_agent_id_t _agent_id, rocprofiler_counter_id_t _counter_id) const;
+    const rocprofiler_callback_tracing_code_object_load_data_t* get_code_object_info(
+        uint64_t code_object_id) const;
 };
 
 inline client_data::context_id_vec_t
@@ -230,6 +232,23 @@ client_data::get_tool_counter_info(rocprofiler_agent_id_t   _agent_id,
         if(itr.id == _counter_id) return &itr;
     }
     return nullptr;
+}
+
+inline const rocprofiler_callback_tracing_code_object_load_data_t*
+client_data::get_code_object_info(uint64_t code_object_id) const
+{
+    return code_object_records.rlock(
+        [code_object_id](const auto& _data) -> const rocprofiler_callback_tracing_code_object_load_data_t* {
+            for(const auto& itr : _data)
+            {
+                if(code_object_id == itr.payload.code_object_id)
+                {
+                    return &itr.payload;
+                    break;
+                }
+            }
+            return nullptr;
+        });
 }
 
 inline constexpr client_data*
