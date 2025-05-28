@@ -348,6 +348,133 @@ rocpd_insert_region(size_t stream_id, uint64_t start_time, uint64_t end_time, co
                                          name_id, event_id, extdata);
 }
 
+template <typename Tp, typename... Args>
+Tp*
+as_pointer(Args&&... _args)
+{
+    return new Tp{std::forward<Args>(_args)...};
+}
+
+template <typename... Tp>
+void
+consume_args(Tp&&...)
+{}
+
+// Stores stream ids and kernel region ids for kernel-rename service and hip stream display service
+struct kernel_rename_and_stream_data
+{
+    uint64_t                region_id = 0;  // roctx region correlation id
+    rocprofiler_stream_id_t stream_id = {.handle = 0};
+};
+
+template <typename Tp>
+rocprofiler_stream_id_t
+get_stream_id(Tp* _record)
+{
+    auto _stream_id = rocprofiler_stream_id_t{.handle = 0};
+    if(_record->correlation_id.external.ptr != nullptr)
+    {
+        // Extract the stream id
+        auto* _ecid_data =
+            static_cast<kernel_rename_and_stream_data*>(_record->correlation_id.external.ptr);
+        _stream_id                             = _ecid_data->stream_id;
+        auto _region_id                        = _ecid_data->region_id;
+        _record->correlation_id.external.value = _region_id;
+        delete _ecid_data;
+    }
+    printf("Stream ID: %lu\n", _stream_id.handle);
+    return _stream_id;
+}
+
+struct scope_destructor
+{
+    /// \fn scope_destructor(FuncT&& _fini, InitT&& _init)
+    /// \tparam FuncT "std::function<void()> or void (*)()"
+    /// \tparam InitT "std::function<void()> or void (*)()"
+    /// \param _fini Function to execute when object is destroyed
+    /// \param _init Function to execute when object is created (optional)
+    ///
+    /// \brief Provides a utility to perform an operation when exiting a scope.
+    template <typename FuncT, typename InitT = void (*)()>
+    scope_destructor(
+        FuncT&& _fini,
+        InitT&& _init = []() {});
+
+    ~scope_destructor() { m_functor(); }
+
+    // delete copy operations
+    scope_destructor(const scope_destructor&) = delete;
+    scope_destructor& operator=(const scope_destructor&) = delete;
+
+    // allow move operations
+    scope_destructor(scope_destructor&& rhs) noexcept;
+    scope_destructor& operator=(scope_destructor&& rhs) noexcept;
+
+private:
+    std::function<void()> m_functor = []() {};
+};
+
+template <typename FuncT, typename InitT>
+scope_destructor::scope_destructor(FuncT&& _fini, InitT&& _init)
+: m_functor{std::forward<FuncT>(_fini)}
+{
+    _init();
+}
+
+inline scope_destructor::scope_destructor(scope_destructor&& rhs) noexcept
+: m_functor{std::move(rhs.m_functor)}
+{
+    rhs.m_functor = []() {};
+}
+
+inline scope_destructor&
+scope_destructor::operator=(scope_destructor&& rhs) noexcept
+{
+    if(this != &rhs)
+    {
+        m_functor     = std::move(rhs.m_functor);
+        rhs.m_functor = []() {};
+    }
+    return *this;
+}
+
+using kernel_rename_stack_t = std::stack<uint64_t>;
+
+thread_local auto thread_dispatch_rename      = as_pointer<kernel_rename_stack_t>();
+thread_local auto thread_dispatch_rename_dtor = scope_destructor{[]() {
+    delete thread_dispatch_rename;
+    thread_dispatch_rename = nullptr;
+}};
+int
+set_kernel_rename_and_stream_correlation_id(rocprofiler_thread_id_t  thr_id,
+                                            rocprofiler_context_id_t ctx_id,
+                                            rocprofiler_external_correlation_id_request_kind_t kind,
+                                            rocprofiler_tracing_operation_t                    op,
+                                            uint64_t                 internal_corr_id,
+                                            rocprofiler_user_data_t* external_corr_id,
+                                            void*                    user_data)
+{
+   printf("Setting kernel rename and stream correlation id for thread %lu, context %lu, kind %i, op %i, internal_corr_id %lu\n",
+          thr_id, ctx_id, kind, op, internal_corr_id);
+    auto* _info = new kernel_rename_and_stream_data{};
+
+    const bool kernel_rename_service_enabled =
+        kind == ROCPROFILER_EXTERNAL_CORRELATION_REQUEST_KERNEL_DISPATCH;
+
+
+    std::cout << "set_kernel_rename_and_stream_correlation_id" << std::endl;
+
+    _info->stream_id = rocprofiler_stream_id_t{.handle = 22};
+
+
+    // Set the external correlation id service to point to struct
+    external_corr_id->ptr = _info;
+
+    // common::consume_args(thr_id, ctx_id, kind, op, internal_corr_id, user_data);
+
+    return 0;
+}
+
 template <typename CategoryT>
 void
 tool_tracing_callback_start(CategoryT, rocprofiler_callback_tracing_record_t record,
@@ -469,13 +596,24 @@ tool_tracing_callback_stop(
             rocprofiler_iterate_callback_tracing_kind_operation_args(record, save_args, 2,
                                                                      &args);
         }
-        // for(const auto& [key, val] : args)
-        // {
-        //     std::cout << "KEY: " << key << " VAL: " << val << std::endl;
-        // }
+
 
         uint64_t _beg_ts = user_data->value;
         uint64_t _end_ts = ts;
+
+        if(record.kind == ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API &&
+           record.operation == ROCPROFILER_HIP_RUNTIME_API_ID_hipStreamCreate)
+        {
+            auto* stream_hip_api_data =
+                static_cast<rocprofiler_callback_tracing_hip_api_data_t*>(record.payload);
+            std::cout << "hipCreateStream. Stream id " << *(stream_hip_api_data->args.hipStreamCreate.stream)  << std::endl;
+                            for(const auto& [key, val] : args)
+                {
+                    std::cout << "KEY: " << key << " VAL: " << val << std::endl;
+                }
+            
+        }
+
 
         tracing::push_perfetto_ts(
             CategoryT{}, _name.data(), _beg_ts,
@@ -798,6 +936,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 auto* record =
                     static_cast<rocprofiler_buffer_tracing_kernel_dispatch_record_t*>(
                         header->payload);
+
+                printf("Kernel Dispatch Stream ID: %d\n", get_stream_id(record).handle);
 
                 const auto* _kern_sym_data =
                     get_kernel_symbol_info(record->dispatch_info.kernel_id);
@@ -1164,6 +1304,51 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
     if(!_counter_events.empty()) _data->initialize_event_info();
 
     ROCPROFILER_CALL(rocprofiler_create_context(&_data->primary_ctx));
+
+    ROCPROFILER_CALL(rocprofiler_configure_callback_tracing_service(_data->primary_ctx, ROCPROFILER_CALLBACK_TRACING_CODE_OBJECT, nullptr, 0, tool_code_object_callback, _data));
+
+        
+    auto counter_external_corr_id_request_kinds =
+        std::array<rocprofiler_external_correlation_id_request_kind_t, 1>{
+            ROCPROFILER_EXTERNAL_CORRELATION_REQUEST_KERNEL_DISPATCH};
+
+    ROCPROFILER_CALL(rocprofiler_configure_external_correlation_id_request_service(
+                            _data->primary_ctx,
+                            counter_external_corr_id_request_kinds.data(),
+                            counter_external_corr_id_request_kinds.size(),
+                            set_kernel_rename_and_stream_correlation_id,
+                            nullptr));
+        
+
+
+    static auto callback = [](rocprofiler_callback_tracing_record_t record,
+                                rocprofiler_user_data_t* user_data,
+                                void* callback_data)
+    {
+        if (record.operation == ROCPROFILER_HIP_STREAM_CREATE) {
+            printf("ROCPROFILER_CALLBACK_TRACING_HIP_STREAM. ROCPROFILER_HIP_STREAM_CREATE\n");
+        }
+        if (record.correlation_id.internal) {
+            printf("Internal correlation id: %lu\n", record.correlation_id.internal);
+        }
+        if (record.correlation_id.external.ptr != nullptr) {
+            std::cout << "External correlation id: " << record.correlation_id.external.ptr << std::endl;
+        }
+        // auto* stream_handle_data =
+        //     static_cast<rocprofiler_callback_tracing_hip_stream_data_t*>(record.payload);
+        // auto stream_id = stream_handle_data->stream_id;
+
+        // printf("Stream id: %lu\n", stream_handle_data->stream_id.handle);
+        // printf("Stream value: %lu\n", stream_handle_data->stream_value.handle);
+    };
+
+
+
+    ROCPROFILER_CALL(rocprofiler_configure_callback_tracing_service(
+
+        _data->primary_ctx, ROCPROFILER_CALLBACK_TRACING_HIP_STREAM, nullptr, 0,
+
+        callback, nullptr));
 
     ROCPROFILER_CALL(rocprofiler_configure_callback_tracing_service(
         _data->primary_ctx, ROCPROFILER_CALLBACK_TRACING_CODE_OBJECT, nullptr, 0,
