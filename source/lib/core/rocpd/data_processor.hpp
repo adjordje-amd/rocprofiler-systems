@@ -106,7 +106,7 @@ public:
                                 size_t grid_size_x, size_t grid_size_y, size_t grid_size_z, size_t region_name_id, size_t event_id,
                                 const char* extdata = "{}");
 
-    size_t insert_kernel_symbol(size_t id, size_t node_id, size_t process_id, uint64_t code_obj_id, const char* name, const char* display_name, uint32_t kernel_obj,
+    void insert_kernel_symbol(size_t id, size_t node_id, size_t process_id, uint64_t code_obj_id, const char* name, const char* display_name, uint32_t kernel_obj,
                                 uint32_t kernarg_segmnt_size, uint32_t kernarg_segment_alignment, uint32_t group_segment_size,
                                 uint32_t private_segment_size, uint32_t sgrp_count, uint32_t arch_vgrp_count, uint32_t accum_vgrp_count,
                                 const char* extdata = "{}");

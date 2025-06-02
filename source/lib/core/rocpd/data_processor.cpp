@@ -170,6 +170,7 @@ size_t
 data_processor::insert_event(size_t category_id, size_t correlation_id, size_t stack_id,
                             size_t parent_stack_id, const char* call_stack, const char* line_info, const char* extdata)
 {
+    std::lock_guard<std::mutex> lock(_data_mutex);
     auto it = _category_map.find(category_id);
     if (it == _category_map.end()) {
         throw std::runtime_error("Insert event: Unknown category id!");
@@ -330,7 +331,6 @@ data_processor::insert_code_object(size_t id, size_t node_id, size_t process_id,
         ROCPROFSYS_WARNING(1, "Insert code object info failed! Error: Code object ID %ld already exists!\n", id);
         return;
     }
-    std::lock_guard<std::mutex> lock(_data_mutex);
     ROCPROFSYS_VERBOSE(2, "Insert code object with ID: %ld\n", id);
 
     _insert_code_object_statement(id, _upid.c_str(), node_id, process_id, agent_id,
@@ -339,7 +339,7 @@ data_processor::insert_code_object(size_t id, size_t node_id, size_t process_id,
     _code_object_ids.insert(id);
 }
 
-size_t
+void
 data_processor::insert_kernel_symbol(size_t id, size_t node_id, size_t process_id, uint64_t code_obj_id, const char* name, const char* display_name, uint32_t kernel_obj,
     uint32_t kernarg_segmnt_size, uint32_t kernarg_segment_alignment, uint32_t group_segment_size,
     uint32_t private_segment_size, uint32_t sgrp_count, uint32_t arch_vgrp_count, uint32_t accum_vgrp_count,
@@ -347,7 +347,7 @@ data_processor::insert_kernel_symbol(size_t id, size_t node_id, size_t process_i
 {
     if (_kernel_sym_ids.count(id) > 0) {
         ROCPROFSYS_WARNING(1, "Insert kernel symbol failed! Error: Kernel symbol ID %ld already exists!\n", id);
-        return id;
+        return;
     }
 
     ROCPROFSYS_VERBOSE(2, "Insert kernel symbol: %s with ID: %ld\n", name, id);
@@ -357,7 +357,6 @@ data_processor::insert_kernel_symbol(size_t id, size_t node_id, size_t process_i
                                     group_segment_size, private_segment_size,
                                     sgrp_count, arch_vgrp_count,
                                     accum_vgrp_count, extdata);
-    return id;
 
     _kernel_sym_ids.insert(id);
 }
@@ -375,17 +374,19 @@ data_processor::insert_category(size_t category_id, const char* name)
     _category_map.emplace(category_id, name_id);
 }
 
-void 
+void
 data_processor::insert_region(size_t node_id, size_t process_id, size_t thread_id, uint64_t start, uint64_t end, 
     size_t name_id, size_t event_id, const char* extdata) {
+
+    std::lock_guard<std::mutex> lock(_data_mutex);
     ROCPROFSYS_VERBOSE(2, "Insert region for event id: %ld\n", event_id);
-    
+
     _insert_region_statement(_region_id, _upid.c_str(), node_id, process_id, thread_id,
                             start, end, name_id, event_id, extdata);
     _region_id++;
 }
 
-void 
+void
 data_processor::insert_kernel_dispatch(size_t node_id, size_t process_id, size_t thread_id, size_t agent_id, size_t kernel_id, size_t dispatch_id,
     size_t queue_id, size_t stream_id, uint64_t start, uint64_t end, size_t private_segment_size,
     size_t group_segment_size, size_t workgroup_size_x, size_t workgroup_size_y, size_t workgroup_size_z,
