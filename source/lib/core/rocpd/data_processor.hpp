@@ -24,11 +24,11 @@ struct data_processor {
     using insert_kernel_dispatch_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
                                                             uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
                                                             size_t, size_t, const char*)>;
-    using insert_memory_copy_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t, size_t, 
+    using insert_memory_copy_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t, size_t,
                                                         size_t, size_t, size_t, size_t, size_t, size_t, size_t, const char*)>;
-    using insert_kernel_symbol_stmt = std::function<void(size_t, const char*, size_t, size_t, uint64_t, const char*, const char*, 
+    using insert_kernel_symbol_stmt = std::function<void(size_t, const char*, size_t, size_t, uint64_t, const char*, const char*,
                                                         uint64_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, const char*)>;
-    using insert_code_object_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, const char*, uint64_t, uint64_t, uint64_t, 
+    using insert_code_object_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, const char*, uint64_t, uint64_t, uint64_t,
                                                         const char*, const char*)>;
 
 private:
@@ -105,6 +105,9 @@ public:
                                 size_t group_segment_size, size_t workgroup_size_x, size_t workgroup_size_y, size_t workgroup_size_z,
                                 size_t grid_size_x, size_t grid_size_y, size_t grid_size_z, size_t region_name_id, size_t event_id,
                                 const char* extdata = "{}");
+    void insert_memory_copy(size_t node_id, size_t process_id, size_t thread_id, uint64_t start, uint64_t end, size_t name_id,
+                            size_t dst_agent_id, size_t dst_addr, size_t src_agent_id, size_t src_addr, size_t size,
+                            size_t queue_id, size_t stream_id, size_t region_name_id, size_t event_id, const char* extdata = "{}");
 
     void insert_kernel_symbol(size_t id, size_t node_id, size_t process_id, uint64_t code_obj_id, const char* name, const char* display_name, uint32_t kernel_obj,
                                 uint32_t kernarg_segmnt_size, uint32_t kernarg_segment_alignment, uint32_t group_segment_size,
@@ -162,7 +165,7 @@ private:
 
     size_t _region_id{1};
     size_t _kernel_dispatch_id{1};
-    size_t memory_copy_id{1};
+    size_t _memory_copy_id{1};
     size_t _pmc_id{1};
     size_t _event_id{1};
     size_t _pmc_event_id{1};

@@ -97,7 +97,7 @@ void
 data_processor::insert_track(const char* track_name, size_t node_id, size_t process_id, size_t thread_id, const char* extdata)
 {
     if (_tracks.find(track_name) != _tracks.end()) {
-        ROCPROFSYS_WARNING(0, "Fail to add track %s, already exist!\n", track_name);
+        ROCPROFSYS_WARNING(2, "Fail to add track %s, already exist!\n", track_name);
         return;
     }
 
@@ -407,6 +407,21 @@ data_processor::insert_kernel_dispatch(size_t node_id, size_t process_id, size_t
         extdata);
 
     _kernel_dispatch_id++;
+}
+
+void
+data_processor::insert_memory_copy(size_t node_id, size_t process_id, size_t thread_id, uint64_t start, uint64_t end, size_t name_id,
+                            size_t dst_agent_id, size_t dst_addr, size_t src_agent_id, size_t src_addr, size_t size,
+                            size_t queue_id, size_t stream_id, size_t region_name_id, size_t event_id, const char* extdata)
+{
+    std::lock_guard<std::mutex> lock(_data_mutex);
+
+    _insert_memory_copy_statement(_memory_copy_id, _upid.c_str(), node_id, process_id, thread_id,
+        start, end, name_id, dst_agent_id, dst_addr,
+        src_agent_id, src_addr, size, queue_id,
+        stream_id, region_name_id, event_id, extdata);
+
+    _memory_copy_id++;
 }
 
 void
