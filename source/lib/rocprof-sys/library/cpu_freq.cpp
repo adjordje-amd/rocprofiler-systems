@@ -96,7 +96,6 @@ void rocpd_initialize_cpu_freq_tracks() {
     auto& data_processor = get_data_processor();
     auto& n_info = node_info::get_instance();
 
-    // data_processor.insert_track(get_cpu_freq_track_name<category::cpu_freq>(cpu_id).c_str(), n_info.id, getpid(), gettid());
     do_for_enabled_cpus([&](size_t cpu_id) {
         data_processor.insert_track(get_cpu_freq_track_name<category::cpu_freq>(cpu_id).c_str(), n_info.id, getpid(), gettid());
     });
