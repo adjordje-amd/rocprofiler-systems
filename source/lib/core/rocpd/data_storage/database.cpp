@@ -91,16 +91,17 @@ namespace data_storage {
             if (!file.is_open()) {
                 throw std::runtime_error(std::string("Failed to open schema file ").append(file_path));
             }
-            
+
             std::stringstream ss_query;
             ss_query << file.rdbuf();
             std::string query = ss_query.str();
-            
+
             std::regex upid_pattern(schema_file == "rocpd_tables.sql" ? "\\{\\{upid\\}\\}" : "\\{\\{view_upid\\}\\}");
-           
-            query = std::regex_replace(query, upid_pattern, "_" + get_upid());
-           
-            validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0), 
+
+            auto upid = schema_file == "rocpd_tables.sql" ? "_" + get_upid() : "";
+            query = std::regex_replace(query, upid_pattern, upid);
+
+            validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0),
                        std::string("Invalid schema file, init database failed!").append(file_path));
             file.close();
         }
