@@ -97,7 +97,7 @@ void
 data_processor::insert_track(const char* track_name, size_t node_id, size_t process_id, size_t thread_id, const char* extdata)
 {
     if (_tracks.find(track_name) != _tracks.end()) {
-        ROCPROFSYS_WARNING(0, "Fail to add track %s, already exist!\n", track_name);
+        ROCPROFSYS_WARNING(2, "Fail to add track %s, already exist!\n", track_name);
         return;
     }
 
@@ -170,6 +170,7 @@ size_t
 data_processor::insert_event(size_t category_id, size_t correlation_id, size_t stack_id,
                             size_t parent_stack_id, const char* call_stack, const char* line_info, const char* extdata)
 {
+    std::lock_guard<std::mutex> lock(_data_mutex);
     auto it = _category_map.find(category_id);
     if (it == _category_map.end()) {
         throw std::runtime_error("Insert event: Unknown category id!");
@@ -291,6 +292,10 @@ void
 data_processor::insert_stream_info(size_t stream_id, size_t node_id, size_t process_id, const char* name, const char* extdata)
 {
 
+    if (_stream_ids.count(stream_id) > 0) {
+        ROCPROFSYS_WARNING(1, "Insert stream info failed! Error: Stream ID %ld already exists!\n", stream_id);
+        return;
+    }
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance()
                             .execute_query(
@@ -298,38 +303,62 @@ data_processor::insert_stream_info(size_t stream_id, size_t node_id, size_t proc
                                     .set_columns("id", "guid", "nid", "pid", "name", "extdata")
                                     .set_values(stream_id, _upid, node_id, process_id, name, extdata)
                                     .get_query_string());
+    _stream_ids.insert(stream_id);
+}
 
+void
+data_processor::insert_queue_info(size_t queue_id, size_t node_id, size_t process_id, const char* name, const char* extdata)
+{
+    if (_queue_ids.count(queue_id) > 0) {
+        ROCPROFSYS_WARNING(1, "Insert queue info failed! Error: Queue ID %ld already exists!\n", queue_id);
+        return;
+    }
+    data_storage::queries::table_insert_query query;
+    data_storage::database::get_instance()
+                            .execute_query(
+                                query.set_table_name("rocpd_info_queue_" + _upid)
+                                    .set_columns("id", "guid", "nid", "pid", "name", "extdata")
+                                    .set_values(queue_id, _upid, node_id, process_id, name, extdata)
+                                    .get_query_string());
+    _queue_ids.insert(queue_id);
 }
 
 void 
 data_processor::insert_code_object(size_t id, size_t node_id, size_t process_id, size_t agent_id, const char* uri, uint64_t ld_base, uint64_t ld_size,
                                 uint64_t ld_delta, const char* storage_type, const char* extdata)
 {
+    if (_code_object_ids.count(id) > 0) {
+        ROCPROFSYS_WARNING(1, "Insert code object info failed! Error: Code object ID %ld already exists!\n", id);
+        return;
+    }
     ROCPROFSYS_VERBOSE(2, "Insert code object with ID: %ld\n", id);
 
     _insert_code_object_statement(id, _upid.c_str(), node_id, process_id, agent_id,
                                     uri, ld_base, ld_size, ld_delta, storage_type, extdata);
+
+    _code_object_ids.insert(id);
 }
 
-size_t
-data_processor::insert_kernel_symbol(size_t id, size_t node_id, size_t process_id, uint64_t code_obj_id, const char* name, uint32_t kernel_obj,
+void
+data_processor::insert_kernel_symbol(size_t id, size_t node_id, size_t process_id, uint64_t code_obj_id, const char* name, const char* display_name, uint32_t kernel_obj,
     uint32_t kernarg_segmnt_size, uint32_t kernarg_segment_alignment, uint32_t group_segment_size,
     uint32_t private_segment_size, uint32_t sgrp_count, uint32_t arch_vgrp_count, uint32_t accum_vgrp_count,
     const char* extdata)
 {
-    auto it = _kernel_symbol_map.find(id);
-    if (it != _kernel_symbol_map.end()) {
-        return id;
+    if (_kernel_sym_ids.count(id) > 0) {
+        ROCPROFSYS_WARNING(1, "Insert kernel symbol failed! Error: Kernel symbol ID %ld already exists!\n", id);
+        return;
     }
 
     ROCPROFSYS_VERBOSE(2, "Insert kernel symbol: %s with ID: %ld\n", name, id);
     _insert_kernel_symbol_statement(id, _upid.c_str(), node_id, process_id,
-                                    code_obj_id, name, name, kernel_obj,
+                                    code_obj_id, name, display_name, kernel_obj,
                                     kernarg_segmnt_size, kernarg_segment_alignment,
                                     group_segment_size, private_segment_size,
                                     sgrp_count, arch_vgrp_count,
                                     accum_vgrp_count, extdata);
-    return id;
+
+    _kernel_sym_ids.insert(id);
 }
 
 void
@@ -337,7 +366,7 @@ data_processor::insert_category(size_t category_id, const char* name)
 {
     auto it = _category_map.find(category_id);
     if (it != _category_map.end()) {
-        ROCPROFSYS_WARNING(0, "Insert category failed! Error: Category %s already exist!\n", name);
+        ROCPROFSYS_WARNING(1, "Insert category failed! Error: Category %s already exist!\n", name);
         return;
     }
     auto name_id = insert_string(name);
@@ -345,23 +374,27 @@ data_processor::insert_category(size_t category_id, const char* name)
     _category_map.emplace(category_id, name_id);
 }
 
-void 
+void
 data_processor::insert_region(size_t node_id, size_t process_id, size_t thread_id, uint64_t start, uint64_t end, 
     size_t name_id, size_t event_id, const char* extdata) {
+
+    std::lock_guard<std::mutex> lock(_data_mutex);
     ROCPROFSYS_VERBOSE(2, "Insert region for event id: %ld\n", event_id);
-    
+
     _insert_region_statement(_region_id, _upid.c_str(), node_id, process_id, thread_id,
                             start, end, name_id, event_id, extdata);
     _region_id++;
 }
 
-void 
+void
 data_processor::insert_kernel_dispatch(size_t node_id, size_t process_id, size_t thread_id, size_t agent_id, size_t kernel_id, size_t dispatch_id,
     size_t queue_id, size_t stream_id, uint64_t start, uint64_t end, size_t private_segment_size,
     size_t group_segment_size, size_t workgroup_size_x, size_t workgroup_size_y, size_t workgroup_size_z,
     size_t grid_size_x, size_t grid_size_y, size_t grid_size_z, size_t region_name_id, size_t event_id,
     const char* extdata)
 {
+    std::lock_guard<std::mutex> lock(_data_mutex);
+
     ROCPROFSYS_VERBOSE(2, "Insert kernel dispatch for event id: %ld\n", event_id);
 
     _insert_kernel_dispatch_statement(_kernel_dispatch_id, _upid.c_str(), node_id, process_id,
@@ -377,10 +410,29 @@ data_processor::insert_kernel_dispatch(size_t node_id, size_t process_id, size_t
 }
 
 void
+data_processor::insert_memory_copy(size_t node_id, size_t process_id, size_t thread_id, uint64_t start, uint64_t end, size_t name_id,
+                            size_t dst_agent_id, size_t dst_addr, size_t src_agent_id, size_t src_addr, size_t size,
+                            size_t queue_id, size_t stream_id, size_t region_name_id, size_t event_id, const char* extdata)
+{
+    std::lock_guard<std::mutex> lock(_data_mutex);
+
+    _insert_memory_copy_statement(_memory_copy_id, _upid.c_str(), node_id, process_id, thread_id,
+        start, end, name_id, dst_agent_id, dst_addr,
+        src_agent_id, src_addr, size, queue_id,
+        stream_id, region_name_id, event_id, extdata);
+
+    _memory_copy_id++;
+}
+
+void
 data_processor::insert_thread_info(size_t node_id, size_t parent_process_id,
     size_t process_id, size_t thread_id, const char* name, uint64_t start,
     uint64_t end, const char* extdata)
 {
+    if (_thread_ids.count(thread_id) > 0) {
+        ROCPROFSYS_WARNING(1, "Insert thread info failed! Error: Thread ID %ld already exists!\n", thread_id);
+        return;
+    }
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance()
                             .execute_query(
@@ -390,6 +442,8 @@ data_processor::insert_thread_info(size_t node_id, size_t parent_process_id,
                                     .set_values(thread_id, _upid.c_str(), node_id, parent_process_id,
                                                 process_id, thread_id, name, start, end, extdata)
                                     .get_query_string());
+
+    _thread_ids.insert(thread_id);
 }
 
 } // namespace rocpd

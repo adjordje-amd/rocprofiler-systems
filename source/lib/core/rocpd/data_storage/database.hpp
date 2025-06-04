@@ -50,7 +50,7 @@ public:
         validate_sqlite3_result(sqlite3_prepare_v2(_ram_sqlite_db, query.c_str(), -1, &p_stmt, nullptr), "Failed to create statement!", query);
         std::shared_ptr<sqlite3_stmt> stmt{p_stmt, sqlite3_finalize};
 
-        return [stmt](Values ... value) {
+        return [stmt, query](Values ... value) {
             int position = 1;
             auto bind_value = [&](auto value) {
                 using T = decltype(value);
@@ -68,13 +68,13 @@ public:
                 position++;
             };
 
-
             (bind_value(value),...);
+
             validate_sqlite3_result(sqlite3_step(stmt.get()), "Failed to execute step!");
             sqlite3_reset(stmt.get());
         };
     }
-    
+
     static std::string get_upid();
 
 private:
@@ -83,6 +83,5 @@ private:
 };
 
 } // namespace data_storage
-} // namespace rocpd 
-} // namespace rocprofsys 
-    
+} // namespace rocpd
+} // namespace rocprofsys
