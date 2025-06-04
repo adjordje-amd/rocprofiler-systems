@@ -18,7 +18,8 @@ data_processor::data_processor()
     initialize_memory_copy_stmt();
     inintialize_code_object_stmt();
     initialize_kernel_symbol_stmt();
-
+    initialize_metadata();
+    initialize_args_stmt();
 }
 
 data_processor&
@@ -26,6 +27,18 @@ data_processor::get_instance()
 {
     static data_processor _instance;
     return _instance;
+}
+
+void
+data_processor::initialize_metadata()
+{
+    data_storage::queries::table_insert_query query;
+    data_storage::database::get_instance()
+                            .execute_query(
+                                query.set_table_name("rocpd_metadata_" + _upid)
+                                    .set_columns("tag", "value")
+                                    .set_values("upid", _upid)
+                                    .get_query_string());
 }
 
 size_t
@@ -175,9 +188,9 @@ data_processor::insert_event(size_t category_id, size_t correlation_id, size_t s
     if (it == _category_map.end()) {
         throw std::runtime_error("Insert event: Unknown category id!");
     }
-    
+
     ROCPROFSYS_VERBOSE(2, "Insert event category id: %ld, string id: %ld\n", category_id, it->second);
-    
+
     _insert_event_statement(_event_id, _upid.c_str(), it->second, stack_id,
                             parent_stack_id, correlation_id, call_stack, line_info, extdata);
     return _event_id++;
@@ -286,6 +299,23 @@ data_processor::inintialize_code_object_stmt()
                                 .get_query_string();
     _insert_code_object_statement = data_storage::database::get_instance().create_statment_executor<size_t, const char*, size_t, size_t, size_t, const char*,
                                                                                                     uint64_t, uint64_t, uint64_t, const char*, const char*>(query);
+}
+
+void
+data_processor::initialize_args_stmt()
+{
+    data_storage::queries::table_insert_query query_builder;
+    auto query = query_builder.set_table_name("rocpd_arg_" + _upid)
+                                .set_columns("guid", "event_id", "position", "type", "name", "value", "extdata")
+                                .set_values('?', '?', '?', '?', '?', '?', '?')
+                                .get_query_string();
+    _insert_args_statement = data_storage::database::get_instance().create_statment_executor<const char*, size_t, size_t, const char*, const char*, const char*, const char*>(query);
+}
+
+void
+data_processor::insert_args(size_t event_id, size_t position, const char* type, const char* name, const char* value, const char* extdata)
+{
+    _insert_args_statement(_upid.c_str(), event_id, position, type, name, value, extdata);
 }
 
 void

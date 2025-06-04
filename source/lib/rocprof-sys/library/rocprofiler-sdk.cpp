@@ -203,6 +203,12 @@ create_agent_profile(rocprofiler_agent_id_t          agent_id,
     return counters_v;
 }
 
+rocpd::data_processor&
+get_data_processor()
+{
+    return rocpd::data_processor::get_instance();
+}
+
 auto&
 get_stream_stack()
 {
@@ -233,6 +239,27 @@ save_args(rocprofiler_callback_tracing_kind_t /*kind*/, int32_t /*operation*/,
 {
     auto* argvec = static_cast<callback_arg_array_t*>(data);
     argvec->emplace_back(arg_name, arg_value_str);
+    return 0;
+}
+
+// IAdditional mplementation of rocprofiler_callback_tracing_operation_args_cb_t
+// for iterating through arguments in a callback for rocpd_arg table in database
+int
+iterate_args_callback(rocprofiler_callback_tracing_kind_t /*kind*/,
+                      int32_t /*operation*/,
+                      uint32_t arg_number,
+                      const void* const /*arg_value_addr*/,
+                      int32_t /*arg_indirection_count*/,
+                      const char* arg_type,
+                      const char* arg_name,
+                      const char* arg_value_str,
+                      int32_t /*arg_dereference_count*/,
+                      void*       data)
+{
+    auto* _data = static_cast<function_args_t*>(data);
+    if(arg_type && arg_name && arg_value_str)
+        _data->emplace_back(
+            argument_info{arg_number, demangle(arg_type), arg_name, arg_value_str});
     return 0;
 }
 
@@ -414,12 +441,6 @@ set_kernel_rename_and_stream_correlation_id(
     // common::consume_args(thr_id, ctx_id, kind, op, internal_corr_id, user_data);
 
     return 0;
-}
-
-rocpd::data_processor&
-get_data_processor()
-{
-    return rocpd::data_processor::get_instance();
 }
 
 template <typename Category>
@@ -808,6 +829,9 @@ tool_tracing_callback_stop(
     }
 
     // // Insert callback trace into database
+    auto args = function_args_t{};
+
+    rocprofiler_iterate_callback_tracing_kind_operation_args(record, iterate_args_callback, 2, &args);
     rocpd_initialize_category<CategoryT>();
 
     auto call_stack = get_backtrace(_bt_data);
@@ -815,8 +839,14 @@ tool_tracing_callback_stop(
 
     auto event_id = get_data_processor().insert_event(
         category_enum_id<CategoryT>::value, record.correlation_id.internal, 0,
-        record.correlation_id.internal, get_backtrace(_bt_data), "{}",
-        get_extdata(record));
+        record.correlation_id.internal, call_stack, "{}",
+        extdata);
+
+    for (const auto& arg : args)
+    {
+        get_data_processor().insert_args(
+            event_id, arg.arg_number, demangle(arg.arg_type).c_str(), arg.arg_name.c_str(), arg.arg_value.c_str());
+    }
     rocpd_insert_region<CategoryT>(
                         record.thread_id, user_data->value, ts, _name.data(),
                         event_id, call_stack, "{}", extdata);
