@@ -144,6 +144,7 @@ struct client_data
     rocprofiler_context_id_t                  counter_ctx               = { 0 };
     rocprofiler_buffer_id_t                   kernel_dispatch_buffer    = { 0 };
     rocprofiler_buffer_id_t                   memory_copy_buffer        = { 0 };
+    rocprofiler_buffer_id_t                   memory_alloc_buffer       = { 0 };
     rocprofiler_buffer_id_t                   counter_collection_buffer = { 0 };
     std::vector<rocprofiler_agent_v0_t>       agents                    = {};
     std::vector<tool_agent>                   cpu_agents                = {};

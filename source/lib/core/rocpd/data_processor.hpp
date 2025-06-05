@@ -26,6 +26,8 @@ struct data_processor {
                                                             size_t, size_t, const char*)>;
     using insert_memory_copy_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t, size_t,
                                                         size_t, size_t, size_t, size_t, size_t, size_t, size_t, const char*)>;
+    using insert_memory_alloc_stmt = std::function<void(const char*, size_t, size_t, size_t, size_t, const char*, const char*, uint64_t, uint64_t,
+                                                        size_t, size_t, size_t, size_t, size_t, const char*)>;
     using insert_kernel_symbol_stmt = std::function<void(size_t, const char*, size_t, size_t, uint64_t, const char*, const char*,
                                                         uint64_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, uint32_t, const char*)>;
     using insert_code_object_stmt = std::function<void(size_t, const char*, size_t, size_t, size_t, const char*, uint64_t, uint64_t, uint64_t,
@@ -120,6 +122,10 @@ public:
 
     void insert_args(size_t event_id, size_t position, const char* type, const char* name, const char* value, const char* extdata = "{}");
 
+    void insert_memory_alloc(size_t node_id, size_t process_id, size_t thread_id, size_t agent_id, const char* type, const char* level,
+                             uint64_t start, uint64_t end, size_t address, size_t size, size_t queue_id, size_t stream_id,
+                             size_t event_id, const char* extdata = "{}");
+
 private:
     data_processor();
 
@@ -147,6 +153,8 @@ private:
 
     void initialize_args_stmt();
 
+    void initialize_memory_alloc_stmt();
+
 private:
     std::unordered_map<std::string, track_name_map> _tracks;
     std::unordered_map<pmc_identifier, size_t, pmc_identifier_hash, pmc_identifier_equal> _pmc_descriptor_map;
@@ -170,6 +178,7 @@ private:
     insert_kernel_symbol_stmt _insert_kernel_symbol_statement;
     insert_code_object_stmt _insert_code_object_statement;
     insert_args_stmt _insert_args_statement;
+    insert_memory_alloc_stmt _insert_memory_alloc_statement;
 
     size_t _region_id{1};
     size_t _kernel_dispatch_id{1};

@@ -203,6 +203,47 @@ create_agent_profile(rocprofiler_agent_id_t          agent_id,
     return counters_v;
 }
 
+std::pair<std::string, std::string>
+memtype_to_db(std::string_view memory_type)
+{
+    constexpr auto MEMORY_PREFIX  = std::string_view{"MEMORY_ALLOCATION_"};
+    constexpr auto SCRATCH_PREFIX = std::string_view{"SCRATCH_MEMORY_"};
+    constexpr auto VMEM_PREFIX    = std::string_view{"VMEM_"};
+    constexpr auto ASYNC_PREFIX   = std::string_view{"ASYNC_"};
+
+    std::string _type;
+    std::string _level;
+    if(memory_type.find(MEMORY_PREFIX) == 0)
+    {
+        _type = memory_type.substr(MEMORY_PREFIX.length());
+        if(_type.find(VMEM_PREFIX) == 0)
+        {
+            _type  = _type.substr(VMEM_PREFIX.length());
+            _level = "VIRTUAL";
+        }
+        else
+        {
+            _level = "REAL";
+        }
+    }
+    else if(memory_type.find(SCRATCH_PREFIX) == 0)
+    {
+        _type  = memory_type.substr(SCRATCH_PREFIX.length());
+        _level = "SCRATCH";
+        if(memory_type.find(ASYNC_PREFIX) == 0)
+        {
+            _type = memory_type.substr(ASYNC_PREFIX.length());  // RECLAIM
+        }
+    }
+
+    if(_type == "ALLOCATE")
+    {
+        _type = "ALLOC";
+    }
+
+    return std::make_pair(_type, _level);
+}
+
 rocpd::data_processor&
 get_data_processor()
 {
@@ -602,6 +643,23 @@ rocpd_insert_memory_copy(
         n_info.id, getpid(), record->thread_id, record->start_timestamp, record->end_timestamp,
         name_id, record->dst_agent_id.handle, record->dst_address.value, record->src_agent_id.handle, record->src_address.value,
         record->size, 0 /* Default Queue*/, get_stream_id(record).handle, region_id, event_id, extdata);
+}
+
+void
+rocpd_insert_memory_allocation(
+    rocprofiler_buffer_tracing_memory_allocation_record_t* record,
+    const char* type, const char* level,
+    size_t event_id, const char* extdata = "{}")
+{
+    auto& data_processor = get_data_processor();
+    auto& n_info         = node_info::get_instance();
+
+    rocpd_insert_stream_info(get_stream_id(record));
+
+    data_processor.insert_memory_alloc(
+        n_info.id, getpid(), record->thread_id, record->agent_id.handle,
+        type, level, record->start_timestamp, record->end_timestamp,
+        record->address.value, record->size, 0, 0, event_id, extdata);
 }
 
 void
@@ -1299,7 +1357,34 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                                           _end_ns);
                 }
             }
+            else if (header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION)
+            {
+                auto* record =
+                        static_cast<rocprofiler_buffer_tracing_memory_allocation_record_t*>(
+                        header->payload);
 
+                auto        _corr_id      = record->correlation_id.internal;
+                auto        _beg_ns       = record->start_timestamp;
+                auto        _end_ns       = record->end_timestamp;
+                auto        _agent_id     = record->agent_id;
+                const auto* _agent    = tool_data->get_agent(_agent_id);
+                auto        _name =
+                    tool_data->buffered_tracing_info.at(record->kind, record->operation);
+
+                auto name_id = get_data_processor().insert_string(_name.data());
+                auto event_id = get_data_processor().insert_event(
+                    category_enum_id<category::rocm_memory_copy>::value, _corr_id,
+                    _corr_id, record->correlation_id.external.value, "{}", "{}", "{}");
+                auto region_name_id = rocpd_insert_region<category::rocm_memory_copy>(
+                    record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
+                    "{}");
+
+                auto [type, level] = memtype_to_db(_name);
+                rocpd_insert_memory_allocation(
+                                            record,
+                                            type.c_str(), level.c_str(),
+                                            event_id);
+            }
             else
             {
                 ROCPROFSYS_THROW(
@@ -1636,6 +1721,22 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
             _data->primary_ctx, ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
             (_ops.empty()) ? nullptr : _ops.data(), _ops.size(),
             _data->memory_copy_buffer));
+    }
+
+    if (_buffered_domain.count(ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION) > 0)
+    {
+        ROCPROFILER_CALL(rocprofiler_create_buffer(
+            _data->primary_ctx, buffer_size, watermark,
+            ROCPROFILER_BUFFER_POLICY_LOSSLESS, tool_tracing_buffered, tool_data,
+            &_data->memory_alloc_buffer));
+
+        auto _ops =
+            rocprofiler_sdk::get_operations(ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION);
+
+        ROCPROFILER_CALL(rocprofiler_configure_buffer_tracing_service(
+            _data->primary_ctx, ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION,
+            (_ops.empty()) ? nullptr : _ops.data(), _ops.size(),
+            _data->memory_alloc_buffer));
     }
 
     if(!_counter_events.empty())
