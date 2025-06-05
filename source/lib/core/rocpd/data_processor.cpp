@@ -189,7 +189,7 @@ data_processor::insert_event(size_t category_id, size_t correlation_id, size_t s
         throw std::runtime_error("Insert event: Unknown category id!");
     }
 
-    ROCPROFSYS_VERBOSE(2, "Insert event category id: %ld, string id: %ld\n", category_id, it->second);
+    ROCPROFSYS_VERBOSE(3, "Insert event category id: %ld, string id: %ld\n", category_id, it->second);
 
     _insert_event_statement(_event_id, _upid.c_str(), it->second, stack_id,
                             parent_stack_id, correlation_id, call_stack, line_info, extdata);

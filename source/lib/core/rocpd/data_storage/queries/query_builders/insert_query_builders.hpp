@@ -21,10 +21,10 @@ namespace query_builders {
         query_value_builder& set_values(Values&& ... values) {
             auto i = sizeof ...(values);
             _ss << "( ";
-            ((_ss << (common::traits::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
+            ((_ss << (common::traits::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")
                     << values  
-                    << (common::traits::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")  
-                    << (i-- > 1 ? ", " : " ")), ...) << ")";       
+                    << (common::traits::is_string_literal<std::remove_reference_t<decltype(values)>>::value ? "\"" : "")
+                    << (i-- > 1 ? ", " : " ")), ...) << ")";
             return *this;
         }
 

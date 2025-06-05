@@ -96,10 +96,11 @@ namespace data_storage {
             ss_query << file.rdbuf();
             std::string query = ss_query.str();
 
-            std::regex upid_pattern(schema_file == "rocpd_tables.sql" ? "\\{\\{upid\\}\\}" : "\\{\\{view_upid\\}\\}");
+            std::regex upid_pattern("\\{\\{upid\\}\\}");
+            std::regex view_upid_pattern("\\{\\{view_upid\\}\\}");
 
-            auto upid = schema_file == "rocpd_tables.sql" ? "_" + get_upid() : "";
-            query = std::regex_replace(query, upid_pattern, upid);
+            query = std::regex_replace(query, upid_pattern, "_" + get_upid());
+            query = std::regex_replace(query, view_upid_pattern, "");
 
             validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0),
                        std::string("Invalid schema file, init database failed!").append(file_path));

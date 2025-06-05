@@ -315,7 +315,7 @@ get_stream_id(Tp* _record)
     return _stream_id;
 }
 
-const char*
+auto
 get_backtrace(std::optional<std::vector<tim::unwind::processed_entry>>& _bt_data)
 {
     auto backtrace = ::rocpd::json::create();
@@ -339,10 +339,10 @@ get_backtrace(std::optional<std::vector<tim::unwind::processed_entry>>& _bt_data
             backtrace->set(join("", "frame#", _bt_cnt++), _entry);
         }
     }
-    return backtrace->to_string().c_str();
+    return backtrace;
 }
 
-const char*
+auto
 get_extdata(const rocprofiler_callback_tracing_record_t& record)
 {
     auto args    = callback_arg_array_t{};
@@ -357,7 +357,8 @@ get_extdata(const rocprofiler_callback_tracing_record_t& record)
             extdata->set(key, val);
         }
     }
-    return extdata->to_string().c_str();
+
+    return extdata;
 }
 
 struct scope_destructor
@@ -839,8 +840,8 @@ tool_tracing_callback_stop(
 
     auto event_id = get_data_processor().insert_event(
         category_enum_id<CategoryT>::value, record.correlation_id.internal, 0,
-        record.correlation_id.internal, call_stack, "{}",
-        extdata);
+        record.correlation_id.internal, call_stack->to_string().c_str(), "{}",
+        extdata->to_string().c_str());
 
     for (const auto& arg : args)
     {
@@ -849,7 +850,7 @@ tool_tracing_callback_stop(
     }
     rocpd_insert_region<CategoryT>(
                         record.thread_id, user_data->value, ts, _name.data(),
-                        event_id, call_stack, "{}", extdata);
+                        event_id, call_stack->to_string().c_str(), "{}", extdata->to_string().c_str());
 }
 
 void
