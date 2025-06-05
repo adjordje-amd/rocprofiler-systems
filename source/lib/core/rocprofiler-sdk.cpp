@@ -317,8 +317,8 @@ config_settings(const std::shared_ptr<settings>& _config)
     auto _domain_description =
         JOIN("", "Specification of ROCm domains to trace/profile. Choices: ",
              join::join(join::array_config{ ", ", "", "" }, _domain_choices));
-    auto _domain_defaults = std::string{ "hip_runtime_api,marker_api,kernel_dispatch,hsa_api,"
-                                         "memory_copy,scratch_memory" };
+    auto _domain_defaults = std::string{ "hip_runtime_api,marker_api,kernel_dispatch,hsa_api"
+                                         "memory_copy,memory_allocation,scratch_memory" };
 #    if(ROCPROFILER_VERSION < 10000)
     _domain_defaults.append(",page_migration");
 #    endif
@@ -434,6 +434,7 @@ get_buffered_domains()
     {
         ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH,
             ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
+            ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION,
 #    if(ROCPROFILER_VERSION < 10000)
             ROCPROFILER_BUFFER_TRACING_PAGE_MIGRATION,
 #    endif
@@ -478,6 +479,10 @@ get_buffered_domains()
         else if(itr == "marker_api" || itr == "roctx")
         {
             _data.emplace(ROCPROFILER_BUFFER_TRACING_MARKER_CORE_API);
+        }
+        else if(itr == "memory_allocate")
+        {
+            _data.emplace(ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION);
         }
         else
         {
