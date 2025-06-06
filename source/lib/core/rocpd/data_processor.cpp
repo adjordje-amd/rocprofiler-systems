@@ -594,7 +594,7 @@ data_processor::insert_thread_info(size_t node_id, size_t parent_process_id,
     if(_thread_ids.count(thread_id) > 0)
     {
         ROCPROFSYS_WARNING(
-            1, "Insert thread info failed! Error: Thread ID %ld already exists!\n",
+            2, "Insert thread info failed! Thread ID %ld already exists!\n",
             thread_id);
         return;
     }

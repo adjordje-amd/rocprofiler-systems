@@ -93,7 +93,7 @@ ROCPROFSYS_DEFINE_CATEGORY(category, user, ROCPROFSYS_CATEGORY_USER, "user", "Us
 ROCPROFSYS_DEFINE_CATEGORY(category, python, ROCPROFSYS_CATEGORY_PYTHON, "python", "Python regions")
 ROCPROFSYS_DEFINE_CATEGORY(category, rocm, ROCPROFSYS_CATEGORY_ROCM, "rocm", "General ROCm tracing")
 ROCPROFSYS_DEFINE_CATEGORY(category, rocm_hip_api, ROCPROFSYS_CATEGORY_ROCM_HIP_API, "HIP_RUNTIME_API_EXT", "ROCm HIP functions")
-ROCPROFSYS_DEFINE_CATEGORY(category, rocm_hsa_api, ROCPROFSYS_CATEGORY_ROCM_HSA_API, "rocm_hsa_api", "ROCm HSA functions")
+ROCPROFSYS_DEFINE_CATEGORY(category, rocm_hsa_api, ROCPROFSYS_CATEGORY_ROCM_HSA_API, "HSA_CORE_API", "ROCm HSA functions")
 ROCPROFSYS_DEFINE_CATEGORY(category, rocm_kernel_dispatch, ROCPROFSYS_CATEGORY_ROCM_KERNEL_DISPATCH, "rocm_kernel_dispatch", "ROCm Kernel dispatch")
 ROCPROFSYS_DEFINE_CATEGORY(category, rocm_memory_copy, ROCPROFSYS_CATEGORY_ROCM_MEMORY_COPY, "rocm_memory_copy", "ROCm Async Memory Copy")
 ROCPROFSYS_DEFINE_CATEGORY(category, rocm_scratch_memory, ROCPROFSYS_CATEGORY_ROCM_SCRATCH_MEMORY, "rocm_scratch_memory", "ROCm kernel scratch memory reallocations")
