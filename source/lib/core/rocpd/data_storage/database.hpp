@@ -11,6 +11,7 @@ namespace rocpd {
 namespace data_storage {
 
 static std::mutex _mutex;
+
 class database {
 public:
     static database& get_instance();
@@ -53,8 +54,8 @@ public:
     size_t get_last_insert_id();
 
     /**
-     * This function prepares an SQLite statement based on the provided SQL query and returns a lambda   
-     * that can execute the prepared statement, binding the provided values to the respective placeholders   
+     * This function prepares an SQLite statement based on the provided SQL query and returns a lambda
+     * that can execute the prepared statement, binding the provided values to the respective placeholders
      * in the query.
     */
     template<typename ... Values>
@@ -65,7 +66,7 @@ public:
         std::shared_ptr<sqlite3_stmt> stmt{p_stmt, sqlite3_finalize};
 
         return [stmt, query, db](Values ... value) {
-            std::lock_guard<std::mutex> lock(_mutex);
+            std::lock_guard lock { _mutex };
             int position = 1;
             auto bind_value = [&](auto value) {
                 using T = decltype(value);

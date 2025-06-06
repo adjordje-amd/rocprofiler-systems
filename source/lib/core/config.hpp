@@ -358,6 +358,9 @@ get_use_tmp_files();
 std::string
 get_tmpdir();
 
+std::string
+get_output_directory();
+
 struct tmp_file
 {
     tmp_file(std::string);

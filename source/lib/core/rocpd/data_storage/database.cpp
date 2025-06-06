@@ -4,6 +4,7 @@
 #include "common/md5sum.hpp"
 
 #include <timemory/environment/types.hpp>
+#include <config.hpp>
 #include <chrono>
 #include <fstream>
 #include <memory>
@@ -35,8 +36,9 @@ namespace data_storage {
             ss << "rocprof-" << get_upid() << "-" << seconds << ".db";
             return ss.str();
         }();
-        
-        
+        auto output_path = rocprofsys::get_output_directory();
+        std::cout << "++++++" << output_path << "\n";
+
 
         ROCPROFSYS_VERBOSE(0, "Database: %s\r\n", db_name.c_str());
 #ifdef USE_RAM_DB
@@ -46,9 +48,9 @@ namespace data_storage {
         validate_sqlite3_result(sqlite3_open(db_name.c_str(), &_ram_sqlite_db), "database open failed!");
 #endif
     };
-    
-    database::~database() {   
-#ifdef USE_RAM_DB  
+
+    database::~database() {
+#ifdef USE_RAM_DB
         auto backup = sqlite3_backup_init(_sqlite3_db, "main", _ram_sqlite_db, "main");
         if (backup) {
             sqlite3_backup_step(backup, -1);  // Copy all pages
@@ -122,6 +124,6 @@ namespace data_storage {
         return _upid;
     }
 
-} // namespace data_storage 
-} // namespace rocpd 
-} // namespace rocprofsys 
+} // namespace data_storage
+} // namespace rocpd
+} // namespace rocprofsys

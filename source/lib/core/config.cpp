@@ -2344,6 +2344,46 @@ get_tmpdir()
     return static_cast<tim::tsettings<std::string>&>(*_v->second).get();
 }
 
+std::string
+get_output_directory()
+{
+    static auto _v       = get_config()->find("ROCPROFSYS_PERFETTO_FILE");
+
+    auto        _val     = static_cast<tim::tsettings<std::string>&>(*_v->second).get();
+    std::cout << _val << "\n";
+
+    auto        _pos_dir = _val.find_last_of('/');
+    std::cout << _pos_dir << "\n";
+
+    auto        _dir     = std::string{};
+    std::cout << _dir << "\n";
+
+    auto        _ext     = std::string{ "proto" };
+    if(_pos_dir != std::string::npos)
+    {
+        _dir = _val.substr(0, _pos_dir + 1);
+        _val = _val.substr(_pos_dir + 1);
+    }
+    std::cout << _dir << "\n";
+    auto _pos_ext = _val.find_last_of('.');
+    if(_pos_ext + 1 < _val.length())
+    {
+        _ext = _val.substr(_pos_ext + 1);
+        _val = _val.substr(0, _pos_ext);
+    }
+    std::cout << _dir << "\n";
+
+    auto _cfg = settings::compose_filename_config{ settings::use_output_suffix(),
+                                                   settings::default_process_suffix(),
+                                                   false, _dir };
+    std::cout << _dir << "\n";
+    _val      = settings::compose_output_filename(_val, _ext, _cfg);
+    std::cout << _val << " " << _ext << " " << "\n";
+    if(!_val.empty() && _val.at(0) != '/')
+        return settings::format(JOIN('/', "%env{PWD}%", _val), get_config()->get_tag());
+    return _val;
+}
+
 tmp_file::tmp_file(std::string _v)
 : filename{ std::move(_v) }
 {}
