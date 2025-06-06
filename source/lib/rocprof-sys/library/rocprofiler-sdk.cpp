@@ -348,6 +348,8 @@ get_stream_id(Tp* _record)
         // Extract the stream id
         auto* _ecid_data = static_cast<kernel_rename_and_stream_data*>(
             _record->correlation_id.external.ptr);
+        std::cout << "Extracting stream id: " << _ecid_data->stream_id.handle
+                  << std::endl;
         _stream_id                             = _ecid_data->stream_id;
         auto _region_id                        = _ecid_data->region_id;
         _record->correlation_id.external.value = _region_id;
@@ -388,6 +390,7 @@ get_extdata(const rocprofiler_callback_tracing_record_t& record)
 {
     auto args    = callback_arg_array_t{};
     auto extdata = ::rocpd::json::create();
+    auto message = ::rocpd::json::create();
 
     rocprofiler_iterate_callback_tracing_kind_operation_args(record, save_args, 2, &args);
 
@@ -395,9 +398,11 @@ get_extdata(const rocprofiler_callback_tracing_record_t& record)
     {
         if(!key.empty() && !val.empty())
         {
-            extdata->set(key, val);
+            message->set(key, val);
         }
     }
+
+    extdata->set("message", "message->to_string()");
 
     return extdata;
 }
@@ -613,13 +618,15 @@ rocpd_insert_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t
     auto& n_info         = node_info::get_instance();
 
     rocpd_insert_thread_info(record->thread_id);
-    rocpd_insert_stream_info(get_stream_id(record));
+    std::cout << "Insert kernel dispatch!" << std::endl;
+    auto stream_id = get_stream_id(record);
+    rocpd_insert_stream_info(stream_id);
     rocpd_insert_queue_info(record->dispatch_info.queue_id);
 
     data_processor.insert_kernel_dispatch(
         n_info.id, getpid(), record->thread_id, record->dispatch_info.agent_id.handle,
         record->dispatch_info.kernel_id, record->dispatch_info.dispatch_id,
-        record->dispatch_info.queue_id.handle, get_stream_id(record).handle,
+        record->dispatch_info.queue_id.handle, stream_id.handle,
         record->start_timestamp, record->end_timestamp,
         record->dispatch_info.private_segment_size,
         record->dispatch_info.group_segment_size, record->dispatch_info.workgroup_size.x,
@@ -635,14 +642,15 @@ rocpd_insert_memory_copy(
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
+    auto stream_id = get_stream_id(record);
 
     rocpd_insert_thread_info(record->thread_id);
-    rocpd_insert_stream_info(get_stream_id(record));
+    rocpd_insert_stream_info(stream_id);
 
     data_processor.insert_memory_copy(
         n_info.id, getpid(), record->thread_id, record->start_timestamp, record->end_timestamp,
         name_id, record->dst_agent_id.handle, record->dst_address.value, record->src_agent_id.handle, record->src_address.value,
-        record->size, 0 /* Default Queue*/, get_stream_id(record).handle, region_id, event_id, extdata);
+        record->size, 0 /* Default Queue*/, stream_id.handle, region_id, event_id, extdata);
 }
 
 void
@@ -898,8 +906,7 @@ tool_tracing_callback_stop(
 
     auto event_id = get_data_processor().insert_event(
         category_enum_id<CategoryT>::value, record.correlation_id.internal, 0,
-        record.correlation_id.internal, call_stack->to_string().c_str(), "{}",
-        extdata->to_string().c_str());
+        record.correlation_id.internal, call_stack->to_string().c_str(), "{}");
 
     for (const auto& arg : args)
     {
@@ -908,7 +915,7 @@ tool_tracing_callback_stop(
     }
     rocpd_insert_region<CategoryT>(
                         record.thread_id, user_data->value, ts, _name.data(),
-                        event_id, call_stack->to_string().c_str(), "{}", extdata->to_string().c_str());
+                        event_id, call_stack->to_string().c_str(), "{}");
 }
 
 void

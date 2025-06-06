@@ -4,10 +4,14 @@
 #include <sqlite3.h>
 #include <memory>
 #include <functional>
+#include <mutex>
 
 namespace rocprofsys {
 namespace rocpd {
 namespace data_storage {
+
+static std::mutex _db_mutex;
+
 
 class database {
 public:
@@ -63,22 +67,27 @@ public:
         std::shared_ptr<sqlite3_stmt> stmt{p_stmt, sqlite3_finalize};
 
         return [stmt, query, db](Values ... value) {
+            std::lock_guard<std::mutex> lock(_db_mutex);
             int position = 1;
             auto bind_value = [&](auto value) {
                 using T = decltype(value);
                 if constexpr (std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>) {
-                    database::validate_sqlite3_result(sqlite3_bind_int(stmt.get(), position, value), "Failed to bind int32_t/uint32_t! Position: ", position, " Value: ", value);
+                    database::validate_sqlite3_result(sqlite3_bind_int(stmt.get(), position, value), db, "Failed to bind int32_t/uint32_t! Position: ", position, ", Values: ", value);
                 }else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, uint64_t>) {
-                    database::validate_sqlite3_result(sqlite3_bind_int64(stmt.get(), position, value), "Failed to bind int64_t/uint64_t! Position: ", position, " Value: ", value);
+                    database::validate_sqlite3_result(sqlite3_bind_int64(stmt.get(), position, value), db, "Failed to bind int64_t/uint64_t! Position: ", position, ", Values: ", value);
                 } else if constexpr (std::is_floating_point_v<T>) {
-                    database::validate_sqlite3_result(sqlite3_bind_double(stmt.get(), position, value), "Failed to bind double! Position: ", position," Value: ", value);
+                    database::validate_sqlite3_result(sqlite3_bind_double(stmt.get(), position, value), db, "Failed to bind double! Position: ", position, ", Values: ", value);
                 } else if constexpr (common::traits::is_string_literal_v<std::decay_t<T>>) {
-                    database::validate_sqlite3_result(sqlite3_bind_text(stmt.get(), position, value, -1, SQLITE_STATIC), "Failed to bind text! Position: ", position, " Value: ", value);
+                    database::validate_sqlite3_result(sqlite3_bind_text(stmt.get(), position, value, -1, SQLITE_STATIC), db, "Failed to bind text! Position: ", position, ", Values: ", value);
                 } else {
                     throw std::runtime_error("Unsupported type for binding!");
                 }
                 position++;
             };
+
+            // std::cout << "Executing query: " << query << " with values: ";
+            // ((std::cout << value << " "), ...);
+            // std::cout << std::endl;
 
             (bind_value(value),...);
 
