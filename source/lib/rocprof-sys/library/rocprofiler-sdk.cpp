@@ -395,7 +395,7 @@ get_extdata(const rocprofiler_callback_tracing_record_t& record)
         }
     }
 
-    extdata->set("message", "message->to_string()");
+    extdata->set("message", message->to_string());
 
     return extdata;
 }
@@ -897,8 +897,13 @@ tool_tracing_callback_stop(
     auto extdata    = get_extdata(record);
 
     auto event_id = get_data_processor().insert_event(
-        category_enum_id<CategoryT>::value, record.correlation_id.internal, 0,
-        record.correlation_id.internal, call_stack->to_string().c_str(), "{}");
+        category_enum_id<CategoryT>::value,
+        record.correlation_id.internal,
+        record.correlation_id.ancestor,
+        0,
+        call_stack->to_string().c_str(),
+        "{}",
+        extdata->to_string().c_str());
 
     for(const auto& arg : args)
     {
@@ -907,7 +912,7 @@ tool_tracing_callback_stop(
                                          arg.arg_name.c_str(), arg.arg_value.c_str());
     }
     rocpd_insert_region<CategoryT>(record.thread_id, user_data->value, ts, _name.data(),
-                                   event_id, call_stack->to_string().c_str(), "{}");
+                                   event_id, call_stack->to_string().c_str(), extdata->to_string().c_str());
 }
 
 void
@@ -1197,6 +1202,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                 auto        _name     = tim::demangle(_kern_sym_data->kernel_name);
                 auto        _corr_id  = record->correlation_id.internal;
+                auto        _ancestor_id = record->correlation_id.ancestor;
                 auto        _beg_ns   = record->start_timestamp;
                 auto        _end_ns   = record->end_timestamp;
                 auto        _agent_id = record->dispatch_info.agent_id;
@@ -1205,8 +1211,14 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                 rocpd_initialize_category<category::rocm_kernel_dispatch>();
                 auto event_id = get_data_processor().insert_event(
-                    category_enum_id<category::rocm_kernel_dispatch>::value, _corr_id,
-                    _corr_id, record->correlation_id.external.value, "{}", "{}", "{}");
+                    category_enum_id<category::rocm_kernel_dispatch>::value,
+                    _corr_id,
+                    _ancestor_id,
+                    0,
+                    "{}",
+                    "{}",
+                    "{}");
+
                 auto record_name_id = rocpd_insert_region<category::rocm_kernel_dispatch>(
                     record->thread_id, _beg_ns, _end_ns, _name.c_str(), event_id, "{}",
                     "{}");
@@ -1296,6 +1308,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                         header->payload);
 
                 auto        _corr_id      = record->correlation_id.internal;
+                auto        _ancestor_id  = recotd->correlation_id.ancestor;
                 auto        _beg_ns       = record->start_timestamp;
                 auto        _end_ns       = record->end_timestamp;
                 auto        _dst_agent_id = record->dst_agent_id;
@@ -1310,8 +1323,13 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                 auto name_id  = get_data_processor().insert_string(_name.data());
                 auto event_id = get_data_processor().insert_event(
-                    category_enum_id<category::rocm_memory_copy>::value, _corr_id,
-                    _corr_id, record->correlation_id.external.value, "{}", "{}", "{}");
+                    category_enum_id<category::rocm_memory_copy>::value,
+                    _corr_id,
+                    _ancestor_id,
+                    0,
+                    "{}",
+                    "{}",
+                        "{}");
                 auto region_name_id = rocpd_insert_region<category::rocm_memory_copy>(
                     record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
                     "{}");
@@ -1379,24 +1397,30 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     static_cast<rocprofiler_buffer_tracing_memory_allocation_record_t*>(
                         header->payload);
 
-                auto _corr_id = record->correlation_id.internal;
-                auto _beg_ns  = record->start_timestamp;
-                auto _end_ns  = record->end_timestamp;
-                auto _name =
+                auto        _corr_id      = record->correlation_id.internal;
+                auto        _ancestor_id  = record->correlation_id.ancestor;
+                auto        _beg_ns       = record->start_timestamp;
+                auto        _end_ns       = record->end_timestamp;
+                auto        _name =
                     tool_data->buffered_tracing_info.at(record->kind, record->operation);
 
                 // Insert memory allocation record into database
                 rocpd_initialize_category<category::rocm_memory_allocate>();
 
                 auto name_id = get_data_processor().insert_string(_name.data());
-
+                auto category_id =
+                    get_data_processor().insert_string("MEMORY_ALLOCATION");
                 auto event_id = get_data_processor().insert_event(
-                    category_enum_id<category::rocm_memory_allocate>::value, _corr_id,
-                    _corr_id, record->correlation_id.external.value, "{}", "{}", "{}");
-
-                auto region_name_id = rocpd_insert_region<category::rocm_memory_allocate>(
-                    record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
-                    "{}");
+                category_id,
+                _corr_id,
+                _ancestor_id,
+                0,
+                "{}",
+                "{}",
+                "{}");
+                auto region_name_id = rocpd_insert_region<category::rocm>(
+                                        record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
+                                        "{}");
 
                 auto [type, level] = memtype_to_db(_name);
                 rocpd_insert_memory_allocation(record, type.c_str(), level.c_str(),
