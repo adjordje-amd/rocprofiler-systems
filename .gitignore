@@ -42,6 +42,7 @@
 _toc.yml
 
 /build*
+/debug*
 /.vscode
 /.cache
 /.clangd

@@ -2,6 +2,7 @@
 #include "queries/table_insert_query.hpp"
 #include "common/traits.hpp"
 #include <sqlite3.h>
+#include <optional>
 #include <memory>
 #include <functional>
 #include <mutex>
@@ -28,7 +29,20 @@ private:
     static inline void validate_sqlite3_result(int sqlite3_error_code, Args&& ... args) {
         if (SQLITE_OK != sqlite3_error_code && SQLITE_DONE != sqlite3_error_code) {
             std::stringstream ss;
-            ((ss << args << " "),...);
+            auto stream_arg = [&ss](auto&& arg) {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::optional<size_t>>) {
+                    if (arg.has_value()) {
+                        ss << arg.value();
+                    } else {
+                        ss << "NULL";
+                    }
+                } else {
+                    ss << arg;
+                }
+                ss << " ";
+            };
+            (stream_arg(args), ...);
             ss << " [Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code) << "]";
             throw std::runtime_error(ss.str());
         }
@@ -38,7 +52,20 @@ private:
     static inline void validate_sqlite3_result(int sqlite3_error_code, sqlite3* db, Args&& ... args) {
         if (SQLITE_OK != sqlite3_error_code && SQLITE_DONE != sqlite3_error_code) {
             std::stringstream ss;
-            ((ss << args << " "),...);
+            auto stream_arg = [&ss](auto&& arg) {
+            using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::optional<size_t>>) {
+                    if (arg.has_value()) {
+                        ss << arg.value();
+                    } else {
+                        ss << "NULL";
+                    }
+                } else {
+                    ss << arg;
+                }
+                ss << " ";
+            };
+            (stream_arg(args), ...);
             ss << " [Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code);
             ss << " (Extended error message: " << sqlite3_errmsg(db) << ")]";
             throw std::runtime_error(ss.str());
@@ -78,15 +105,17 @@ public:
                     database::validate_sqlite3_result(sqlite3_bind_double(stmt.get(), position, value), db, "Failed to bind double! Position: ", position, ", Values: ", value);
                 } else if constexpr (common::traits::is_string_literal_v<std::decay_t<T>>) {
                     database::validate_sqlite3_result(sqlite3_bind_text(stmt.get(), position, value, -1, SQLITE_STATIC), db, "Failed to bind text! Position: ", position, ", Values: ", value);
+                } else if constexpr (std::is_same_v<std::decay_t<T>, std::optional<size_t>>) {
+                    if (value.has_value()) {
+                        database::validate_sqlite3_result(sqlite3_bind_int64(stmt.get(), position, value.value()), db, "Failed to bind optional<size_t>! Position: ", position, ", Values: ", value.value());
+                    } else {
+                        database::validate_sqlite3_result(sqlite3_bind_null(stmt.get(), position), db, "Failed to bind NULL for optional<size_t>! Position: ", position);
+                }
                 } else {
                     throw std::runtime_error("Unsupported type for binding!");
                 }
                 position++;
             };
-
-            // std::cout << "Executing query: " << query << " with values: ";
-            // ((std::cout << value << " "), ...);
-            // std::cout << std::endl;
 
             (bind_value(value),...);
 

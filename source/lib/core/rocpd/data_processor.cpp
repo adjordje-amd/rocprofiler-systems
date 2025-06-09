@@ -22,6 +22,7 @@ data_processor::data_processor()
     initialize_kernel_symbol_stmt();
     initialize_metadata();
     initialize_args_stmt();
+    initialize_memory_alloc_stmt();
 }
 
 data_processor&
@@ -211,15 +212,17 @@ data_processor::insert_sample(const char* track, uint64_t timestamp, size_t even
 }
 
 size_t
-data_processor::insert_event(size_t category_id, size_t correlation_id, size_t stack_id,
-                             size_t parent_stack_id, const char* call_stack,
+data_processor::insert_event(size_t category_id, size_t stack_id, size_t parent_stack_id,
+                             size_t correlation_id, const char* call_stack,
                              const char* line_info, const char* extdata)
 {
     std::lock_guard<std::mutex> lock(_data_mutex);
     auto                        it = _category_map.find(category_id);
     if(it == _category_map.end())
     {
-        throw std::runtime_error("Insert event: Unknown category id!");
+        char buf[128];
+        snprintf(buf, sizeof(buf), "Insert event: Unknown category id. ID = %ld!", category_id);
+        throw std::runtime_error(buf);
     }
 
     ROCPROFSYS_VERBOSE(3, "Insert event category id: %ld, string id: %ld\n", category_id,
@@ -402,7 +405,7 @@ data_processor::initialize_memory_alloc_stmt()
     _insert_memory_alloc_statement =
         data_storage::database::get_instance()
             .create_statment_executor<
-                const char*, size_t, size_t, size_t, size_t, const char*, const char*,
+                const char*, size_t, size_t, size_t, std::optional<size_t>, const char*, const char*,
                 uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, const char*>(
                 query);
 }
@@ -420,9 +423,9 @@ data_processor::insert_stream_info(size_t stream_id, size_t node_id, size_t proc
 {
     if(_stream_ids.count(stream_id) > 0)
     {
-        ROCPROFSYS_WARNING(
-            1, "Insert stream info failed! Error: Stream ID %ld already exists!\n",
-            stream_id);
+        // ROCPROFSYS_WARNING(
+        //     1, "Insert stream info failed! Error: Stream ID %ld already exists!\n",
+        //     stream_id);
         return;
     }
     data_storage::queries::table_insert_query query;
@@ -440,9 +443,9 @@ data_processor::insert_queue_info(size_t queue_id, size_t node_id, size_t proces
 {
     if(_queue_ids.count(queue_id) > 0)
     {
-        ROCPROFSYS_WARNING(
-            1, "Insert queue info failed! Error: Queue ID %ld already exists!\n",
-            queue_id);
+        // ROCPROFSYS_WARNING(
+        //     1, "Insert queue info failed! Error: Queue ID %ld already exists!\n",
+        //     queue_id);
         return;
     }
     data_storage::queries::table_insert_query query;
@@ -462,10 +465,10 @@ data_processor::insert_code_object(size_t id, size_t node_id, size_t process_id,
 {
     if(_code_object_ids.count(id) > 0)
     {
-        ROCPROFSYS_WARNING(
-            1,
-            "Insert code object info failed! Error: Code object ID %ld already exists!\n",
-            id);
+        // ROCPROFSYS_WARNING(
+        //     1,
+        //     "Insert code object info failed! Error: Code object ID %ld already
+        //     exists!\n", id);
         return;
     }
     ROCPROFSYS_VERBOSE(2, "Insert code object with ID: %ld\n", id);
@@ -486,10 +489,10 @@ data_processor::insert_kernel_symbol(
 {
     if(_kernel_sym_ids.count(id) > 0)
     {
-        ROCPROFSYS_WARNING(
-            1,
-            "Insert kernel symbol failed! Error: Kernel symbol ID %ld already exists!\n",
-            id);
+        // ROCPROFSYS_WARNING(
+        //     1,
+        //     "Insert kernel symbol failed! Error: Kernel symbol ID %ld already
+        //     exists!\n", id);
         return;
     }
 
@@ -508,8 +511,8 @@ data_processor::insert_category(size_t category_id, const char* name)
     auto it = _category_map.find(category_id);
     if(it != _category_map.end())
     {
-        ROCPROFSYS_WARNING(
-            1, "Insert category failed! Error: Category %s already exist!\n", name);
+        // ROCPROFSYS_WARNING(
+        //     1, "Insert category failed! Error: Category %s already exist!\n", name);
         return;
     }
     auto name_id = insert_string(name);
@@ -573,17 +576,15 @@ data_processor::insert_memory_copy(size_t node_id, size_t process_id, size_t thr
 }
 
 void
-data_processor::insert_memory_alloc(
-    size_t node_id, size_t process_id, size_t thread_id, size_t agent_id,
-    const char* type, const char* level, uint64_t start, uint64_t end, size_t address,
-    size_t size, size_t queue_id, size_t stream_id, size_t event_id,
-    const char* extdata)
+data_processor::insert_memory_alloc(size_t node_id, size_t process_id, size_t thread_id,
+                                    std::optional<size_t> agent_id, const char* type, const char* level,
+                                    uint64_t start, uint64_t end, size_t address,
+                                    size_t size, size_t queue_id, size_t stream_id,
+                                    size_t event_id, const char* extdata)
 {
-
-    _insert_memory_alloc_statement(_upid.c_str(), node_id, process_id,
-                                   thread_id, agent_id, type, level, start, end, address,
-                                   size, queue_id, stream_id, event_id, extdata);
-
+    _insert_memory_alloc_statement(_upid.c_str(), node_id, process_id, thread_id,
+                                   agent_id, type, level, start, end, address, size,
+                                   queue_id, stream_id, event_id, extdata);
 }
 
 void
@@ -593,9 +594,9 @@ data_processor::insert_thread_info(size_t node_id, size_t parent_process_id,
 {
     if(_thread_ids.count(thread_id) > 0)
     {
-        ROCPROFSYS_WARNING(
-            2, "Insert thread info failed! Thread ID %ld already exists!\n",
-            thread_id);
+        // ROCPROFSYS_WARNING(
+        //     2, "Insert thread info failed! Thread ID %ld already exists!\n",
+        //     thread_id);
         return;
     }
     data_storage::queries::table_insert_query query;

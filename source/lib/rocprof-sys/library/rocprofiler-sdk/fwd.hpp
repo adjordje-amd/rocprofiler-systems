@@ -79,7 +79,7 @@ struct rocprofiler_tool_counter_info_t : rocprofiler_counter_info_v0_t
     rocprofiler_tool_counter_info_t(rocprofiler_tool_counter_info_t&&) noexcept = default;
     rocprofiler_tool_counter_info_t& operator=(const rocprofiler_tool_counter_info_t&) =
         default;
-    rocprofiler_tool_counter_info_t& operator       =(
+    rocprofiler_tool_counter_info_t& operator=(
         rocprofiler_tool_counter_info_t&&) noexcept = default;
 
     rocprofiler_agent_id_t                           agent_id       = {};
@@ -127,7 +127,7 @@ using backtrace_operation_map_t =
 
 struct client_data
 {
-    static constexpr size_t num_buffers  = 3;
+    static constexpr size_t num_buffers  = 6;
     static constexpr size_t num_contexts = 2;
 
     using buffer_name_info_t   = rocprofiler::sdk::buffer_name_info_t<std::string_view>;
@@ -145,6 +145,8 @@ struct client_data
     rocprofiler_buffer_id_t                   kernel_dispatch_buffer    = { 0 };
     rocprofiler_buffer_id_t                   memory_copy_buffer        = { 0 };
     rocprofiler_buffer_id_t                   memory_alloc_buffer       = { 0 };
+    rocprofiler_buffer_id_t                   hsa_core_api_buffer       = { 0 };
+    rocprofiler_buffer_id_t                   hsa_amd_ext_api_buffer    = { 0 };
     rocprofiler_buffer_id_t                   counter_collection_buffer = { 0 };
     std::vector<rocprofiler_agent_v0_t>       agents                    = {};
     std::vector<tool_agent>                   cpu_agents                = {};
@@ -186,9 +188,8 @@ inline client_data::buffer_id_vec_t
 client_data::get_buffers() const
 {
     return buffer_id_vec_t{
-        kernel_dispatch_buffer,
-        memory_copy_buffer,
-        counter_collection_buffer,
+        kernel_dispatch_buffer, memory_copy_buffer,     memory_alloc_buffer,
+        hsa_core_api_buffer,    hsa_amd_ext_api_buffer, counter_collection_buffer,
     };
 }
 
@@ -215,7 +216,6 @@ client_data::get_gpu_tool_agent(rocprofiler_agent_id_t id) const
 //         if(gpu_id == itr.device_id) return &itr;
 //     return nullptr;
 // }
-
 
 inline const kernel_symbol_data_t*
 client_data::get_kernel_symbol_info(uint64_t _kernel_id) const
@@ -249,7 +249,8 @@ inline const rocprofiler_callback_tracing_code_object_load_data_t*
 client_data::get_code_object_info(uint64_t code_object_id) const
 {
     return code_object_records.rlock(
-        [code_object_id](const auto& _data) -> const rocprofiler_callback_tracing_code_object_load_data_t* {
+        [code_object_id](const auto& _data)
+            -> const rocprofiler_callback_tracing_code_object_load_data_t* {
             for(const auto& itr : _data)
             {
                 if(code_object_id == itr.payload.code_object_id)

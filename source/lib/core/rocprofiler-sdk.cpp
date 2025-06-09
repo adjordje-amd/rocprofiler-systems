@@ -317,9 +317,10 @@ config_settings(const std::shared_ptr<settings>& _config)
     auto _domain_description =
         JOIN("", "Specification of ROCm domains to trace/profile. Choices: ",
              join::join(join::array_config{ ", ", "", "" }, _domain_choices));
-    auto _domain_defaults = std::string{ "hip_runtime_api,marker_api,kernel_dispatch,hsa_api"
-                                         "memory_copy,memory_allocation,scratch_memory" };
-#    if(ROCPROFILER_VERSION < 10000)
+    auto _domain_defaults =
+        std::string{ "hip_runtime_api,marker_api,kernel_dispatch,hsa_api,"
+                     "memory_copy,scratch_memory" };
+#    if (ROCPROFILER_VERSION < 10000)
     _domain_defaults.append(",page_migration");
 #    endif
 
@@ -353,18 +354,17 @@ std::unordered_set<rocprofiler_callback_tracing_kind_t>
 get_callback_domains()
 {
     const auto callback_tracing_info = rocprofiler::sdk::get_callback_tracing_names();
-    const auto supported = std::unordered_set<rocprofiler_callback_tracing_kind_t>
-    {
+    const auto supported = std::unordered_set<rocprofiler_callback_tracing_kind_t>{
         ROCPROFILER_CALLBACK_TRACING_HSA_CORE_API,
-            ROCPROFILER_CALLBACK_TRACING_HSA_AMD_EXT_API,
-            ROCPROFILER_CALLBACK_TRACING_HSA_IMAGE_EXT_API,
-            ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API,
-            ROCPROFILER_CALLBACK_TRACING_HIP_COMPILER_API,
-            ROCPROFILER_CALLBACK_TRACING_MARKER_CORE_API,
-            ROCPROFILER_CALLBACK_TRACING_CODE_OBJECT,
-#    if(ROCPROFILER_VERSION >= 700)
-            ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API,
-            ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API,
+        ROCPROFILER_CALLBACK_TRACING_HSA_AMD_EXT_API,
+        ROCPROFILER_CALLBACK_TRACING_HSA_IMAGE_EXT_API,
+        ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API,
+        ROCPROFILER_CALLBACK_TRACING_HIP_COMPILER_API,
+        ROCPROFILER_CALLBACK_TRACING_MARKER_CORE_API,
+        ROCPROFILER_CALLBACK_TRACING_CODE_OBJECT,
+#    if (ROCPROFILER_VERSION >= 700)
+        ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API,
+        ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API,
 #    endif
     };
 
@@ -430,15 +430,16 @@ std::unordered_set<rocprofiler_buffer_tracing_kind_t>
 get_buffered_domains()
 {
     const auto buffer_tracing_info = rocprofiler::sdk::get_buffer_tracing_names();
-    const auto supported           = std::unordered_set<rocprofiler_buffer_tracing_kind_t>
-    {
+    const auto supported = std::unordered_set<rocprofiler_buffer_tracing_kind_t>{
+        ROCPROFILER_BUFFER_TRACING_HSA_CORE_API,
+        ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API,
         ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH,
-            ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
-            ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION,
-#    if(ROCPROFILER_VERSION < 10000)
-            ROCPROFILER_BUFFER_TRACING_PAGE_MIGRATION,
+        ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
+        ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION,
+#    if (ROCPROFILER_VERSION < 10000)
+        ROCPROFILER_BUFFER_TRACING_PAGE_MIGRATION,
 #    endif
-            ROCPROFILER_BUFFER_TRACING_SCRATCH_MEMORY,
+        ROCPROFILER_BUFFER_TRACING_SCRATCH_MEMORY,
     };
 
     auto _data = std::unordered_set<rocprofiler_buffer_tracing_kind_t>{};
@@ -467,6 +468,7 @@ get_buffered_domains()
             for(auto eitr : { ROCPROFILER_BUFFER_TRACING_HSA_CORE_API,
                               ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API,
                               ROCPROFILER_BUFFER_TRACING_HSA_IMAGE_EXT_API,
+                              ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION,
                               ROCPROFILER_BUFFER_TRACING_HSA_FINALIZE_EXT_API })
                 _data.emplace(eitr);
         }

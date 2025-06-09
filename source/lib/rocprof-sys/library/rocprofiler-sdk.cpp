@@ -610,6 +610,7 @@ rocpd_insert_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
     auto stream_id        = get_stream_id(record);
+
     rocpd_insert_thread_info(record->thread_id);
     rocpd_insert_stream_info(stream_id);
     rocpd_insert_queue_info(record->dispatch_info.queue_id);
@@ -642,7 +643,7 @@ rocpd_insert_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record
     data_processor.insert_memory_copy(
         n_info.id, getpid(), record->thread_id, record->start_timestamp, record->end_timestamp,
         name_id, record->dst_agent_id.handle, record->dst_address.value, record->src_agent_id.handle, record->src_address.value,
-        record->size, 0 /* Default Queue*/, stream_id.handle, region_id, event_id, extdata);
+        record->size, 0, stream_id.handle, region_id, event_id, extdata);
 }
 
 void
@@ -656,8 +657,13 @@ rocpd_insert_memory_allocation(
     auto stream_id = get_stream_id(record);
     rocpd_insert_stream_info(stream_id);
 
+    auto agent_id = std::optional<uint64_t>{};
+    if(record->agent_id.handle != static_cast<uint64_t>(-1)) {
+        agent_id = record->agent_id.handle;
+    }
+
     data_processor.insert_memory_alloc(
-        n_info.id, getpid(), record->thread_id, record->agent_id.handle,
+        n_info.id, getpid(), record->thread_id, agent_id,
         type, level, record->start_timestamp, record->end_timestamp,
         record->address.value, record->size, 0, stream_id.handle, event_id, extdata);
 }
@@ -1037,7 +1043,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_RCCL_API:
 #if (ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
-            case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
+            // case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
 #endif
             {
@@ -1128,7 +1134,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_RCCL_API:
 #if (ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
-            case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
+            // case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
 #endif
             {
@@ -1386,18 +1392,28 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 auto        _name =
                     tool_data->buffered_tracing_info.at(record->kind, record->operation);
 
+                // Insert memory allocation record into database
+                rocpd_initialize_category<category::rocm_memory_allocate>();
+
                 auto name_id = get_data_processor().insert_string(_name.data());
-                auto category_id =
-                    get_data_processor().insert_string("MEMORY_ALLOCATION");
-                auto event_id = get_data_processor().insert_event(category_id, _corr_id,
+
+                auto event_id = get_data_processor().insert_event(
+                                category_enum_id<category::rocm_memory_allocate>::value, _corr_id,
                                 _corr_id, record->correlation_id.external.value, "{}", "{}", "{}");
-                auto region_name_id = rocpd_insert_region<category::rocm>(
+
+                auto region_name_id = rocpd_insert_region<category::rocm_memory_allocate>(
                                         record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
                                         "{}");
 
                 auto [type, level] = memtype_to_db(_name);
                 rocpd_insert_memory_allocation(record, type.c_str(), level.c_str(),
                                                event_id);
+            }
+            else if(header->kind == ROCPROFILER_BUFFER_TRACING_HSA_CORE_API ||
+                    header->kind == ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API)
+            {
+                // Not handling those buffered events
+                continue;
             }
             else
             {
@@ -1576,8 +1592,9 @@ is_valid(rocprofiler_context_id_t ctx)
 void
 flush()
 {
+    std::cout << "Flushing " << std::endl;
     if(!tool_data) return;
-
+    std::cout << "Flushing tool_data are ready" << std::endl;
     for(auto itr : tool_data->get_buffers())
     {
         if(itr.handle > 0)
@@ -1603,10 +1620,6 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
     auto _callback_domains = rocprofiler_sdk::get_callback_domains();
     auto _buffered_domain  = rocprofiler_sdk::get_buffered_domains();
     auto _counter_events   = rocprofiler_sdk::get_rocm_events();
-
-    for (auto& itr : _buffered_domain){
-        std::cout << "Buffered Domain: " << itr << std::endl;
-    }
 
     auto* _data        = as_client_data(user_data);
     _data->client_fini = fini_func;
@@ -1645,8 +1658,8 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
     //     _data->primary_ctx, ROCPROFILER_CALLBACK_TRACING_CODE_OBJECT, nullptr, 0,
     //     tool_code_object_callback, _data));
 
-    for(auto itr : { ROCPROFILER_CALLBACK_TRACING_HSA_CORE_API,
-                     ROCPROFILER_CALLBACK_TRACING_HSA_AMD_EXT_API,
+    for(auto itr : { /*ROCPROFILER_CALLBACK_TRACING_HSA_CORE_API,
+                     ROCPROFILER_CALLBACK_TRACING_HSA_AMD_EXT_API,*/
                      ROCPROFILER_CALLBACK_TRACING_HSA_IMAGE_EXT_API,
                      ROCPROFILER_CALLBACK_TRACING_HSA_FINALIZE_EXT_API,
                      ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API,
@@ -1702,8 +1715,8 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
     std::for_each(_data->gpu_agents.begin(), _data->gpu_agents.end(), insert_agent);
     std::for_each(_data->cpu_agents.begin(), _data->cpu_agents.end(), insert_agent);
 
-    constexpr auto buffer_size = 8192;
-    constexpr auto watermark   = 7936;
+    constexpr auto buffer_size = 16 * 4096;
+    constexpr auto watermark   = 15 * 4096;
 
     if(_buffered_domain.count(ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH) > 0)
     {
@@ -1726,7 +1739,8 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
         //     external_corr_id_request_kinds.size(), external_correlation_id_callback,
         //     _data));
     }
-
+    // ROCPROFILER_BUFFER_TRACING_HSA_CORE_API,          ///< @see
+    // ::rocprofiler_hsa_core_api_id_t ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API,
     if(_buffered_domain.count(ROCPROFILER_BUFFER_TRACING_MEMORY_COPY) > 0)
     {
         ROCPROFILER_CALL(rocprofiler_create_buffer(
@@ -1743,19 +1757,57 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
             _data->memory_copy_buffer));
     }
 
+    if(_buffered_domain.count(ROCPROFILER_BUFFER_TRACING_HSA_CORE_API) > 0)
+    {
+        ROCPROFILER_CALL(rocprofiler_create_buffer(
+            _data->primary_ctx, buffer_size, watermark,
+            ROCPROFILER_BUFFER_POLICY_LOSSLESS, tool_tracing_buffered, tool_data,
+            &_data->hsa_core_api_buffer));
+        if(_data->hsa_core_api_buffer.handle == 0UL)
+        {
+            ROCPROFSYS_CI_ABORT(true, "Failed to create hsa core api buffer\n");
+        }
+        auto _ops =
+            rocprofiler_sdk::get_operations(ROCPROFILER_BUFFER_TRACING_HSA_CORE_API);
+
+        ROCPROFILER_CALL(rocprofiler_configure_buffer_tracing_service(
+            _data->primary_ctx, ROCPROFILER_BUFFER_TRACING_HSA_CORE_API, nullptr, 0,
+            _data->hsa_core_api_buffer));
+    }
+
+    if(_buffered_domain.count(ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API) > 0)
+    {
+        ROCPROFILER_CALL(rocprofiler_create_buffer(
+            _data->primary_ctx, buffer_size, watermark,
+            ROCPROFILER_BUFFER_POLICY_LOSSLESS, tool_tracing_buffered, tool_data,
+            &_data->hsa_amd_ext_api_buffer));
+        if(_data->hsa_amd_ext_api_buffer.handle == 0UL)
+        {
+            ROCPROFSYS_CI_ABORT(true, "Failed to create amd ext api buffer\n");
+        }
+        auto _ops =
+            rocprofiler_sdk::get_operations(ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API);
+
+        ROCPROFILER_CALL(rocprofiler_configure_buffer_tracing_service(
+            _data->primary_ctx, ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API, nullptr, 0,
+            _data->hsa_amd_ext_api_buffer));
+    }
+
     if(_buffered_domain.count(ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION) > 0)
     {
         ROCPROFILER_CALL(rocprofiler_create_buffer(
             _data->primary_ctx, buffer_size, watermark,
             ROCPROFILER_BUFFER_POLICY_LOSSLESS, tool_tracing_buffered, tool_data,
             &_data->memory_alloc_buffer));
-
+        if(_data->memory_alloc_buffer.handle == 0UL)
+        {
+            ROCPROFSYS_CI_ABORT(true, "Failed to create memory allocation buffer\n");
+        }
         auto _ops =
             rocprofiler_sdk::get_operations(ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION);
 
         ROCPROFILER_CALL(rocprofiler_configure_buffer_tracing_service(
-            _data->primary_ctx, ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION,
-            (_ops.empty()) ? nullptr : _ops.data(), _ops.size(),
+            _data->primary_ctx, ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION, nullptr, 0,
             _data->memory_alloc_buffer));
     }
 
@@ -1797,6 +1849,7 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
     for(const auto& itr : _data->get_buffers())
     {
+        std::cout << "Buffer handle: " << itr.handle << std::endl;
         if(itr.handle > 0)
         {
             auto client_thread = rocprofiler_callback_thread_t{};
