@@ -1297,7 +1297,8 @@ get_use_sampling_cputime()
     return static_cast<tim::tsettings<bool>&>(*_v->second).get();
 }
 
-std::set<int> get_sampling_signals(int64_t)
+std::set<int>
+get_sampling_signals(int64_t)
 {
     auto _v = std::set<int>{};
     if(get_use_causal())
@@ -1558,7 +1559,7 @@ print_settings(
             {
                 size_t _wextra = (_md && i < 2) ? 2 : 0;
                 _widths.at(i)  = std::max<size_t>(_widths.at(i),
-                                                 _data.back().at(i).length() + _wextra);
+                                                  _data.back().at(i).length() + _wextra);
             }
         }
     }
@@ -1590,8 +1591,7 @@ print_settings(
         _spacer_extra -= 1;
     std::stringstream _spacer{};
     _spacer.fill('-');
-    _spacer << "#" << std::setw(tot_width + _spacer_extra) << ""
-            << "#";
+    _spacer << "#" << std::setw(tot_width + _spacer_extra) << "" << "#";
     _os << _spacer.str() << "\n";
     for(const auto& itr : _data)
     {
@@ -2345,40 +2345,14 @@ get_tmpdir()
 }
 
 std::string
-get_output_directory()
+get_database_absolute_path(std::string_view database_name)
 {
-    static auto _v       = get_config()->find("ROCPROFSYS_PERFETTO_FILE");
-
-    auto        _val     = static_cast<tim::tsettings<std::string>&>(*_v->second).get();
-    std::cout << _val << "\n";
-
-    auto        _pos_dir = _val.find_last_of('/');
-    std::cout << _pos_dir << "\n";
-
-    auto        _dir     = std::string{};
-    std::cout << _dir << "\n";
-
-    auto        _ext     = std::string{ "proto" };
-    if(_pos_dir != std::string::npos)
-    {
-        _dir = _val.substr(0, _pos_dir + 1);
-        _val = _val.substr(_pos_dir + 1);
-    }
-    std::cout << _dir << "\n";
-    auto _pos_ext = _val.find_last_of('.');
-    if(_pos_ext + 1 < _val.length())
-    {
-        _ext = _val.substr(_pos_ext + 1);
-        _val = _val.substr(0, _pos_ext);
-    }
-    std::cout << _dir << "\n";
-
+    auto _dir = std::string{};
+    auto _ext = std::string{ "db" };
     auto _cfg = settings::compose_filename_config{ settings::use_output_suffix(),
                                                    settings::default_process_suffix(),
                                                    false, _dir };
-    std::cout << _dir << "\n";
-    _val      = settings::compose_output_filename(_val, _ext, _cfg);
-    std::cout << _val << " " << _ext << " " << "\n";
+    auto _val = settings::compose_output_filename(std::string(database_name), _ext, _cfg);
     if(!_val.empty() && _val.at(0) != '/')
         return settings::format(JOIN('/', "%env{PWD}%", _val), get_config()->get_tag());
     return _val;
