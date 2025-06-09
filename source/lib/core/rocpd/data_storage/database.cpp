@@ -4,6 +4,7 @@
 #include "common/md5sum.hpp"
 
 #include <timemory/environment/types.hpp>
+#include <config.hpp>
 #include <chrono>
 #include <fstream>
 #include <memory>
@@ -15,6 +16,15 @@
 
 namespace fs = std::filesystem;
 
+namespace {
+void create_directory_for_database_file(const std::string &db_file) {
+    auto _db_dirname = tim::filepath::dirname(db_file);
+    if(!tim::filepath::direxists(_db_dirname)) {
+        tim::filepath::makedir(_db_dirname);
+    }
+}
+}
+
 namespace rocprofsys {
 namespace rocpd {
 namespace data_storage {
@@ -25,30 +35,21 @@ namespace data_storage {
     }
 
     database::database() {
-        auto db_name = [&]() {
-            auto now = std::chrono::system_clock::now();
-            // Convert the time point to a duration since the epoch
-            auto time_since_epoch = now.time_since_epoch();
-            // Convert the duration to seconds
-            auto seconds = std::chrono::duration_cast<std::chrono::seconds>(time_since_epoch).count();
-            std::stringstream ss;
-            ss << "rocprof-" << get_upid() << "-" << seconds << ".db";
-            return ss.str();
-        }();
-        
-        
+        auto db_name = std::string_view{"rocpd.db"};
+        auto abs_db_path = rocprofsys::get_database_absolute_path(db_name);
+        create_directory_for_database_file(abs_db_path);
+        ROCPROFSYS_VERBOSE(0, "Database: %s\r\n", abs_db_path.c_str());
 
-        ROCPROFSYS_VERBOSE(0, "Database: %s\r\n", db_name.c_str());
 #ifdef USE_RAM_DB
         validate_sqlite3_result(sqlite3_open(":memory:", &_ram_sqlite_db), "database open failed!");
-        validate_sqlite3_result(sqlite3_open(db_name.c_str(), &_sqlite3_db), "database open failed!");
+        validate_sqlite3_result(sqlite3_open(abs_db_path.c_str(), &_sqlite3_db), "database open failed!");
 #else
-        validate_sqlite3_result(sqlite3_open(db_name.c_str(), &_ram_sqlite_db), "database open failed!");
+        validate_sqlite3_result(sqlite3_open(abs_db_path.c_str(), &_ram_sqlite_db), "database open failed!");
 #endif
     };
-    
-    database::~database() {   
-#ifdef USE_RAM_DB  
+
+    database::~database() {
+#ifdef USE_RAM_DB
         auto backup = sqlite3_backup_init(_sqlite3_db, "main", _ram_sqlite_db, "main");
         if (backup) {
             sqlite3_backup_step(backup, -1);  // Copy all pages
@@ -122,6 +123,6 @@ namespace data_storage {
         return _upid;
     }
 
-} // namespace data_storage 
-} // namespace rocpd 
-} // namespace rocprofsys 
+} // namespace data_storage
+} // namespace rocpd
+} // namespace rocprofsys

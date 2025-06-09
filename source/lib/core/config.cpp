@@ -1297,7 +1297,8 @@ get_use_sampling_cputime()
     return static_cast<tim::tsettings<bool>&>(*_v->second).get();
 }
 
-std::set<int> get_sampling_signals(int64_t)
+std::set<int>
+get_sampling_signals(int64_t)
 {
     auto _v = std::set<int>{};
     if(get_use_causal())
@@ -1558,7 +1559,7 @@ print_settings(
             {
                 size_t _wextra = (_md && i < 2) ? 2 : 0;
                 _widths.at(i)  = std::max<size_t>(_widths.at(i),
-                                                 _data.back().at(i).length() + _wextra);
+                                                  _data.back().at(i).length() + _wextra);
             }
         }
     }
@@ -1590,8 +1591,7 @@ print_settings(
         _spacer_extra -= 1;
     std::stringstream _spacer{};
     _spacer.fill('-');
-    _spacer << "#" << std::setw(tot_width + _spacer_extra) << ""
-            << "#";
+    _spacer << "#" << std::setw(tot_width + _spacer_extra) << "" << "#";
     _os << _spacer.str() << "\n";
     for(const auto& itr : _data)
     {
@@ -2342,6 +2342,20 @@ get_tmpdir()
 {
     static auto _v = get_config()->find("ROCPROFSYS_TMPDIR");
     return static_cast<tim::tsettings<std::string>&>(*_v->second).get();
+}
+
+std::string
+get_database_absolute_path(std::string_view database_name)
+{
+    auto _dir = std::string{};
+    auto _ext = std::string{ "db" };
+    auto _cfg = settings::compose_filename_config{ settings::use_output_suffix(),
+                                                   settings::default_process_suffix(),
+                                                   false, _dir };
+    auto _val = settings::compose_output_filename(std::string(database_name), _ext, _cfg);
+    if(!_val.empty() && _val.at(0) != '/')
+        return settings::format(JOIN('/', "%env{PWD}%", _val), get_config()->get_tag());
+    return _val;
 }
 
 tmp_file::tmp_file(std::string _v)
