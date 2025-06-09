@@ -1202,7 +1202,6 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                 auto        _name     = tim::demangle(_kern_sym_data->kernel_name);
                 auto        _corr_id  = record->correlation_id.internal;
-                auto        _ancestor_id = record->correlation_id.ancestor;
                 auto        _beg_ns   = record->start_timestamp;
                 auto        _end_ns   = record->end_timestamp;
                 auto        _agent_id = record->dispatch_info.agent_id;
@@ -1213,7 +1212,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 auto event_id = get_data_processor().insert_event(
                     category_enum_id<category::rocm_kernel_dispatch>::value,
                     _corr_id,
-                    _ancestor_id,
+                    0,
                     0,
                     "{}",
                     "{}",
@@ -1308,7 +1307,6 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                         header->payload);
 
                 auto        _corr_id      = record->correlation_id.internal;
-                auto        _ancestor_id  = recotd->correlation_id.ancestor;
                 auto        _beg_ns       = record->start_timestamp;
                 auto        _end_ns       = record->end_timestamp;
                 auto        _dst_agent_id = record->dst_agent_id;
@@ -1325,7 +1323,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 auto event_id = get_data_processor().insert_event(
                     category_enum_id<category::rocm_memory_copy>::value,
                     _corr_id,
-                    _ancestor_id,
+                    0,
                     0,
                     "{}",
                     "{}",
