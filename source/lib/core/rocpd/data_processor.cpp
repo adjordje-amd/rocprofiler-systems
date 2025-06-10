@@ -213,8 +213,8 @@ data_processor::insert_sample(const char* track, uint64_t timestamp, size_t even
 
 size_t
 data_processor::insert_event(size_t category_id, size_t stack_id, size_t parent_stack_id,
-                            size_t correlation_id, const char* call_stack,
-                            const char* line_info , const char* extdata )
+                             size_t correlation_id, const char* call_stack,
+                             const char* line_info, const char* extdata)
 {
     std::lock_guard<std::mutex> lock(_data_mutex);
     auto                        it = _category_map.find(category_id);

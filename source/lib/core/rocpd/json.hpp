@@ -1,24 +1,29 @@
 #pragma once
 
-#include <variant>
-#include <unordered_map>
-#include <vector>
-#include <string>
-#include <sstream>
 #include <memory>
+#include <sstream>
+#include <string>
+#include <unordered_map>
+#include <variant>
+#include <vector>
 
-namespace rocpd {
+namespace rocpd
+{
 
-class json {
+class json
+{
 public:
     static std::shared_ptr<json> create();
 
-    using json_value = std::variant<std::string, int, double, long long, bool, std::vector<json>, std::nullptr_t, std::shared_ptr<json>>;
+    using json_value =
+        std::variant<std::string, int, double, long long, bool, std::vector<json>,
+                     std::nullptr_t, std::shared_ptr<json>>;
 
     void set(const std::string& key, const json_value& value);
 
     std::string to_string() const;
-private: 
+
+private:
     json() = default;
 
 private:
@@ -26,8 +31,6 @@ private:
 
 private:
     std::unordered_map<std::string, std::shared_ptr<json_value>> data;
-
 };
 
-} // namespace rocpd 
-    
+}  // namespace rocpd

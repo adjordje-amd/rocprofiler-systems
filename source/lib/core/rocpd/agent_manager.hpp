@@ -1,22 +1,25 @@
 #pragma once
 #include <cstddef>
-#include <vector>
 #include <stdexcept>
+#include <vector>
 
 #include "agent.hpp"
 #include "library/rocprofiler-sdk/fwd.hpp"
 
-namespace rocprofsys {
-namespace rocpd {
+namespace rocprofsys
+{
+namespace rocpd
+{
 
-struct agent_manager {
+struct agent_manager
+{
     static agent_manager& get_instance();
 
-    agent_manager(const agent_manager&) = delete;
+    agent_manager(const agent_manager&)            = delete;
     agent_manager& operator=(const agent_manager&) = delete;
-    agent_manager(agent_manager&&) = delete;
-    agent_manager& operator=(agent_manager&&) = delete;
-    ~agent_manager() = default;
+    agent_manager(agent_manager&&)                 = delete;
+    agent_manager& operator=(agent_manager&&)      = delete;
+    ~agent_manager()                               = default;
 
     void insert_agent(agent _agent);
 
@@ -27,5 +30,5 @@ private:
     agent_manager() = default;
 };
 
-} // namespace rocpd
-} // namespace rocprofsys
+}  // namespace rocpd
+}  // namespace rocprofsys

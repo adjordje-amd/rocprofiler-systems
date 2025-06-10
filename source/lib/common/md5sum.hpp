@@ -1,14 +1,18 @@
 #pragma once
 
-#include <cstdint>
-#include <string_view>
 #include <array>
+#include <cstdint>
+#include <cstring>
+#include <iomanip>
+#include <string_view>
 #include <type_traits>
 
 #include "traits.hpp"
 
-namespace rocprofsys {
-inline namespace common {
+namespace rocprofsys
+{
+inline namespace common
+{
 
 class md5sum
 {
@@ -26,7 +30,7 @@ public:
     md5sum(md5sum&&)      = default;
 
     md5sum& operator=(const md5sum&) = default;
-    md5sum& operator=(md5sum&&) = default;
+    md5sum& operator=(md5sum&&)      = default;
 
     md5sum&      update(std::string_view inp);
     md5sum&      update(const unsigned char* buf, size_type length);
@@ -36,7 +40,8 @@ public:
     std::string  hexliteral() const;
     raw_digest_t rawdigest() const { return digest; }
 
-    template <typename Tp, typename Up = std::enable_if_t<std::is_arithmetic<Tp>::value, int>>
+    template <typename Tp,
+              typename Up = std::enable_if_t<std::is_arithmetic<Tp>::value, int>>
     md5sum& update(Tp inp);
 
     friend std::ostream& operator<<(std::ostream&, md5sum md5);
@@ -46,10 +51,10 @@ private:
 
     bool finalized = false;
     // 64bit counter for number of bits (lo, hi)
-    std::array<uint32_t, 2>        count = {0, 0};
+    std::array<uint32_t, 2>        count = { 0, 0 };
     std::array<uint8_t, blocksize> buffer{};  // overflow bytes from last 64 byte chunk
     // digest so far, initialized to magic initialization constants.
-    std::array<uint32_t, 4> state = {0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476};
+    std::array<uint32_t, 4> state = { 0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476 };
     std::array<uint8_t, 16> digest{};  // result
 };
 
@@ -57,9 +62,10 @@ template <typename Tp, typename... Args>
 md5sum::md5sum(Tp&& arg, Args&&... args)
 {
     auto _update = [&](auto&& _val) {
-        using value_type = std::remove_reference_t<std::remove_cv_t<std::decay_t<decltype(_val)>>>;
+        using value_type =
+            std::remove_reference_t<std::remove_cv_t<std::decay_t<decltype(_val)>>>;
         static_assert(!std::is_pointer<value_type>::value,
-                        "constructor cannot be called with pointer argument");
+                      "constructor cannot be called with pointer argument");
         update(std::forward<decltype(_val)>(_val));
     };
 
@@ -76,19 +82,21 @@ md5sum::update(Tp inp)
     return update(reinterpret_cast<const char*>(&inp), sizeof(Tp));
 }
 
-template <template <typename, typename...> class ContainerT, typename Tp, typename... TailT>
+template <template <typename, typename...> class ContainerT, typename Tp,
+          typename... TailT>
 std::string
 compute_md5sum(const ContainerT<Tp, TailT...>& inp,
-                std::enable_if_t<traits::is_string_literal_v<Tp>, int>)
+               std::enable_if_t<traits::is_string_literal_v<Tp>, int>)
 {
     auto _val = md5sum{};
     for(const auto& itr : inp)
-        _val.update(std::string_view{inp});
+        _val.update(std::string_view{ inp });
     _val.finalize();
     return _val.hexdigest();
 }
 
-namespace {
+namespace
+{
 
 using size_type = typename md5sum::size_type;
 
@@ -363,10 +371,11 @@ md5sum::update(const char input[], size_type length)
 md5sum&
 md5sum::finalize()
 {
-    static unsigned char padding[64] = {0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                        0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                        0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-                                        0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+    static unsigned char padding[64] = { 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                         0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                         0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                         0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                         0,    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
 
     if(!finalized)
     {
@@ -431,8 +440,8 @@ operator<<(std::ostream& out, md5sum md5)
 std::string
 compute_md5sum(std::string_view inp)
 {
-    return md5sum{inp}.finalize().hexdigest();
+    return md5sum{ inp }.finalize().hexdigest();
 }
 
-} // namespace common
-} // namespace rocprofsys
+}  // namespace common
+}  // namespace rocprofsys

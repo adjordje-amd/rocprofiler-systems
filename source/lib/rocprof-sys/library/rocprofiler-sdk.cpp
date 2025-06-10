@@ -378,14 +378,16 @@ get_backtrace(std::optional<std::vector<tim::unwind::processed_entry>>& _bt_data
     return backtrace;
 }
 
-template<typename CorrelationIdType>
+template <typename CorrelationIdType>
 uint64_t
-get_parent_stack_id(const CorrelationIdType &correlation_id)
+get_parent_stack_id(const CorrelationIdType& correlation_id)
 {
-    if constexpr (std::is_same_v<rocprofiler_correlation_id_t, CorrelationIdType>) {
+    if constexpr(std::is_same_v<rocprofiler_correlation_id_t, CorrelationIdType>)
+    {
         return correlation_id.ancestor;
     }
-    else {
+    else
+    {
         return 0;
     }
 }
@@ -394,13 +396,15 @@ auto
 get_extdata(const rocprofiler_callback_tracing_record_t& record)
 {
     constexpr auto message_key = "message";
-    auto args    = callback_arg_array_t{};
-    auto extdata = ::rocpd::json::create();
+    auto           args        = callback_arg_array_t{};
+    auto           extdata     = ::rocpd::json::create();
 
     rocprofiler_iterate_callback_tracing_kind_operation_args(record, save_args, 2, &args);
 
-    for(auto [key, val] : args) {
-        if(key == message_key) {
+    for(auto [key, val] : args)
+    {
+        if(key == message_key)
+        {
             extdata->set(key, val);
         }
     }
@@ -591,7 +595,8 @@ rocpd_insert_region(size_t thread_id, uint64_t start_time, uint64_t end_time,
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
 
-    auto _event_id = event_id.value_or(data_processor.insert_event(category_enum_id<Category>::value, 0, 0, 0, call_stack, line_info, extdata));
+    auto _event_id = event_id.value_or(data_processor.insert_event(
+        category_enum_id<Category>::value, 0, 0, 0, call_stack, line_info, extdata));
     auto name_id   = data_processor.insert_string(name);
 
     rocpd_insert_thread_info(thread_id);
@@ -900,18 +905,13 @@ tool_tracing_callback_stop(
         record, iterate_args_callback, 2, &args);
     rocpd_initialize_category<CategoryT>();
 
-    auto call_stack = get_backtrace(_bt_data);
-    auto stack_id = record.correlation_id.internal;
+    auto call_stack      = get_backtrace(_bt_data);
+    auto stack_id        = record.correlation_id.internal;
     auto parent_stack_id = get_parent_stack_id(record.correlation_id);
 
     auto event_id = get_data_processor().insert_event(
-        category_enum_id<CategoryT>::value,
-        stack_id,
-        parent_stack_id,
-        0,
-        call_stack->to_string().c_str(),
-        "{}",
-        "{}");
+        category_enum_id<CategoryT>::value, stack_id, parent_stack_id, 0,
+        call_stack->to_string().c_str(), "{}", "{}");
 
     for(const auto& arg : args)
     {
@@ -1208,17 +1208,19 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 const auto* _kern_sym_data =
                     get_kernel_symbol_info(record->dispatch_info.kernel_id);
 
-                auto        _name     = tim::demangle(_kern_sym_data->kernel_name);
-                auto        _corr_id  = record->correlation_id.internal;
-                auto        _parent_stack_id = get_parent_stack_id(record->correlation_id);
-                auto        _beg_ns   = record->start_timestamp;
-                auto        _end_ns   = record->end_timestamp;
-                auto        _agent_id = record->dispatch_info.agent_id;
-                auto        _queue_id = record->dispatch_info.queue_id;
+                auto _name            = tim::demangle(_kern_sym_data->kernel_name);
+                auto _corr_id         = record->correlation_id.internal;
+                auto _parent_stack_id = get_parent_stack_id(record->correlation_id);
+                auto _beg_ns          = record->start_timestamp;
+                auto _end_ns          = record->end_timestamp;
+                auto _agent_id        = record->dispatch_info.agent_id;
+                auto _queue_id        = record->dispatch_info.queue_id;
                 const auto* _agent    = tool_data->get_gpu_tool_agent(_agent_id);
 
                 rocpd_initialize_category<category::rocm_kernel_dispatch>();
-                auto event_id = get_data_processor().insert_event(category_enum_id<category::rocm_kernel_dispatch>::value, _corr_id, _parent_stack_id, 0, "{}", "{}", "{}");
+                auto event_id = get_data_processor().insert_event(
+                    category_enum_id<category::rocm_kernel_dispatch>::value, _corr_id,
+                    _parent_stack_id, 0, "{}", "{}", "{}");
 
                 auto record_name_id = rocpd_insert_region<category::rocm_kernel_dispatch>(
                     record->thread_id, _beg_ns, _end_ns, _name.c_str(), event_id, "{}",
@@ -1308,14 +1310,14 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     static_cast<rocprofiler_buffer_tracing_memory_copy_record_t*>(
                         header->payload);
 
-                auto        _corr_id      = record->correlation_id.internal;
-                auto        _parent_stack_id = get_parent_stack_id(record->correlation_id);
-                auto        _beg_ns       = record->start_timestamp;
-                auto        _end_ns       = record->end_timestamp;
-                auto        _dst_agent_id = record->dst_agent_id;
-                auto        _src_agent_id = record->src_agent_id;
-                const auto* _dst_agent    = tool_data->get_agent(_dst_agent_id);
-                const auto* _src_agent    = tool_data->get_agent(_src_agent_id);
+                auto _corr_id          = record->correlation_id.internal;
+                auto _parent_stack_id  = get_parent_stack_id(record->correlation_id);
+                auto _beg_ns           = record->start_timestamp;
+                auto _end_ns           = record->end_timestamp;
+                auto _dst_agent_id     = record->dst_agent_id;
+                auto _src_agent_id     = record->src_agent_id;
+                const auto* _dst_agent = tool_data->get_agent(_dst_agent_id);
+                const auto* _src_agent = tool_data->get_agent(_src_agent_id);
                 auto        _name =
                     tool_data->buffered_tracing_info.at(record->kind, record->operation);
 
@@ -1323,7 +1325,9 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 rocpd_initialize_category<category::rocm_memory_copy>();
 
                 auto name_id  = get_data_processor().insert_string(_name.data());
-                auto event_id = get_data_processor().insert_event(category_enum_id<category::rocm_memory_copy>::value, _corr_id, _parent_stack_id, 0, "{}", "{}", "{}");
+                auto event_id = get_data_processor().insert_event(
+                    category_enum_id<category::rocm_memory_copy>::value, _corr_id,
+                    _parent_stack_id, 0, "{}", "{}", "{}");
                 auto region_name_id = rocpd_insert_region<category::rocm_memory_copy>(
                     record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
                     "{}");
@@ -1391,21 +1395,23 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     static_cast<rocprofiler_buffer_tracing_memory_allocation_record_t*>(
                         header->payload);
 
-                auto        _corr_id      = record->correlation_id.internal;
-                auto        _parent_stack_id = get_parent_stack_id(record->correlation_id);
-                auto        _beg_ns       = record->start_timestamp;
-                auto        _end_ns       = record->end_timestamp;
-                auto        _name =
+                auto _corr_id         = record->correlation_id.internal;
+                auto _parent_stack_id = get_parent_stack_id(record->correlation_id);
+                auto _beg_ns          = record->start_timestamp;
+                auto _end_ns          = record->end_timestamp;
+                auto _name =
                     tool_data->buffered_tracing_info.at(record->kind, record->operation);
 
                 // Insert memory allocation record into database
                 rocpd_initialize_category<category::rocm_memory_allocate>();
-
-                auto name_id = get_data_processor().insert_string(_name.data());
-                auto event_id = get_data_processor().insert_event(category_enum_id<category::rocm_memory_allocate>::value, _corr_id, _parent_stack_id, 0, "{}", "{}", "{}");
+                // TODO: Rocpd -> Do we need to insert the name into the database?
+                auto name_id  = get_data_processor().insert_string(_name.data());
+                auto event_id = get_data_processor().insert_event(
+                    category_enum_id<category::rocm_memory_allocate>::value, _corr_id,
+                    _parent_stack_id, 0, "{}", "{}", "{}");
                 auto region_name_id = rocpd_insert_region<category::rocm_memory_allocate>(
-                                        record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
-                                        "{}");
+                    record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
+                    "{}");
 
                 auto [type, level] = memtype_to_db(_name);
                 rocpd_insert_memory_allocation(record, type.c_str(), level.c_str(),
