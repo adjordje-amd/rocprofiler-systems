@@ -156,6 +156,7 @@ public:
                                 size_t grid_size_x, size_t grid_size_y,
                                 size_t grid_size_z, size_t region_name_id,
                                 size_t event_id, const char* extdata = "{}");
+
     void insert_memory_copy(size_t node_id, size_t process_id, size_t thread_id,
                             uint64_t start, uint64_t end, size_t name_id,
                             size_t dst_agent_id, size_t dst_addr, size_t src_agent_id,
