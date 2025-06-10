@@ -1402,10 +1402,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 rocpd_initialize_category<category::rocm_memory_allocate>();
 
                 auto name_id = get_data_processor().insert_string(_name.data());
-                auto category_id =
-                    get_data_processor().insert_string("MEMORY_ALLOCATION");
-                auto event_id = get_data_processor().insert_event(category_id, _corr_id, _parent_stack_id, 0, "{}", "{}", "{}");
-                auto region_name_id = rocpd_insert_region<category::rocm>(
+                auto event_id = get_data_processor().insert_event(category_enum_id<category::rocm_memory_allocate>::value, _corr_id, _parent_stack_id, 0, "{}", "{}", "{}");
+                auto region_name_id = rocpd_insert_region<category::rocm_memory_allocate>(
                                         record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
                                         "{}");
 
