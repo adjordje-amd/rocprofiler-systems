@@ -378,21 +378,30 @@ get_backtrace(std::optional<std::vector<tim::unwind::processed_entry>>& _bt_data
     return backtrace;
 }
 
+template<typename CorrelationIdType>
+uint64_t
+get_parent_stack_id(const CorrelationIdType &correlation_id)
+{
+    if constexpr (std::is_same_v<rocprofiler_correlation_id_t, CorrelationIdType>) {
+        return correlation_id.ancestor;
+    }
+    else {
+        return 0;
+    }
+}
+
 auto
 get_extdata(const rocprofiler_callback_tracing_record_t& record)
 {
+    constexpr auto message_key = "message";
     auto args    = callback_arg_array_t{};
     auto extdata = ::rocpd::json::create();
 
     rocprofiler_iterate_callback_tracing_kind_operation_args(record, save_args, 2, &args);
 
-    for(const auto& [key, val] : args)
-    {
-        if(!key.empty() && !val.empty())
-        {
-            if(key == "message") {
-                extdata->set(key, val);
-            }
+    for(auto [key, val] : args) {
+        if(key == message_key) {
+            extdata->set(key, val);
         }
     }
 
@@ -893,7 +902,7 @@ tool_tracing_callback_stop(
 
     auto call_stack = get_backtrace(_bt_data);
     auto stack_id = record.correlation_id.internal;
-    auto parent_stack_id = record.correlation_id.ancestor;
+    auto parent_stack_id = get_parent_stack_id(record.correlation_id);
 
     auto event_id = get_data_processor().insert_event(
         category_enum_id<CategoryT>::value,
@@ -1201,6 +1210,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                 auto        _name     = tim::demangle(_kern_sym_data->kernel_name);
                 auto        _corr_id  = record->correlation_id.internal;
+                auto        _parent_stack_id = get_parent_stack_id(record->correlation_id);
                 auto        _beg_ns   = record->start_timestamp;
                 auto        _end_ns   = record->end_timestamp;
                 auto        _agent_id = record->dispatch_info.agent_id;
@@ -1208,7 +1218,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 const auto* _agent    = tool_data->get_gpu_tool_agent(_agent_id);
 
                 rocpd_initialize_category<category::rocm_kernel_dispatch>();
-                auto event_id = get_data_processor().insert_event(category_enum_id<category::rocm_kernel_dispatch>::value, _corr_id, 0, 0, "{}", "{}", "{}");
+                auto event_id = get_data_processor().insert_event(category_enum_id<category::rocm_kernel_dispatch>::value, _corr_id, _parent_stack_id, 0, "{}", "{}", "{}");
 
                 auto record_name_id = rocpd_insert_region<category::rocm_kernel_dispatch>(
                     record->thread_id, _beg_ns, _end_ns, _name.c_str(), event_id, "{}",
@@ -1299,6 +1309,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                         header->payload);
 
                 auto        _corr_id      = record->correlation_id.internal;
+                auto        _parent_stack_id = get_parent_stack_id(record->correlation_id);
                 auto        _beg_ns       = record->start_timestamp;
                 auto        _end_ns       = record->end_timestamp;
                 auto        _dst_agent_id = record->dst_agent_id;
@@ -1312,7 +1323,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 rocpd_initialize_category<category::rocm_memory_copy>();
 
                 auto name_id  = get_data_processor().insert_string(_name.data());
-                auto event_id = get_data_processor().insert_event(category_enum_id<category::rocm_memory_copy>::value, _corr_id, 0, 0, "{}", "{}", "{}");
+                auto event_id = get_data_processor().insert_event(category_enum_id<category::rocm_memory_copy>::value, _corr_id, _parent_stack_id, 0, "{}", "{}", "{}");
                 auto region_name_id = rocpd_insert_region<category::rocm_memory_copy>(
                     record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
                     "{}");
@@ -1381,7 +1392,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                         header->payload);
 
                 auto        _corr_id      = record->correlation_id.internal;
-                auto        _ancestor_id  = record->correlation_id.ancestor;
+                auto        _parent_stack_id = get_parent_stack_id(record->correlation_id);
                 auto        _beg_ns       = record->start_timestamp;
                 auto        _end_ns       = record->end_timestamp;
                 auto        _name =
@@ -1393,7 +1404,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 auto name_id = get_data_processor().insert_string(_name.data());
                 auto category_id =
                     get_data_processor().insert_string("MEMORY_ALLOCATION");
-                auto event_id = get_data_processor().insert_event(category_id, _corr_id, _ancestor_id, 0, "{}", "{}", "{}");
+                auto event_id = get_data_processor().insert_event(category_id, _corr_id, _parent_stack_id, 0, "{}", "{}", "{}");
                 auto region_name_id = rocpd_insert_region<category::rocm>(
                                         record->thread_id, _beg_ns, _end_ns, _name.data(), event_id, "{}",
                                         "{}");
@@ -1585,9 +1596,7 @@ is_valid(rocprofiler_context_id_t ctx)
 void
 flush()
 {
-    std::cout << "Flushing " << std::endl;
     if(!tool_data) return;
-    std::cout << "Flushing tool_data are ready" << std::endl;
     for(auto itr : tool_data->get_buffers())
     {
         if(itr.handle > 0)
