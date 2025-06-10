@@ -390,7 +390,9 @@ get_extdata(const rocprofiler_callback_tracing_record_t& record)
     {
         if(!key.empty() && !val.empty())
         {
-            extdata->set(key, val);
+            if(key == "message") {
+                extdata->set(key, val);
+            }
         }
     }
 
@@ -890,7 +892,6 @@ tool_tracing_callback_stop(
     rocpd_initialize_category<CategoryT>();
 
     auto call_stack = get_backtrace(_bt_data);
-    auto extdata    = get_extdata(record);
     auto stack_id = record.correlation_id.internal;
     auto parent_stack_id = record.correlation_id.ancestor;
 
@@ -901,7 +902,7 @@ tool_tracing_callback_stop(
         0,
         call_stack->to_string().c_str(),
         "{}",
-        extdata->to_string().c_str());
+        "{}");
 
     for(const auto& arg : args)
     {
@@ -910,7 +911,7 @@ tool_tracing_callback_stop(
                                          arg.arg_name.c_str(), arg.arg_value.c_str());
     }
     rocpd_insert_region<CategoryT>(record.thread_id, user_data->value, ts, _name.data(),
-                                   event_id, call_stack->to_string().c_str(), extdata->to_string().c_str());
+                                   event_id, call_stack->to_string().c_str(), "{}");
 }
 
 void
