@@ -383,7 +383,6 @@ get_extdata(const rocprofiler_callback_tracing_record_t& record)
 {
     auto args    = callback_arg_array_t{};
     auto extdata = ::rocpd::json::create();
-    auto message = ::rocpd::json::create();
 
     rocprofiler_iterate_callback_tracing_kind_operation_args(record, save_args, 2, &args);
 
@@ -391,11 +390,9 @@ get_extdata(const rocprofiler_callback_tracing_record_t& record)
     {
         if(!key.empty() && !val.empty())
         {
-            message->set(key, val);
+            extdata->set(key, val);
         }
     }
-
-    extdata->set("message", message->to_string());
 
     return extdata;
 }
