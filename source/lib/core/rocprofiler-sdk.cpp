@@ -317,10 +317,9 @@ config_settings(const std::shared_ptr<settings>& _config)
     auto _domain_description =
         JOIN("", "Specification of ROCm domains to trace/profile. Choices: ",
              join::join(join::array_config{ ", ", "", "" }, _domain_choices));
-    auto _domain_defaults =
-        std::string{ "hip_runtime_api,marker_api,kernel_dispatch,hsa_api,"
-                     "memory_copy,scratch_memory" };
-#    if (ROCPROFILER_VERSION < 10000)
+    auto _domain_defaults = std::string{ "hip_runtime_api,marker_api,kernel_dispatch,hsa_api,"
+                                         "memory_copy,memory_allocation,scratch_memory" };
+#    if(ROCPROFILER_VERSION < 10000)
     _domain_defaults.append(",page_migration");
 #    endif
 
