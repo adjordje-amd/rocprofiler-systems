@@ -431,8 +431,6 @@ get_buffered_domains()
 {
     const auto buffer_tracing_info = rocprofiler::sdk::get_buffer_tracing_names();
     const auto supported = std::unordered_set<rocprofiler_buffer_tracing_kind_t>{
-        ROCPROFILER_BUFFER_TRACING_HSA_CORE_API,
-        ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API,
         ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH,
         ROCPROFILER_BUFFER_TRACING_MEMORY_COPY,
         ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION,

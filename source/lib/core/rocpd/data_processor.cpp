@@ -221,7 +221,8 @@ data_processor::insert_event(size_t category_id, size_t stack_id, size_t parent_
     if(it == _category_map.end())
     {
         char buf[128];
-        snprintf(buf, sizeof(buf), "Insert event: Unknown category id. ID = %ld!", category_id);
+        snprintf(buf, sizeof(buf), "Insert event: Unknown category id. ID = %ld!",
+                 category_id);
         throw std::runtime_error(buf);
     }
 
@@ -405,9 +406,23 @@ data_processor::initialize_memory_alloc_stmt()
     _insert_memory_alloc_statement =
         data_storage::database::get_instance()
             .create_statment_executor<
-                const char*, size_t, size_t, size_t, std::optional<size_t>, const char*, const char*,
+                const char*, size_t, size_t, size_t, size_t, const char*, const char*,
                 uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, const char*>(
                 query);
+
+    // Statement without agent_id
+    query = query_builder.set_table_name("rocpd_memory_allocate_" + _upid)
+                .set_columns("guid", "nid", "pid", "tid", "type", "level", "start", "end",
+                             "address", "size", "queue_id", "stream_id", "event_id",
+                             "extdata")
+                .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
+                            '?', '?')
+                .get_query_string();
+    _insert_memory_alloc_no_agent_statement =
+        data_storage::database::get_instance()
+            .create_statment_executor<const char*, size_t, size_t, size_t, const char*,
+                                      const char*, uint64_t, uint64_t, size_t, size_t,
+                                      size_t, size_t, size_t, const char*>(query);
 }
 
 void
@@ -577,14 +592,24 @@ data_processor::insert_memory_copy(size_t node_id, size_t process_id, size_t thr
 
 void
 data_processor::insert_memory_alloc(size_t node_id, size_t process_id, size_t thread_id,
-                                    std::optional<size_t> agent_id, const char* type, const char* level,
-                                    uint64_t start, uint64_t end, size_t address,
-                                    size_t size, size_t queue_id, size_t stream_id,
-                                    size_t event_id, const char* extdata)
+                                    std::optional<size_t> agent_id, const char* type,
+                                    const char* level, uint64_t start, uint64_t end,
+                                    size_t address, size_t size, size_t queue_id,
+                                    size_t stream_id, size_t event_id,
+                                    const char* extdata)
 {
-    _insert_memory_alloc_statement(_upid.c_str(), node_id, process_id, thread_id,
-                                   agent_id, type, level, start, end, address, size,
-                                   queue_id, stream_id, event_id, extdata);
+    if(agent_id.has_value())
+    {
+        _insert_memory_alloc_statement(_upid.c_str(), node_id, process_id, thread_id,
+                                       agent_id.value(), type, level, start, end, address,
+                                       size, queue_id, stream_id, event_id, extdata);
+    }
+    else
+    {
+        _insert_memory_alloc_no_agent_statement(
+            _upid.c_str(), node_id, process_id, thread_id, type, level, start, end,
+            address, size, queue_id, stream_id, event_id, extdata);
+    }
 }
 
 void
