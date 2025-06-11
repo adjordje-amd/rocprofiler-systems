@@ -252,7 +252,6 @@ private:
     size_t      _pmc_event_id{ 1 };
     size_t      _sample_id{ 1 };
     size_t      _agent_id{ 1 };
-    size_t      _string_id{ 1 };
     size_t      _track_id{ 1 };
     std::string _upid{};
 

@@ -148,6 +148,10 @@ database::get_upid()
     return _upid;
 }
 
+size_t database::get_last_insert_id() const {
+    return sqlite3_last_insert_rowid(_ram_sqlite_db);
+}
+
 }  // namespace data_storage
 }  // namespace rocpd
 }  // namespace rocprofsys

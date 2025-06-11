@@ -60,7 +60,7 @@ public:
 
     void execute_query(const std::string& query);
 
-    size_t get_last_insert_id();
+    size_t get_last_insert_id() const;
 
     /**
      * This function prepares an SQLite statement based on the provided SQL query and

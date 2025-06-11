@@ -53,12 +53,13 @@ data_processor::insert_string(const char* str)
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance().execute_query(
         query.set_table_name("rocpd_string_" + _upid)
-            .set_columns("id", "guid", "string")
-            .set_values(_string_id, _upid, str)
+            .set_columns("guid", "string")
+            .set_values(_upid, str)
             .get_query_string());
 
-    _string_map.emplace(str, _string_id);
-    return _string_id++;
+    const auto string_id = data_storage::database::get_instance().get_last_insert_id();
+    _string_map.emplace(str, string_id);
+    return string_id;
 }
 
 void
