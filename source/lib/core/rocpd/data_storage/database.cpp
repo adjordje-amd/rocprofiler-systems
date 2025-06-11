@@ -117,7 +117,7 @@ database::initialize_schema()
         ss_query << file.rdbuf();
         std::string query = ss_query.str();
 
-        std::regex upid_pattern("\\{\\{upid\\}\\}");
+        std::regex upid_pattern("\\{\\{uuid\\}\\}");
         std::regex view_upid_pattern("\\{\\{view_upid\\}\\}");
 
         query = std::regex_replace(query, upid_pattern, "_" + get_upid());

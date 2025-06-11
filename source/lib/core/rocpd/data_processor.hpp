@@ -21,10 +21,10 @@ namespace rocpd
 struct data_processor
 {
     using insert_event_stmt =
-        std::function<void(size_t, const char*, size_t, size_t, size_t, size_t,
+        std::function<void(const char*, size_t, size_t, size_t, size_t,
                            const char*, const char*, const char*)>;
     using insert_pmc_event_stms =
-        std::function<void(size_t, const char*, size_t, size_t, double, const char*)>;
+        std::function<void(const char*, size_t, size_t, double, const char*)>;
     using insert_sample_stmt =
         std::function<void(const char*, size_t, uint64_t, size_t, const char*)>;
     using insert_region_stmt =
@@ -244,12 +244,6 @@ private:
     insert_memory_alloc_stmt          _insert_memory_alloc_statement;
     insert_memory_alloc_no_agent_stmt _insert_memory_alloc_no_agent_statement;
 
-    size_t      _pmc_id{ 1 };
-    size_t      _event_id{ 1 };
-    size_t      _pmc_event_id{ 1 };
-    size_t      _sample_id{ 1 };
-    size_t      _agent_id{ 1 };
-    size_t      _track_id{ 1 };
     std::string _upid{};
 
     std::mutex _data_mutex;

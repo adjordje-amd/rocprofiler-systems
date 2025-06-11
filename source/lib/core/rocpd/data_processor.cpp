@@ -124,7 +124,8 @@ data_processor::insert_track(const char* track_name, size_t node_id, size_t proc
         return;
     }
 
-    auto                                      name_id = insert_string(track_name);
+    auto name_id = insert_string(track_name);
+
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance().execute_query(
         query.set_table_name("rocpd_track_" + _upid)
@@ -132,9 +133,10 @@ data_processor::insert_track(const char* track_name, size_t node_id, size_t proc
             .set_values(_upid, node_id, process_id, thread_id, name_id, extdata)
             .get_query_string());
 
-    _tracks[track_name] = track_name_map{ _track_id, name_id };
-    _track_id++;
+    auto track_id = data_storage::database::get_instance().get_last_insert_id();
+    _tracks[track_name] = track_name_map{ track_id, name_id };
 }
+
 void
 data_processor::insert_pmc_description(
     size_t node_id, size_t process_id, size_t agent_id, const char* target_arch,
@@ -151,22 +153,23 @@ data_processor::insert_pmc_description(
         return;
     }
     data_storage::queries::table_insert_query query_builder;
-    auto                                      query =
+
+    auto query =
         query_builder.set_table_name("rocpd_info_pmc_" + _upid)
-            .set_columns("id", "guid", "nid", "pid", "agent_id", "target_arch",
+            .set_columns("guid", "nid", "pid", "agent_id", "target_arch",
                          "event_code", "instance_id", "name", "symbol", "description",
                          "long_description", "component", "units", "value_type", "block",
                          "expression", "is_constant", "is_derived", "extdata")
-            .set_values(_pmc_id, _upid, node_id, process_id, agent_id, target_arch,
+            .set_values(_upid, node_id, process_id, agent_id, target_arch,
                         event_code, instance_id, name, symbol, description,
                         long_description, component, units, value_type, block, expression,
                         is_constant, is_derived, extdata)
             .get_query_string();
     data_storage::database::get_instance().execute_query(query);
 
+    auto pmc_id = data_storage::database::get_instance().get_last_insert_id();
     _pmc_descriptor_map.emplace(
-        std::pair<pmc_identifier, size_t>{ { agent_id, name }, _pmc_id });
-    _pmc_id++;
+        std::pair<pmc_identifier, size_t>{ { agent_id, name }, pmc_id });
 }
 
 void
@@ -188,9 +191,8 @@ data_processor::insert_pmc_event(size_t event_id, size_t agent_id, const char* p
     }
 
     const auto [_, pmc_description_id] = *it;
-    _insert_pmc_event_statement(_pmc_event_id, _upid.c_str(), event_id,
+    _insert_pmc_event_statement(_upid.c_str(), event_id,
                                 pmc_description_id, value, extdata);
-    _pmc_event_id++;
 }
 
 void
@@ -230,10 +232,10 @@ data_processor::insert_event(size_t category_id, size_t stack_id, size_t parent_
     ROCPROFSYS_VERBOSE(3, "Insert event category id: %ld, string id: %ld\n", category_id,
                        it->second);
 
-    _insert_event_statement(_event_id, _upid.c_str(), it->second, stack_id,
+    _insert_event_statement(_upid.c_str(), it->second, stack_id,
                             parent_stack_id, correlation_id, call_stack, line_info,
                             extdata);
-    return _event_id++;
+    return data_storage::database::get_instance().get_last_insert_id();
 }
 
 void
@@ -242,13 +244,13 @@ data_processor::initialize_event_stmt()
     data_storage::queries::table_insert_query query_builder;
     auto                                      query =
         query_builder.set_table_name("rocpd_event_" + _upid)
-            .set_columns("id", "guid", "category_id", "stack_id", "parent_stack_id",
+            .set_columns("guid", "category_id", "stack_id", "parent_stack_id",
                          "correlation_id", "call_stack", "line_info", "extdata")
-            .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?')
+            .set_values('?', '?', '?', '?', '?', '?', '?', '?')
             .get_query_string();
     _insert_event_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<size_t, const char*, size_t, size_t, size_t, size_t,
+            .create_statment_executor<const char*, size_t, size_t, size_t, size_t,
                                       const char*, const char*, const char*>(query);
 }
 
@@ -257,12 +259,12 @@ data_processor::initialize_pmc_event_stmt()
 {
     data_storage::queries::table_insert_query query_builder;
     auto query = query_builder.set_table_name("rocpd_pmc_event_" + _upid)
-                     .set_columns("id", "guid", "event_id", "pmc_id", "value", "extdata")
-                     .set_values('?', '?', '?', '?', '?', '?')
+                     .set_columns("guid", "event_id", "pmc_id", "value", "extdata")
+                     .set_values('?', '?', '?', '?', '?')
                      .get_query_string();
     _insert_pmc_event_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<size_t, const char*, size_t, size_t, double,
+            .create_statment_executor<const char*, size_t, size_t, double,
                                       const char*>(query);
 }
 
@@ -287,7 +289,7 @@ data_processor::initialize_region_stmt()
     auto query = query_builder.set_table_name("rocpd_region_" + _upid)
                      .set_columns("guid", "nid", "pid", "tid", "start", "end",
                                   "name_id", "event_id", "extdata")
-                     .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?')
+                     .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?')
                      .get_query_string();
     _insert_region_statement =
         data_storage::database::get_instance()
@@ -309,7 +311,7 @@ data_processor::initialize_kernel_dispatch_stmt()
                          "grid_size_y", "grid_size_z", "region_name_id", "event_id",
                          "extdata")
             .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
-                        '?', '?', '?', '?', '?', '?', '?', '?', '?', '?')
+                        '?', '?', '?', '?', '?', '?', '?', '?', '?')
             .get_query_string();
     _insert_kernel_dispatch_statement =
         data_storage::database::get_instance()
@@ -329,7 +331,7 @@ data_processor::initialize_memory_copy_stmt()
                                   "src_agent_id", "src_address", "size", "queue_id",
                                   "stream_id", "region_name_id", "event_id", "extdata")
                      .set_values('?', '?', '?', '?', '?', '?', '?', '?', '?', '?', '?',
-                                 '?', '?', '?', '?', '?', '?', '?')
+                                 '?', '?', '?', '?', '?', '?')
                      .get_query_string();
     _insert_memory_copy_statement =
         data_storage::database::get_instance()
