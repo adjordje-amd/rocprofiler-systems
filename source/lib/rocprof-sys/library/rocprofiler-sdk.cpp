@@ -423,13 +423,12 @@ struct scope_destructor
     ///
     /// \brief Provides a utility to perform an operation when exiting a scope.
     template <typename FuncT, typename InitT = void (*)()>
-    scope_destructor(
-        FuncT&& _fini, InitT&& _init = []() {});
+    scope_destructor(FuncT&& _fini, InitT&& _init = []() {});
 
     ~scope_destructor() { m_functor(); }
 
     // delete copy operations
-    scope_destructor(const scope_destructor&) = delete;
+    scope_destructor(const scope_destructor&)            = delete;
     scope_destructor& operator=(const scope_destructor&) = delete;
 
     // allow move operations
@@ -526,6 +525,42 @@ rocpd_init_track(const char* track_name, int64_t tid)
     auto& n_info         = node_info::get_instance();
 
     data_processor.insert_track(track_name, n_info.id, getpid(), tid, "{}");
+}
+
+void
+rocpd_insert_agent_info(const tool_agent_vec_t& gpu_agents,
+                        const tool_agent_vec_t& cpu_agents)
+{
+    auto& node           = node_info::get_instance();
+    auto& agent_m        = rocpd::agent_manager::get_instance();
+    auto& data_processor = rocpd::data_processor::get_instance();
+
+    const auto get_agent_type = [](const auto& type) {
+        if(type != rocpd::agent::device_type::gpu &&
+           type != rocpd::agent::device_type::cpu)
+        {
+            std::stringstream ss;
+            ss << "Rocpd: insert agent info failed! Unknown agent type: "
+               << static_cast<int>(type);
+            throw std::runtime_error(ss.str());
+        }
+        return (type == rocpd::agent::device_type::gpu) ? "GPU" : "CPU";
+    };
+
+    auto insert_agent = [&](const auto& itr) {
+        rocpd::agent::device_type type = itr.agent->type == ROCPROFILER_AGENT_TYPE_GPU
+                                             ? rocpd::agent::device_type::gpu
+                                             : rocpd::agent::device_type::cpu;
+        agent_m.insert_agent(itr.agent->id.handle, type);
+        data_processor.insert_agent(node.id, getpid(), get_agent_type(type),
+                                    itr.agent->node_id, itr.agent->logical_node_id,
+                                    itr.agent->logical_node_type_id, itr.agent->device_id,
+                                    itr.agent->name, itr.agent->model_name,
+                                    itr.agent->vendor_name, itr.agent->product_name, "");
+    };
+
+    std::for_each(gpu_agents.begin(), gpu_agents.end(), insert_agent);
+    std::for_each(cpu_agents.begin(), cpu_agents.end(), insert_agent);
 }
 
 void
@@ -1036,7 +1071,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                                             user_data, ts);
                 break;
             }
-#if(ROCPROFILER_VERSION >= 600)
+#if (ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API:
             {
                 tool_tracing_callback_start(category::rocm_rocdecode_api{}, record,
@@ -1044,7 +1079,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                 break;
             }
 #endif
-#if(ROCPROFILER_VERSION >= 700)
+#if (ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API:
             {
                 tool_tracing_callback_start(category::rocm_rocjpeg_api{}, record,
@@ -1066,7 +1101,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_SCRATCH_MEMORY:
             case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
-#if(ROCPROFILER_VERSION >= 600)
+#if (ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
             // case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
@@ -1132,7 +1167,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                                            ts, _bt_data);
                 break;
             }
-#if(ROCPROFILER_VERSION >= 600)
+#if (ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API:
             {
                 tool_tracing_callback_stop(category::rocm_rocdecode_api{}, record,
@@ -1140,7 +1175,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                 break;
             }
 #endif
-#if(ROCPROFILER_VERSION >= 700)
+#if (ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API:
             {
                 tool_tracing_callback_stop(category::rocm_rocjpeg_api{}, record,
@@ -1163,7 +1198,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_SCRATCH_MEMORY:
             case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
-#if(ROCPROFILER_VERSION >= 600)
+#if (ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
             // case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
@@ -1687,6 +1722,7 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
     // Insert the default stream and queue info to ensure that the default entry is
     // created
+    rocpd_insert_agent_info(_data->gpu_agents, _data->cpu_agents);
     rocpd_insert_stream_info(rocprofiler_stream_id_t{ .handle = 0 });
     rocpd_insert_queue_info(rocprofiler_queue_id_t{ .handle = 0 });
 
@@ -1696,18 +1732,18 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
     for(auto itr : {
             ROCPROFILER_CALLBACK_TRACING_HSA_CORE_API,
-                ROCPROFILER_CALLBACK_TRACING_HSA_AMD_EXT_API,
-                ROCPROFILER_CALLBACK_TRACING_HSA_IMAGE_EXT_API,
-                ROCPROFILER_CALLBACK_TRACING_HSA_FINALIZE_EXT_API,
-                ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API,
-                ROCPROFILER_CALLBACK_TRACING_HIP_COMPILER_API,
-                ROCPROFILER_CALLBACK_TRACING_MARKER_CORE_API,
-                ROCPROFILER_CALLBACK_TRACING_RCCL_API,
-#if(ROCPROFILER_VERSION >= 600)
-                ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API,
+            ROCPROFILER_CALLBACK_TRACING_HSA_AMD_EXT_API,
+            ROCPROFILER_CALLBACK_TRACING_HSA_IMAGE_EXT_API,
+            ROCPROFILER_CALLBACK_TRACING_HSA_FINALIZE_EXT_API,
+            ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API,
+            ROCPROFILER_CALLBACK_TRACING_HIP_COMPILER_API,
+            ROCPROFILER_CALLBACK_TRACING_MARKER_CORE_API,
+            ROCPROFILER_CALLBACK_TRACING_RCCL_API,
+#if (ROCPROFILER_VERSION >= 600)
+            ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API,
 #endif
-#if(ROCPROFILER_VERSION >= 700)
-                ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API,
+#if (ROCPROFILER_VERSION >= 700)
+            ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API,
 #endif
         })
     {
@@ -1721,40 +1757,6 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
                 _data));
         }
     }
-
-    const auto get_agent_type = [](const auto& type) {
-        if(type == rocpd::agent::device_type::gpu)
-        {
-            return "GPU";
-        }
-        if(type == rocpd::agent::device_type::cpu)
-        {
-            return "CPU";
-        }
-        throw std::runtime_error("Unknown agent type");
-    };
-
-    auto& node           = node_info::get_instance();
-    auto& agent_m        = rocpd::agent_manager::get_instance();
-    auto& data_processor = rocpd::data_processor::get_instance();
-
-    auto insert_agent = [&](const auto& itr) {
-        rocpd::agent agent;
-        agent.id        = itr.agent->id.handle;
-        agent.device_id = itr.device_id;
-        agent.type      = itr.agent->type == ROCPROFILER_AGENT_TYPE_GPU
-                              ? rocpd::agent::device_type::gpu
-                              : rocpd::agent::device_type::cpu;
-        agent_m.insert_agent(agent);
-        data_processor.insert_agent(
-            agent.id, node.id, getpid(), get_agent_type(agent.type), itr.agent->node_id,
-            itr.agent->logical_node_id, itr.agent->logical_node_type_id,
-            itr.agent->device_id, itr.agent->name, itr.agent->model_name,
-            itr.agent->vendor_name, itr.agent->product_name, "");
-    };
-
-    std::for_each(_data->gpu_agents.begin(), _data->gpu_agents.end(), insert_agent);
-    std::for_each(_data->cpu_agents.begin(), _data->cpu_agents.end(), insert_agent);
 
     constexpr auto buffer_size = 16 * 4096;
     constexpr auto watermark   = 15 * 4096;
@@ -1854,7 +1856,6 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
     for(const auto& itr : _data->get_buffers())
     {
-        std::cout << "Buffer handle: " << itr.handle << std::endl;
         if(itr.handle > 0)
         {
             auto client_thread = rocprofiler_callback_thread_t{};

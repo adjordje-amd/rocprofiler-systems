@@ -104,7 +104,7 @@ public:
                              size_t fini, size_t start, size_t end, const char* command,
                              const char* environment = "{}", const char* extdata = "{}");
 
-    void insert_agent(size_t agent_id, size_t node_id, size_t pid, const char* agent_type,
+    void insert_agent(size_t node_id, size_t pid, const char* agent_type,
                       size_t absolute_index, size_t logical_index, size_t type_index,
                       uint64_t uuid, const char* name, const char* model_name,
                       const char* vendor_name, const char* product_name,

@@ -94,22 +94,22 @@ data_processor::insert_process_info(size_t nid, size_t ppid, size_t pid, size_t 
 }
 
 void
-data_processor::insert_agent(size_t agent_id, size_t node_id, size_t pid,
-                             const char* agent_type, size_t absolute_index,
-                             size_t logical_index, size_t type_index, uint64_t uuid,
-                             const char* name, const char* model_name,
-                             const char* vendor_name, const char* product_name,
-                             const char* user_name, const char* extdata)
+data_processor::insert_agent(size_t node_id, size_t pid, const char* agent_type,
+                             size_t absolute_index, size_t logical_index,
+                             size_t type_index, uint64_t uuid, const char* name,
+                             const char* model_name, const char* vendor_name,
+                             const char* product_name, const char* user_name,
+                             const char* extdata)
 {
     data_storage::queries::table_insert_query query;
     data_storage::database::get_instance().execute_query(
         query.set_table_name("rocpd_info_agent_" + _upid)
-            .set_columns("id", "guid", "nid", "pid", "type", "absolute_index",
-                         "logical_index", "type_index", "uuid", "name", "model_name",
-                         "vendor_name", "product_name", "user_name", "extdata")
-            .set_values(agent_id, _upid, node_id, pid, agent_type, absolute_index,
-                        logical_index, type_index, uuid, name, model_name, vendor_name,
-                        product_name, user_name, extdata)
+            .set_columns("guid", "nid", "pid", "type", "absolute_index", "logical_index",
+                         "type_index", "uuid", "name", "model_name", "vendor_name",
+                         "product_name", "user_name", "extdata")
+            .set_values(_upid, node_id, pid, agent_type, absolute_index, logical_index,
+                        type_index, uuid, name, model_name, vendor_name, product_name,
+                        user_name, extdata)
             .get_query_string());
 }
 

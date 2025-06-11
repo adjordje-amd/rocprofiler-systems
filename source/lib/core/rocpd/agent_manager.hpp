@@ -21,12 +21,14 @@ struct agent_manager
     agent_manager& operator=(agent_manager&&)      = delete;
     ~agent_manager()                               = default;
 
-    void insert_agent(agent _agent);
+    void insert_agent(uint64_t device_handle, agent::device_type type);
 
-    const agent& get_agent(size_t device_id, agent::device_type type) const;
+    const agent& get_agent_by_id(size_t device_id, agent::device_type type) const;
+    const agent& get_agent_by_handle(size_t device_id, agent::device_type type) const;
 
 private:
     std::vector<agent> _agents;
+    size_t             _device_id{ 0 };
     agent_manager() = default;
 };
 

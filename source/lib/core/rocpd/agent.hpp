@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <string>
 
 namespace rocprofsys
@@ -16,7 +17,7 @@ struct agent
         gpu = 2
     };
 
-    size_t      id;
+    uint64_t    handle;
     size_t      device_id;
     device_type type;
 };
