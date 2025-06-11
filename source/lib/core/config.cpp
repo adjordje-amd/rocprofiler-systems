@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include "config.hpp"
+#include "amd_smi.hpp"
 #include "common/defines.h"
 #include "common/static_object.hpp"
 #include "constraint.hpp"
@@ -626,13 +627,7 @@ configure_settings(bool _init)
         ->set_choices(perf::get_config_choices());
 
     rocprofiler_sdk::config_settings(_config);
-
-    ROCPROFSYS_CONFIG_SETTING(std::string, "ROCPROFSYS_AMD_SMI_METRICS",
-                              "amd-smi metrics to collect: busy, temp, power, "
-                              "vcn_activity, jpeg_activity, mem_usage. "
-                              "An empty value implies 'all' and 'none' suppresses all.",
-                              "busy, temp, power, mem_usage", "backend", "amd_smi",
-                              "rocm", "process_sampling");
+    amd_smi::config_settings(_config);
 
     ROCPROFSYS_CONFIG_SETTING(size_t, "ROCPROFSYS_PERFETTO_SHMEM_SIZE_HINT_KB",
                               "Hint for shared-memory buffer size in perfetto (in KB)",
@@ -1046,7 +1041,7 @@ configure_settings(bool _init)
     settings::use_output_suffix() = _config->get<bool>("ROCPROFSYS_USE_PID");
     if(settings::use_output_suffix())
         settings::default_process_suffix() = process::get_id();
-#if !defined(TIMEMORY_USE_MPI) && defined(TIMEMORY_USE_MPI_HEADERS)
+#if !defined(ROCPROFSYS_USE_MPI) && defined(ROCPROFSYS_USE_MPI_HEADERS)
     if(tim::dmp::is_initialized()) settings::default_process_suffix() = tim::dmp::rank();
 #endif
 
@@ -1297,8 +1292,7 @@ get_use_sampling_cputime()
     return static_cast<tim::tsettings<bool>&>(*_v->second).get();
 }
 
-std::set<int>
-get_sampling_signals(int64_t)
+std::set<int> get_sampling_signals(int64_t)
 {
     auto _v = std::set<int>{};
     if(get_use_causal())
@@ -1360,6 +1354,14 @@ configure_disabled_settings(const std::shared_ptr<settings>& _config)
     _config->find("ROCPROFSYS_USE_AMD_SMI")->second->set_hidden(true);
     for(const auto& itr : _config->disable_category("amd_smi"))
         _config->find(itr)->second->set_hidden(true);
+
+    _config->find("ROCPROFSYS_USE_RCCLP")->second->set_hidden(true);
+    for(const auto& itr : _config->disable_category("rcclp"))
+        _config->find(itr)->second->set_hidden(true);
+
+    _config->find("ROCPROFSYS_USE_ROCM")->second->set_hidden(true);
+    for(const auto& itr : _config->disable_category("rocm"))
+        _config->find(itr)->second->set_hidden(true);
 #endif
 
 #if defined(ROCPROFSYS_USE_OMPT) || ROCPROFSYS_USE_OMPT == 0
@@ -1368,7 +1370,7 @@ configure_disabled_settings(const std::shared_ptr<settings>& _config)
         _config->find(itr)->second->set_hidden(true);
 #endif
 
-#if !defined(TIMEMORY_USE_MPI) || TIMEMORY_USE_MPI == 0
+#if !defined(ROCPROFSYS_USE_MPI) || ROCPROFSYS_USE_MPI == 0
     _config->disable("ROCPROFSYS_PERFETTO_COMBINE_TRACES");
     _config->disable("ROCPROFSYS_COLLAPSE_PROCESSES");
     _config->find("ROCPROFSYS_PERFETTO_COMBINE_TRACES")->second->set_hidden(true);
@@ -1559,7 +1561,7 @@ print_settings(
             {
                 size_t _wextra = (_md && i < 2) ? 2 : 0;
                 _widths.at(i)  = std::max<size_t>(_widths.at(i),
-                                                  _data.back().at(i).length() + _wextra);
+                                                 _data.back().at(i).length() + _wextra);
             }
         }
     }
@@ -1591,7 +1593,8 @@ print_settings(
         _spacer_extra -= 1;
     std::stringstream _spacer{};
     _spacer.fill('-');
-    _spacer << "#" << std::setw(tot_width + _spacer_extra) << "" << "#";
+    _spacer << "#" << std::setw(tot_width + _spacer_extra) << ""
+            << "#";
     _os << _spacer.str() << "\n";
     for(const auto& itr : _data)
     {
@@ -1991,7 +1994,7 @@ get_perfetto_buffer_size()
 bool
 get_perfetto_combined_traces()
 {
-#if defined(TIMEMORY_USE_MPI) && TIMEMORY_USE_MPI > 0
+#if defined(ROCPROFSYS_USE_MPI) && ROCPROFSYS_USE_MPI > 0
     static auto _v = get_config()->find("ROCPROFSYS_PERFETTO_COMBINE_TRACES");
     return static_cast<tim::tsettings<bool>&>(*_v->second).get();
 #else
