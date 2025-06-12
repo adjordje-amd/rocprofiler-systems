@@ -194,25 +194,25 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
     auto  agent  = agents.get_agent_by_id(gpu_id, rocpd::agent::device_type::gpu);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::amd_smi_mm_busy>::value, "Busy",
         trait::name<category::amd_smi_mm_busy>::description, LONG_DESCRIPTION, COMPONENT,
         "%", "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::amd_smi_temp>::value, "Temp",
         trait::name<category::amd_smi_temp>::description, LONG_DESCRIPTION, COMPONENT,
         CELSIUS_DEGREES, "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::amd_smi_power>::value, "Pow",
         trait::name<category::amd_smi_power>::description, LONG_DESCRIPTION, COMPONENT,
         "w", "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::amd_smi_memory_usage>::value, "MemUsg",
         trait::name<category::amd_smi_memory_usage>::description, LONG_DESCRIPTION,
         COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0);
@@ -233,7 +233,7 @@ rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& 
 
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if(!enabled) return;
-        data_processor.insert_pmc_event(event_id, agent.device_id, name, value);
+        data_processor.insert_pmc_event(event_id, agent.base_id, name, value);
         data_processor.insert_sample(name, timestamp, event_id);
     };
 

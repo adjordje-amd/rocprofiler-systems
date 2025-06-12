@@ -535,28 +535,11 @@ rocpd_insert_agent_info(const tool_agent_vec_t& gpu_agents,
     auto& agent_m        = rocpd::agent_manager::get_instance();
     auto& data_processor = rocpd::data_processor::get_instance();
 
-    const auto get_agent_type = [](const auto& type) {
-        if(type != rocpd::agent::device_type::gpu &&
-           type != rocpd::agent::device_type::cpu)
-        {
-            std::stringstream ss;
-            ss << "Rocpd: insert agent info failed! Unknown agent type: "
-               << static_cast<int>(type);
-            throw std::runtime_error(ss.str());
-        }
-        return (type == rocpd::agent::device_type::gpu) ? "GPU" : "CPU";
-    };
-
     auto insert_agent = [&](const auto& itr) {
         rocpd::agent::device_type type = itr.agent->type == ROCPROFILER_AGENT_TYPE_GPU
                                              ? rocpd::agent::device_type::gpu
                                              : rocpd::agent::device_type::cpu;
-        agent_m.insert_agent(itr.agent->id.handle, type);
-        data_processor.insert_agent(node.id, getpid(), get_agent_type(type),
-                                    itr.agent->node_id, itr.agent->logical_node_id,
-                                    itr.agent->logical_node_type_id, itr.agent->device_id,
-                                    itr.agent->name, itr.agent->model_name,
-                                    itr.agent->vendor_name, itr.agent->product_name, "");
+        agent_m.insert_agent(itr, type, node.id, getpid());
     };
 
     std::for_each(gpu_agents.begin(), gpu_agents.end(), insert_agent);
@@ -592,8 +575,11 @@ rocpd_insert_code_object_info(
     const rocprofiler_callback_tracing_code_object_load_data_t* code_obj_data)
 {
     auto&       data_processor = get_data_processor();
+    auto&       agent_mngr      = rocpd::agent_manager::get_instance();
     auto&       n_info         = node_info::get_instance();
     const char* strg_type      = "UNKNOWN";
+
+    auto dev_id = agent_mngr.get_agent_by_handle(code_obj_data->agent_id.handle).base_id;
 
     switch(code_obj_data->storage_type)
     {
@@ -603,7 +589,7 @@ rocpd_insert_code_object_info(
     }
     data_processor.insert_code_object(
         code_obj_data->code_object_id, n_info.id, getpid(),
-        code_obj_data->rocp_agent.handle, code_obj_data->uri, code_obj_data->load_base,
+        dev_id, code_obj_data->uri, code_obj_data->load_base,
         code_obj_data->load_size, code_obj_data->load_delta, strg_type);
 }
 
@@ -649,13 +635,16 @@ rocpd_insert_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
+    auto& agent_mngr     = rocpd::agent_manager::get_instance();
     auto  stream_id      = get_stream_id(record);
+    auto  agent_id       = agent_mngr.get_agent_by_handle(
+        record->dispatch_info.agent_id.handle).base_id;
 
     rocpd_insert_stream_info(stream_id);
     rocpd_insert_queue_info(record->dispatch_info.queue_id);
 
     data_processor.insert_kernel_dispatch(
-        n_info.id, getpid(), thread_id, record->dispatch_info.agent_id.handle,
+        n_info.id, getpid(), thread_id, agent_id,
         record->dispatch_info.kernel_id, record->dispatch_info.dispatch_id,
         record->dispatch_info.queue_id.handle, stream_id.handle, record->start_timestamp,
         record->end_timestamp, record->dispatch_info.private_segment_size,
@@ -672,15 +661,19 @@ rocpd_insert_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
+    auto& agent_mngr     = rocpd::agent_manager::get_instance();
     auto  stream_id      = get_stream_id(record);
+    auto dst_agent_id = agent_mngr.get_agent_by_handle(
+                                record->dst_agent_id.handle).base_id;
+    auto src_agent_id = agent_mngr.get_agent_by_handle(
+                                record->dst_agent_id.handle).base_id;
 
-    rocpd_insert_stream_info(stream_id);
     rocpd_insert_stream_info(stream_id);
 
     data_processor.insert_memory_copy(
         n_info.id, getpid(), thread_id, record->start_timestamp,
-        record->end_timestamp, name_id, record->dst_agent_id.handle,
-        record->dst_address.value, record->src_agent_id.handle, record->src_address.value,
+        record->end_timestamp, name_id, dst_agent_id,
+        record->dst_address.value, src_agent_id, record->src_address.value,
         record->size, 0, stream_id.handle, region_id, event_id, extdata);
 }
 
@@ -690,6 +683,7 @@ rocpd_insert_memory_allocation(
     const char* level, size_t event_id, size_t thread_id, const char* extdata = "{}")
 {
     auto& data_processor = get_data_processor();
+    auto& agent_mngr     = rocpd::agent_manager::get_instance();
     auto& n_info         = node_info::get_instance();
 
     auto stream_id = get_stream_id(record);
@@ -698,7 +692,7 @@ rocpd_insert_memory_allocation(
     auto agent_id = std::optional<uint64_t>{};
     if(record->agent_id.handle != static_cast<uint64_t>(-1))
     {
-        agent_id = record->agent_id.handle;
+        agent_id = agent_mngr.get_agent_by_handle(record->agent_id.handle).base_id;
     }
 
     data_processor.insert_memory_alloc(

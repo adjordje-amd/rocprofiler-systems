@@ -94,7 +94,7 @@ data_processor::insert_process_info(size_t nid, size_t ppid, size_t pid, size_t 
             .get_query_string());
 }
 
-void
+size_t
 data_processor::insert_agent(size_t node_id, size_t pid, const char* agent_type,
                              size_t absolute_index, size_t logical_index,
                              size_t type_index, uint64_t uuid, const char* name,
@@ -112,6 +112,8 @@ data_processor::insert_agent(size_t node_id, size_t pid, const char* agent_type,
                         type_index, uuid, name, model_name, vendor_name, product_name,
                         user_name, extdata)
             .get_query_string());
+
+    return data_storage::database::get_instance().get_last_insert_id();
 }
 
 void
@@ -223,10 +225,10 @@ data_processor::insert_event(size_t category_id, size_t stack_id, size_t parent_
     auto                        it = _category_map.find(category_id);
     if(it == _category_map.end())
     {
-        char buf[128];
-        snprintf(buf, sizeof(buf), "Insert event: Unknown category id. ID = %ld!",
-                 category_id);
-        throw std::runtime_error(buf);
+        std::ostringstream oss;
+        oss << "Insert event failed! Error: Unknown category id: " << category_id
+            << " for UPID: " << _upid;
+        throw std::runtime_error(oss.str());
     }
 
     ROCPROFSYS_VERBOSE(3, "Insert event category id: %ld, string id: %ld\n", category_id,

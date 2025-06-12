@@ -213,6 +213,7 @@ get_processor_handles()
 {
     uint32_t socket_count;
     uint32_t processor_count;
+    processors::processors_list.clear();
 
     // Passing nullptr will return us the number of sockets available for read in this
     // system
