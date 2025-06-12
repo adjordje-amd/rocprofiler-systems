@@ -35,7 +35,6 @@ namespace rocpd
 {
 namespace data_storage
 {
-
 database&
 database::get_instance()
 {
@@ -148,12 +147,10 @@ database::get_upid()
     return _upid;
 }
 
-size_t database::get_last_insert_id() const {
-#ifdef USE_RAM_DB
+size_t
+database::get_last_insert_id() const
+{
     return sqlite3_last_insert_rowid(_ram_sqlite_db);
-#else
-    return sqlite3_last_insert_rowid(_sqlite3_db);
-#endif
 }
 
 }  // namespace data_storage
