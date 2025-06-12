@@ -19,6 +19,7 @@ struct agent
 
     uint64_t    handle;
     size_t      device_id;
+    size_t      base_id;
     device_type type;
 };
 

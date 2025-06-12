@@ -21,21 +21,21 @@ namespace rocpd
 struct data_processor
 {
     using insert_event_stmt =
-        std::function<void(size_t, const char*, size_t, size_t, size_t, size_t,
+        std::function<void(const char*, size_t, size_t, size_t, size_t,
                            const char*, const char*, const char*)>;
     using insert_pmc_event_stms =
-        std::function<void(size_t, const char*, size_t, size_t, double, const char*)>;
+        std::function<void(const char*, size_t, size_t, double, const char*)>;
     using insert_sample_stmt =
         std::function<void(const char*, size_t, uint64_t, size_t, const char*)>;
     using insert_region_stmt =
-        std::function<void(size_t, const char*, size_t, size_t, size_t, uint64_t,
+        std::function<void(const char*, size_t, size_t, size_t, uint64_t,
                            uint64_t, size_t, size_t, const char*)>;
     using insert_kernel_dispatch_stmt       = std::function<void(
-        size_t, const char*, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+        const char*, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
         size_t, uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, size_t,
         size_t, size_t, size_t, size_t, const char*)>;
     using insert_memory_copy_stmt           = std::function<void(
-        size_t, const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t,
+        const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t,
         size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t, const char*)>;
     using insert_memory_alloc_stmt          = std::function<void(
         const char*, size_t, size_t, size_t, size_t, const char*, const char*, uint64_t,
@@ -104,7 +104,7 @@ public:
                              size_t fini, size_t start, size_t end, const char* command,
                              const char* environment = "{}", const char* extdata = "{}");
 
-    void insert_agent(size_t node_id, size_t pid, const char* agent_type,
+    size_t insert_agent(size_t node_id, size_t pid, const char* agent_type,
                       size_t absolute_index, size_t logical_index, size_t type_index,
                       uint64_t uuid, const char* name, const char* model_name,
                       const char* vendor_name, const char* product_name,
@@ -244,16 +244,6 @@ private:
     insert_memory_alloc_stmt          _insert_memory_alloc_statement;
     insert_memory_alloc_no_agent_stmt _insert_memory_alloc_no_agent_statement;
 
-    size_t      _region_id{ 1 };
-    size_t      _kernel_dispatch_id{ 1 };
-    size_t      _memory_copy_id{ 1 };
-    size_t      _pmc_id{ 1 };
-    size_t      _event_id{ 1 };
-    size_t      _pmc_event_id{ 1 };
-    size_t      _sample_id{ 1 };
-    size_t      _agent_id{ 1 };
-    size_t      _string_id{ 1 };
-    size_t      _track_id{ 1 };
     std::string _upid{};
 
     std::mutex _data_mutex;

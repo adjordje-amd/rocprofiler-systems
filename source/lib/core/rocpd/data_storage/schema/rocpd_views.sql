@@ -1,139 +1,139 @@
 CREATE VIEW IF NOT EXISTS
-    "rocpd_metadata{{view_upid}}" AS
+    `rocpd_metadata` AS
 SELECT
     *
 FROM
-    "rocpd_metadata{{upid}}";
+    `rocpd_metadata{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_string{{view_upid}}" AS
+    `rocpd_string` AS
 SELECT
     *
 FROM
-    "rocpd_string{{upid}}";
+    `rocpd_string{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_info_node{{view_upid}}" AS
+    `rocpd_info_node` AS
 SELECT
     *
 FROM
-    "rocpd_info_node{{upid}}";
+    `rocpd_info_node{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_info_process{{view_upid}}" AS
+    `rocpd_info_process` AS
 SELECT
     *
 FROM
-    "rocpd_info_process{{upid}}";
+    `rocpd_info_process{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_info_thread{{view_upid}}" AS
+    `rocpd_info_thread` AS
 SELECT
     *
 FROM
-    "rocpd_info_thread{{upid}}";
+    `rocpd_info_thread{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_info_agent{{view_upid}}" AS
+    `rocpd_info_agent` AS
 SELECT
     *
 FROM
-    "rocpd_info_agent{{upid}}";
+    `rocpd_info_agent{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_info_queue{{view_upid}}" AS
+    `rocpd_info_queue` AS
 SELECT
     *
 FROM
-    "rocpd_info_queue{{upid}}";
+    `rocpd_info_queue{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_info_stream{{view_upid}}" AS
+    `rocpd_info_stream` AS
 SELECT
     *
 FROM
-    "rocpd_info_stream{{upid}}";
+    `rocpd_info_stream{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_info_pmc{{view_upid}}" AS
+    `rocpd_info_pmc` AS
 SELECT
     *
 FROM
-    "rocpd_info_pmc{{upid}}";
+    `rocpd_info_pmc{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_info_code_object{{view_upid}}" AS
+    `rocpd_info_code_object` AS
 SELECT
     *
 FROM
-    "rocpd_info_code_object{{upid}}";
+    `rocpd_info_code_object{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_info_kernel_symbol{{view_upid}}" AS
+    `rocpd_info_kernel_symbol` AS
 SELECT
     *
 FROM
-    "rocpd_info_kernel_symbol{{upid}}";
+    `rocpd_info_kernel_symbol{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_track{{view_upid}}" AS
+    `rocpd_track` AS
 SELECT
     *
 FROM
-    "rocpd_track{{upid}}";
+    `rocpd_track{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_event{{view_upid}}" AS
+    `rocpd_event` AS
 SELECT
     *
 FROM
-    "rocpd_event{{upid}}";
+    `rocpd_event{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_arg{{view_upid}}" AS
+    `rocpd_arg` AS
 SELECT
     *
 FROM
-    "rocpd_arg{{upid}}";
+    `rocpd_arg{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_pmc_event{{view_upid}}" AS
+    `rocpd_pmc_event` AS
 SELECT
     *
 FROM
-    "rocpd_pmc_event{{upid}}";
+    `rocpd_pmc_event{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_region{{view_upid}}" AS
+    `rocpd_region` AS
 SELECT
     *
 FROM
-    "rocpd_region{{upid}}";
+    `rocpd_region{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_sample{{view_upid}}" AS
+    `rocpd_sample` AS
 SELECT
     *
 FROM
-    "rocpd_sample{{upid}}";
+    `rocpd_sample{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_kernel_dispatch{{view_upid}}" AS
+    `rocpd_kernel_dispatch` AS
 SELECT
     *
 FROM
-    "rocpd_kernel_dispatch{{upid}}";
+    `rocpd_kernel_dispatch{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_memory_copy{{view_upid}}" AS
+    `rocpd_memory_copy` AS
 SELECT
     *
 FROM
-    "rocpd_memory_copy{{upid}}";
+    `rocpd_memory_copy{{uuid}}`;
 
 CREATE VIEW IF NOT EXISTS
-    "rocpd_memory_allocate{{view_upid}}" AS
+    `rocpd_memory_allocate` AS
 SELECT
     *
 FROM
-    "rocpd_memory_allocate{{upid}}";
+    `rocpd_memory_allocate{{uuid}}`;

@@ -35,7 +35,7 @@ private:
         if(SQLITE_OK != sqlite3_error_code && SQLITE_DONE != sqlite3_error_code)
         {
             std::stringstream ss;
-            ((ss << args), ...);
+            ((ss << args << ", "), ...);
             ss << " [Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code) << "]";
             throw std::runtime_error(ss.str());
         }
@@ -48,7 +48,7 @@ private:
         if(SQLITE_OK != sqlite3_error_code && SQLITE_DONE != sqlite3_error_code)
         {
             std::stringstream ss;
-            ((ss << args), ...);
+            ((ss << args << ", "), ...);
             ss << " [Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code);
             ss << " (Extended error message: " << sqlite3_errmsg(db) << ")]";
             throw std::runtime_error(ss.str());
@@ -60,7 +60,7 @@ public:
 
     void execute_query(const std::string& query);
 
-    size_t get_last_insert_id();
+    size_t get_last_insert_id() const;
 
     /**
      * This function prepares an SQLite statement based on the provided SQL query and

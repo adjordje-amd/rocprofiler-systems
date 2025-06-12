@@ -156,14 +156,14 @@ rocpd_initialize_cpu_freq_pmc(size_t dev_id)
 
     do_for_enabled_cpus([&](size_t cpu_id) {
         data_processor.insert_pmc_description(
-            ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+            ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
             get_cpu_freq_track_name<category::cpu_freq>(cpu_id).c_str(), "Frequency",
             trait::name<category::cpu_freq>::description, LONG_DESCRIPTION, COMPONENT,
             component::cpu_freq::display_unit().c_str(), "ABS", BLOCK, EXPRESSION, 0, 0);
     });
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::process_page>::value, "Memory Usage",
         trait::name<category::process_page>::description, LONG_DESCRIPTION, COMPONENT,
         MEMORY, "ABS", BLOCK, EXPRESSION, 0, 0);

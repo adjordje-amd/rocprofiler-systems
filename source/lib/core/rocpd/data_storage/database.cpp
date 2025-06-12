@@ -117,7 +117,7 @@ database::initialize_schema()
         ss_query << file.rdbuf();
         std::string query = ss_query.str();
 
-        std::regex upid_pattern("\\{\\{upid\\}\\}");
+        std::regex upid_pattern("\\{\\{uuid\\}\\}");
         std::regex view_upid_pattern("\\{\\{view_upid\\}\\}");
 
         query = std::regex_replace(query, upid_pattern, "_" + get_upid());
@@ -146,6 +146,14 @@ database::get_upid()
         return guid.hexdigest();
     }();
     return _upid;
+}
+
+size_t database::get_last_insert_id() const {
+#ifdef USE_RAM_DB
+    return sqlite3_last_insert_rowid(_ram_sqlite_db);
+#else
+    return sqlite3_last_insert_rowid(_sqlite3_db);
+#endif
 }
 
 }  // namespace data_storage

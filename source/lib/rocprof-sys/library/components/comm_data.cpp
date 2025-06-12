@@ -136,14 +136,14 @@ rocpd_initialize_comm_data_pmc()
 
 #if defined(ROCPROFSYS_USE_MPI)
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::mpi>::value, "Tracks MPI communication data sizes",
         trait::name<category::mpi>::description, LONG_DESCRIPTION, COMPONENT, MSG, "ABS",
         BLOCK, EXPRESSION, 0, 0);
 #endif
 #if defined(ROCPROFSYS_USE_RCCL)
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::rocm_rccl>::value, "Tracks RCCL communication data sizes",
         trait::name<category::rocm_rccl>::description, LONG_DESCRIPTION, COMPONENT, MSG,
         "ABS", BLOCK, EXPRESSION, 0, 0);
