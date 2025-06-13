@@ -670,8 +670,8 @@ rocpd_insert_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record
     data_processor.insert_memory_copy(
         n_info.id, getpid(), thread_id, record->start_timestamp, record->end_timestamp,
         name_id, dst_agent_id, record->dst_address.value, src_agent_id,
-        record->src_address.value, record->size, 0, stream_id.handle, region_id, event_id,
-        extdata);
+        record->src_address.value, record->bytes, 0, stream_id.handle, region_id,
+        event_id, extdata);
 }
 
 void
@@ -694,8 +694,8 @@ rocpd_insert_memory_allocation(
 
     data_processor.insert_memory_alloc(
         n_info.id, getpid(), thread_id, agent_id, type, level, record->start_timestamp,
-        record->end_timestamp, record->address.value, record->size, 0, stream_id.handle,
-        event_id, extdata);
+        record->end_timestamp, record->address.value, record->allocation_size, 0,
+        stream_id.handle, event_id, extdata);
 }
 
 void
