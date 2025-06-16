@@ -138,9 +138,9 @@ public:
                        uint64_t start, uint64_t end, size_t name_id, size_t event_id,
                        const char* extdata = "{}");
 
-    void insert_thread_info(size_t node_id, size_t parent_process_id, size_t process_id,
-                            size_t thread_id, const char* name, uint64_t start,
-                            uint64_t end, const char* extdata = "{}");
+    size_t insert_thread_info(size_t node_id, size_t parent_process_id, size_t process_id,
+                            size_t thread_id, const char* name, uint64_t start = 0,
+                            uint64_t end = 0, const char* extdata = "{}");
 
     void insert_stream_info(size_t stream_id, size_t node_id, size_t process_id,
                             const char* name, const char* extdata = "{}");
@@ -222,6 +222,7 @@ private:
     std::unordered_map<pmc_identifier, size_t, pmc_identifier_hash, pmc_identifier_equal>
                                             _pmc_descriptor_map;
     std::unordered_map<size_t, size_t>      _agent_id_map;
+    std::unordered_map<size_t, size_t>      _thread_id_map;
     std::unordered_map<size_t, size_t>      _category_map;
     std::unordered_map<std::string, size_t> _string_map;
     std::unordered_map<size_t, const char*> _kernel_symbol_map;

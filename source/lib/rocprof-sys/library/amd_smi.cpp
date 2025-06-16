@@ -134,18 +134,20 @@ rocpd_initilaize_process_info()
                                        cmd_line[0].c_str(), "{}");
 }
 
-void
+size_t
 rocpd_initialize_thread_info(uint64_t tid)
 {
     auto& data_processor     = get_data_processor();
     auto& n_info             = node_info::get_instance();
-    const auto& thread_info = thread_info::get(tid, InternalTID);
+    const auto& thread_info = thread_info::get(tid, SequentTID);
 
     if(!thread_info) {
         ROCPROFSYS_CI_THROW(!thread_info, "Missing thread info for thread 0");
-        return;
+        return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
+                                        JOIN(" ", "Thread", tid).c_str());
     }
-    data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
+
+    return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
                                         threading::get_thread_name().c_str(),
                                         thread_info->get_start(), thread_info->get_stop(), "{}");
 }
@@ -161,18 +163,18 @@ rocpd_initialize_smi_tracks()
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
-    const auto THREAD_ID = 0;  // Internal thread ID for amd-smi
-    
-    rocpd_initialize_thread_info(THREAD_ID);
+    const auto thread_id = gettid();  // Internal thread ID for amd-smi
+
+    auto thread_idx = rocpd_initialize_thread_info(thread_id);
 
     data_processor.insert_track(trait::name<category::amd_smi_mm_busy>::value, n_info.id,
-                                getpid(), THREAD_ID);
+                                getpid(), thread_idx);
     data_processor.insert_track(trait::name<category::amd_smi_power>::value, n_info.id,
-                                getpid(), THREAD_ID);
+                                getpid(), thread_idx);
     data_processor.insert_track(trait::name<category::amd_smi_temp>::value, n_info.id,
-                                getpid(), THREAD_ID);
+                                getpid(), thread_idx);
     data_processor.insert_track(trait::name<category::amd_smi_memory_usage>::value,
-                                n_info.id, getpid(), THREAD_ID);
+                                n_info.id, getpid(), thread_idx);
 };
 
 void
