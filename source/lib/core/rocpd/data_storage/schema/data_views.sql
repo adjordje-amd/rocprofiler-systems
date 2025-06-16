@@ -748,6 +748,7 @@ SELECT
     PMC_E.value AS value,
     PMC_I.is_constant,
     PMC_I.is_derived,
+    PMC_I.units,
     (
         SELECT
             string
