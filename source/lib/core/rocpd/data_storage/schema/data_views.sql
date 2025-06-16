@@ -720,3 +720,61 @@ GROUP BY
     K.dispatch_id,
     PMC_I.name,
     K.agent_id;
+
+--
+--
+DROP VIEW IF EXISTS "main"."amd_smi_counters";
+CREATE VIEW `amd_smi_counters` AS
+SELECT
+    MIN(PMC_E.id) AS id,
+    PMC_E.guid,
+    E.id AS event_id,
+    E.correlation_id,
+    E.stack_id,
+    E.parent_stack_id,
+    PMC_I.agent_id,
+    A.absolute_index AS agent_abs_index,
+    A.logical_index AS agent_log_index,
+    A.type_index AS agent_type_index,
+    A.type AS agent_type,
+    PMC_I.name AS counter_name,
+    PMC_I.symbol AS counter_symbol,
+    PMC_I.component,
+    PMC_I.description,
+    PMC_I.block,
+    PMC_I.expression,
+    PMC_I.value_type,
+    PMC_I.id AS counter_id,
+    PMC_E.value AS value,
+    PMC_I.is_constant,
+    PMC_I.is_derived,
+    (
+        SELECT
+            string
+        FROM
+            `rocpd_string` RS
+        WHERE
+            RS.id = E.category_id
+            AND RS.guid = E.guid
+    ) AS category,
+    E.extdata,
+	TR.tid,
+	TR.pid,
+	TR.nid,
+	SMP.timestamp AS start_timestamp,
+	coalesce((SELECT timestamp FROM `rocpd_sample` WHERE id = (SMP.id + (SELECT COUNT(*) FROM `rocpd_info_pmc`))), (SMP.timestamp + 1)) as end_timestamp
+FROM
+    `rocpd_pmc_event` PMC_E
+    INNER JOIN `rocpd_info_pmc` PMC_I ON PMC_I.id = PMC_E.pmc_id
+    AND PMC_I.guid = PMC_E.guid
+    INNER JOIN `rocpd_event` E ON E.id = PMC_E.event_id
+    AND E.guid = PMC_E.guid
+	INNER JOIN `rocpd_info_agent` A ON A.id = PMC_I.agent_id
+    AND A.guid = PMC_I.guid
+	INNER JOIN `rocpd_sample` SMP ON SMP.event_id = PMC_E.event_id AND SMP.guid = PMC_E.guid
+	INNER JOIN `rocpd_track` TR ON TR.id = SMP.track_id AND TR.guid = SMP.guid
+GROUP BY
+    PMC_E.guid,
+    PMC_I.name,
+    PMC_I.agent_id,
+	SMP.event_id
