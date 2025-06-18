@@ -157,8 +157,7 @@ backtrace_metrics::stop()
 namespace
 {
 template <typename... Tp>
-auto
-get_enabled(tim::type_list<Tp...>)
+auto get_enabled(tim::type_list<Tp...>)
 {
     constexpr size_t N  = sizeof...(Tp);
     auto             _v = std::bitset<N>{};
@@ -545,8 +544,7 @@ backtrace_metrics::fini_rocpd(int64_t _tid, valid_array_t _valid)
     {
         auto              _hw_cnt_labels = *get_papi_labels(_tid);
         hw_counter_data_t zero_counters{};
-        for(size_t i = 0; i < zero_counters.size(); ++i)
-            zero_counters[i] = 0.0;
+        zero_counters.fill(0.0);
 
         rocpd_process_backtrace_metrics_events<category::thread_hardware_counter,
                                                hw_counter_data_t>(0, _ts, zero_counters,
