@@ -108,11 +108,13 @@ rocpd_initialize_track()
 {
     auto& n_info      = node_info::get_instance();
     auto  _init_track = [&](const char* label) {
+        std::cout << "INSERT_TRACK label: " << label << " n_info.id: " << n_info.id
+                  << " pid: " << getpid() << " tid: " << gettid() << "\n";
         get_data_processor().insert_track(label, n_info.id, getpid(), gettid());
     };
 
     static std::once_flag _once{};
-    std::call_once(_once, _init_track, Track::label.c_str());
+    std::call_once(_once, _init_track, Track::label);
 }
 
 void
@@ -350,9 +352,9 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int sen
     rocpd_initialize_track<mpi_send>();
     rocpd_initialize_track<mpi_recv>();
     write_perfetto_counter_track<mpi_send>(sendcount * _send_size);
-    rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+    rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
     write_perfetto_counter_track<mpi_recv>(recvcount * _recv_size);
-    rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
+    rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
 
     if(!rocprofsys::get_use_timemory()) return;
     auto      _name = std::string_view{ _data.tool_id };
@@ -392,9 +394,9 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int sen
     rocpd_initialize_track<mpi_send>();
     rocpd_initialize_track<mpi_recv>();
     write_perfetto_counter_track<mpi_send>(sendcount * _send_size);
-    rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+    rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
     write_perfetto_counter_track<mpi_recv>(recvcount * _recv_size);
-    rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
+    rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
 
     if(!rocprofsys::get_use_timemory()) return;
     auto      _name = std::string_view{ _data.tool_id };
@@ -419,9 +421,9 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int sen
     rocpd_initialize_track<mpi_send>();
     rocpd_initialize_track<mpi_recv>();
     write_perfetto_counter_track<mpi_send>(sendcount * _send_size);
-    rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+    rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
     write_perfetto_counter_track<mpi_recv>(recvcount * _recv_size);
-    rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
+    rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _recv_size);
 
     if(!rocprofsys::get_use_timemory()) return;
     auto      _name = std::string_view{ _data.tool_id };
