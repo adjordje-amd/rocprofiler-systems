@@ -24,6 +24,7 @@
 
 #include "common/synchronized.hpp"
 #include "core/timemory.hpp"
+#include "core/rocpd/agent_manager.hpp"
 
 #include <rocprofiler-sdk/agent.h>
 #include <rocprofiler-sdk/buffer_tracing.h>
@@ -146,7 +147,6 @@ struct client_data
     rocprofiler_buffer_id_t                   memory_copy_buffer        = { 0 };
     rocprofiler_buffer_id_t                   memory_alloc_buffer       = { 0 };
     rocprofiler_buffer_id_t                   counter_collection_buffer = { 0 };
-    std::vector<rocprofiler_agent_v0_t>       agents                    = {};
     std::vector<tool_agent>                   cpu_agents                = {};
     std::vector<tool_agent>                   gpu_agents                = {};
     std::vector<hardware_counter_info>        events_info               = {};
@@ -161,7 +161,7 @@ struct client_data
 
     void                        initialize();
     void                        initialize_event_info();
-    void                        set_agents(agent_vec_t&& agents);
+    void                        set_agents();
     context_id_vec_t            get_contexts() const;
     buffer_id_vec_t             get_buffers() const;
     const rocprofiler_agent_t*  get_agent(rocprofiler_agent_id_t _id) const;
@@ -196,9 +196,9 @@ client_data::get_buffers() const
 inline const rocprofiler_agent_t*
 client_data::get_agent(rocprofiler_agent_id_t _id) const
 {
-    for(const auto& itr : agents)
-        if(itr.id == _id) return &itr;
-    return nullptr;
+    const auto& agent = rocpd::agent_manager::get_instance().get_agent_by_handle(_id.handle);
+
+    return agent.agent;
 }
 
 inline const tool_agent*

@@ -517,23 +517,23 @@ rocpd_init_track(const char* track_name, int64_t tid)
     data_processor.insert_track(track_name, n_info.id, getpid(), tid, "{}");
 }
 
-void
-rocpd_insert_agent_info(const tool_agent_vec_t& gpu_agents,
-                        const tool_agent_vec_t& cpu_agents)
-{
-    auto& node           = node_info::get_instance();
-    auto& agent_m        = rocpd::agent_manager::get_instance();
+// void
+// rocpd_insert_agent_info(const tool_agent_vec_t& gpu_agents,
+//                         const tool_agent_vec_t& cpu_agents)
+// {
+//     auto& node           = node_info::get_instance();
+//     auto& agent_m        = rocpd::agent_manager::get_instance();
 
-    auto insert_agent = [&](const auto& itr) {
-        rocpd::agent::device_type type = itr.agent->type == ROCPROFILER_AGENT_TYPE_GPU
-                                             ? rocpd::agent::device_type::gpu
-                                             : rocpd::agent::device_type::cpu;
-        agent_m.insert_agent(itr, type, node.id, getpid());
-    };
+//     auto insert_agent = [&](const auto& itr) {
+//         rocpd::agent::device_type type = itr.agent->type == ROCPROFILER_AGENT_TYPE_GPU
+//                                              ? rocpd::agent::device_type::gpu
+//                                              : rocpd::agent::device_type::cpu;
+//         agent_m.insert_agent(itr, type, node.id, getpid());
+//     };
 
-    std::for_each(gpu_agents.begin(), gpu_agents.end(), insert_agent);
-    std::for_each(cpu_agents.begin(), cpu_agents.end(), insert_agent);
-}
+//     std::for_each(gpu_agents.begin(), gpu_agents.end(), insert_agent);
+//     std::for_each(cpu_agents.begin(), cpu_agents.end(), insert_agent);
+// }
 
 void
 rocpd_insert_stream_info(const rocprofiler_stream_id_t& stream_id)
@@ -1702,7 +1702,6 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
     // Insert the default stream and queue info to ensure that the default entry is
     // created
-    rocpd_insert_agent_info(_data->gpu_agents, _data->cpu_agents);
     rocpd_insert_stream_info(rocprofiler_stream_id_t{ .handle = 0 });
     rocpd_insert_queue_info(rocprofiler_queue_id_t{ .handle = 0 });
 
@@ -1909,7 +1908,7 @@ setup()
     if(int status = 0;
        rocprofiler_is_initialized(&status) == ROCPROFILER_STATUS_SUCCESS && status == 0)
     {
-        ROCPROFILER_CALL(rocprofiler_force_configure(&rocprofiler_configure));
+        // ROCPROFILER_CALL(rocprofiler_force_configure(&rocprofiler_configure));
     }
 }
 

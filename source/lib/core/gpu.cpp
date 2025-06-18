@@ -41,6 +41,8 @@
 
 #include <timemory/manager.hpp>
 
+#include "core/rocpd/agent_manager.hpp"
+
 #if ROCPROFSYS_USE_ROCM > 0
 #    include <amd_smi/amdsmi.h>
 #    include <rocprofiler-sdk/agent.h>
@@ -132,8 +134,14 @@ int
 device_count()
 {
 #if ROCPROFSYS_USE_ROCM > 0
-    static int _num_devices = query_rocm_gpu_agents();
-    return _num_devices;
+    // Temporary workaround. ToDo: Fix once propper placing for agent handling is found
+    if ( query_rocm_gpu_agents() > rocpd::agent_manager::get_instance().get_gpu_agents_count()) {
+        return query_rocm_gpu_agents();
+    }
+    else {
+        static int _num_devices = rocpd::agent_manager::get_instance().get_gpu_agents_count();
+        return _num_devices;
+    }
 #else
     return 0;
 #endif
@@ -158,22 +166,25 @@ add_device_metadata(ArchiveT& ar)
 
 #if ROCPROFSYS_USE_ROCM > 0
     using agent_vec_t = std::vector<rocprofiler_agent_v0_t>;
-
+    auto _gpu_agents  = rocpd::agent_manager::get_instance().get_agents_by_type(ROCPROFILER_AGENT_TYPE_GPU);
     auto _agents_vec = agent_vec_t{};
-    auto iterator    = [](rocprofiler_agent_version_t /*version*/, const void** agents,
-                       size_t num_agents, void* user_data) -> rocprofiler_status_t {
-        auto* _agents_vec_v = static_cast<agent_vec_t*>(user_data);
-        _agents_vec_v->reserve(num_agents);
-        for(size_t i = 0; i < num_agents; ++i)
-        {
-            const auto* _agent = static_cast<const rocprofiler_agent_v0_t*>(agents[i]);
-            if(_agent) _agents_vec_v->emplace_back(*_agent);
-        }
-        return ROCPROFILER_STATUS_SUCCESS;
-    };
-    rocprofiler_query_available_agents(ROCPROFILER_AGENT_INFO_VERSION_0, iterator,
-                                       sizeof(rocprofiler_agent_v0_t), &_agents_vec);
+    // auto iterator    = [](rocprofiler_agent_version_t /*version*/, const void** agents,
+    //                    size_t num_agents, void* user_data) -> rocprofiler_status_t {
+    //     auto* _agents_vec_v = static_cast<agent_vec_t*>(user_data);
+    //     _agents_vec_v->reserve(num_agents);
+    //     for(size_t i = 0; i < num_agents; ++i)
+    //     {
+    //         const auto* _agent = static_cast<const rocprofiler_agent_v0_t*>(agents[i]);
+    //         if(_agent) _agents_vec_v->emplace_back(*_agent);
+    //     }
+    //     return ROCPROFILER_STATUS_SUCCESS;
+    // };
+    // rocprofiler_query_available_agents(ROCPROFILER_AGENT_INFO_VERSION_0, iterator,
+    //                                    sizeof(rocprofiler_agent_v0_t), &_agents_vec);
 
+    for(auto& agent : _gpu_agents) {
+        _agents_vec.emplace_back(*(agent->agent));
+    }
     ar(make_nvp("rocm_agents", _agents_vec));
 #else
     (void) ar;
@@ -214,6 +225,9 @@ get_processor_handles()
     uint32_t socket_count;
     uint32_t processor_count;
     processors::processors_list.clear();
+
+    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto gpu_agents = agent_mngr.get_agents_by_type(ROCPROFILER_AGENT_TYPE_GPU);
 
     // Passing nullptr will return us the number of sockets available for read in this
     // system

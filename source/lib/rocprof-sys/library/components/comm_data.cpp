@@ -133,19 +133,19 @@ rocpd_initialize_comm_data_pmc()
     const auto  TARGET_ARCH      = "CPU";
     const auto  DEVICE_ID        = 0;  // Assuming CPU device ID is 0
 
-    auto& agents = rocpd::agent_manager::get_instance();
-    auto  agent  = agents.get_agent_by_id(DEVICE_ID, rocpd::agent::device_type::cpu);
+    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto  base_id  = agent_mngr.get_agent_by_id(DEVICE_ID, ROCPROFILER_AGENT_TYPE_CPU).base_id;
 
 #if defined(ROCPROFSYS_USE_MPI)
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::mpi>::value, "Tracks MPI communication data sizes",
         trait::name<category::mpi>::description, LONG_DESCRIPTION, COMPONENT, MSG, "ABS",
         BLOCK, EXPRESSION, 0, 0);
 #endif
 #if defined(ROCPROFSYS_USE_RCCL)
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::rocm_rccl>::value, "Tracks RCCL communication data sizes",
         trait::name<category::rocm_rccl>::description, LONG_DESCRIPTION, COMPONENT, MSG,
         "ABS", BLOCK, EXPRESSION, 0, 0);
@@ -161,7 +161,7 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, int bytes)
         category_enum_id<category::comm_data>::value, 0, 0, 0);
 
     auto& agents = rocpd::agent_manager::get_instance();
-    auto  agent  = agents.get_agent_by_id(device_id, rocpd::agent::device_type::cpu);
+    auto  agent  = agents.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU);
 
     auto insert_event_and_sample = [&](const char* name, uint64_t timestamp,
                                        double value) {
