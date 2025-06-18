@@ -361,6 +361,8 @@ get_tmpdir();
 std::string
 get_database_absolute_path(std::string_view database_name);
 
+bool&
+get_use_rocpd();
 struct tmp_file
 {
     tmp_file(std::string);
