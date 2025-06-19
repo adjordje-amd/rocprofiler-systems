@@ -302,20 +302,6 @@ namespace
 bool                  _set_mpi_called   = false;
 std::function<void()> _preinit_callback = []() { get_preinit_bundle()->start(); };
 
-rocprofiler_query_available_agents_cb_t query_agents_cb = [](rocprofiler_agent_version_t version, const void** agents_arr,
-           size_t num_agents, void* user_data) -> rocprofiler_status_t {
-                auto& agent_mngr = rocpd::agent_manager::get_instance();
-                auto& node       = node_info::get_instance();
-
-                for(size_t i = 0; i < num_agents; ++i)
-                {
-                    const auto* _agent =
-                        static_cast<const rocprofiler_agent_v0_t*>(agents_arr[i]);
-                        agent_mngr.insert_agent(_agent, node.id, getpid());
-                }
-               return ROCPROFILER_STATUS_SUCCESS;
-           };
-
 std::vector<std::string>
 read_command_line(pid_t _pid)
 {
@@ -355,6 +341,8 @@ rocprofsys_preinit_rocpd()
     auto&       data_processor = rocpd::data_processor::get_instance();
     const auto& n_info         = node_info::get_instance();
     auto        cmd_line       = read_command_line(getpid());
+    auto&       agent_mngr     = rocpd::agent_manager::get_instance();
+
 
     if(cmd_line.empty())
     {
@@ -368,8 +356,17 @@ rocprofsys_preinit_rocpd()
     data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
                                        cmd_line[0].c_str(), "{}");
 
-    rocprofiler_query_available_agents(ROCPROFILER_AGENT_INFO_VERSION_0, query_agents_cb,
-                                       sizeof(rocprofiler_agent_v0_t), nullptr);
+    const auto& agents = agent_mngr.get_agents();
+    for (auto& rocpd_agent : agents)
+    {
+        auto _base_id = rocpd::data_processor::get_instance().insert_agent(
+                        n_info.id, getpid(), ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
+                        rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
+                        rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
+                        rocpd_agent->agent->name, rocpd_agent->agent->model_name,
+                        rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
+        rocpd_agent->base_id = _base_id;
+    }
 }
 
 void
@@ -535,6 +532,7 @@ rocprofsys_init_tooling_hidden(void)
     auto _dtor = scope::destructor{ []() {
         // if set to finalized, don't continue
         if(get_state() > State::Active) return;
+        // ToDo: Should be under get_use_rocpd() once added
         rocprofsys_preinit_rocpd();
         if(get_use_process_sampling())
         {

@@ -21,8 +21,7 @@ struct agent_manager
     agent_manager& operator=(agent_manager&&)      = delete;
     ~agent_manager()                               = default;
 
-    void insert_agent(const rocprofiler_agent_v0_t* agent,
-                        size_t node_id, size_t process_id);
+    void insert_agent(const rocprofiler_agent_v0_t* agent);
 
     const agent& get_agent_by_id(size_t device_id, rocprofiler_agent_type_t type) const;
     const agent& get_agent_by_handle(size_t device_id, rocprofiler_agent_type_t type) const;

@@ -15,37 +15,16 @@ agent_manager::get_instance()
 }
 
 void
-agent_manager::insert_agent(const rocprofiler_agent_v0_t* _agent,
-                        size_t node_id, size_t process_id)
+agent_manager::insert_agent(const rocprofiler_agent_v0_t* _agent)
 {
-    const auto get_agent_type = [](const auto& type) {
-        if(type != ROCPROFILER_AGENT_TYPE_GPU &&
-           type != ROCPROFILER_AGENT_TYPE_CPU)
-        {
-            std::stringstream ss;
-            ss << "Rocpd: insert agent info failed! Unknown agent type: "
-               << static_cast<int>(type);
-            throw std::runtime_error(ss.str());
-        }
-        return (type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU";
-    };
-
     std::cout << "Inserting agent with device handle: " << _agent->id.handle
               << ", and agent id: " << (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? _gpu_agents_cnt : _cpu_agents_cnt)
-              << ", device type: " << get_agent_type(_agent->type)
+              << ", device type: " << (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU")
               << std::endl;
-
-    auto _base_id = rocpd::data_processor::get_instance().insert_agent(
-                        node_id, process_id, get_agent_type(_agent->type),
-                        _agent->node_id, _agent->logical_node_id,
-                        _agent->logical_node_type_id, _agent->device_id,
-                        _agent->name, _agent->model_name,
-                        _agent->vendor_name, _agent->product_name, "");
 
     _agents.emplace_back(std::make_shared<agent>(agent{
         _agent,
         (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? _gpu_agents_cnt++ : _cpu_agents_cnt++),
-        _base_id
     }));
 }
 

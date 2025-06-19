@@ -85,55 +85,6 @@ get_data_processor()
     return rocpd::data_processor::get_instance();
 }
 
-// TODO: Move this to a proper location
-// std::vector<std::string>
-// read_command_line(pid_t _pid)
-// {
-//     auto _cmdline = std::vector<std::string>{};
-//     auto fcmdline = std::stringstream{};
-//     fcmdline << "/proc/" << _pid << "/cmdline";
-//     auto ifs = std::ifstream{ fcmdline.str().c_str() };
-//     if(ifs)
-//     {
-//         char        cstr;
-//         std::string sarg;
-//         while(!ifs.eof())
-//         {
-//             ifs >> cstr;
-//             if(!ifs.eof())
-//             {
-//                 if(cstr != '\0')
-//                 {
-//                     sarg += cstr;
-//                 }
-//                 else
-//                 {
-//                     _cmdline.push_back(sarg);
-//                     sarg = "";
-//                 }
-//             }
-//         }
-//         ifs.close();
-//     }
-
-//     return _cmdline;
-// }
-
-// // TODO: Move this to a proper location
-// void
-// rocpd_initilaize_process_info()
-// {
-//     auto& data_processor = get_data_processor();
-//     auto& n_info         = node_info::get_instance();
-//     auto  cmd_line       = read_command_line(getpid());
-//     if(cmd_line.empty())
-//     {
-//         cmd_line.push_back("rocpd");
-//     }
-//     data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
-//                                        cmd_line[0].c_str(), "{}");
-// }
-
 size_t
 rocpd_initialize_thread_info(uint64_t tid)
 {
@@ -665,7 +616,7 @@ setup()
     ROCPROFSYS_VERBOSE_F(0, "AMD SMI version: %u.%u.%u - str: %s.\n", _version.major,
                          _version.minor, _version.release, _version.build);
 
-    data::device_count = rocpd::agent_manager::get_instance().get_gpu_agents_count();
+    data::device_count = gpu::device_count();
 
     auto _devices_v = get_sampling_gpus();
     for(auto& itr : _devices_v)

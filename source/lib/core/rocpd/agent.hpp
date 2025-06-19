@@ -22,7 +22,7 @@ struct agent
     size_t                        base_id {0};
 
 #if ROCPROFSYS_USE_ROCM > 0
-    amdsmi_processor_handle       smi_handle;
+    amdsmi_processor_handle       smi_handle = nullptr;
 #endif
 
 };
