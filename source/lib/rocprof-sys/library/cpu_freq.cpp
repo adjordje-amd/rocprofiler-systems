@@ -101,8 +101,18 @@ rocpd_initialize_cpu_freq_category()
                                          trait::name<category::cpu_freq>::value);
 }
 
+
+size_t
+rocpd_initialize_thread_info(size_t tid){
+    auto& data_processor = get_data_processor();
+    auto& n_info         = node_info::get_instance();
+
+    return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
+                                                JOIN(" ", "Thread", tid).c_str(), 0, 0, "{}");
+}
+
 void
-rocpd_initialize_cpu_freq_tracks()
+rocpd_initialize_cpu_freq_tracks(size_t thread_idx)
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
@@ -110,29 +120,30 @@ rocpd_initialize_cpu_freq_tracks()
     do_for_enabled_cpus([&](size_t cpu_id) {
         data_processor.insert_track(
             get_cpu_freq_track_name<category::cpu_freq>(cpu_id).c_str(), n_info.id,
-            getpid(), gettid());
+            getpid(), thread_idx);
     });
 }
 
 void
-rocpd_initialize_cpu_usage_tracks()
+rocpd_initialize_cpu_usage_tracks(size_t thread_idx)
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
+
     data_processor.insert_track(trait::name<category::process_page>::value, n_info.id,
-                                getpid(), gettid());
+                                getpid(), thread_idx);
     data_processor.insert_track(trait::name<category::process_virt>::value, n_info.id,
-                                getpid(), gettid());
+                                getpid(), thread_idx);
     data_processor.insert_track(trait::name<category::process_peak>::value, n_info.id,
-                                getpid(), gettid());
+                                getpid(), thread_idx);
     data_processor.insert_track(trait::name<category::process_context_switch>::value,
-                                n_info.id, getpid(), gettid());
+                                n_info.id, getpid(), thread_idx);
     data_processor.insert_track(trait::name<category::process_page_fault>::value,
-                                n_info.id, getpid(), gettid());
+                                n_info.id, getpid(), thread_idx);
     data_processor.insert_track(trait::name<category::process_user_mode_time>::value,
-                                n_info.id, getpid(), gettid());
+                                n_info.id, getpid(), thread_idx);
     data_processor.insert_track(trait::name<category::process_kernel_mode_time>::value,
-                                n_info.id, getpid(), gettid());
+                                n_info.id, getpid(), thread_idx);
 }
 
 void
@@ -151,55 +162,55 @@ rocpd_initialize_cpu_freq_pmc(size_t dev_id)
     auto        ni               = node_info::get_instance();
     const auto  TARGET_ARCH      = "CPU";
 
-    auto& agents = rocpd::agent_manager::get_instance();
-    auto  agent  = agents.get_agent_by_id(dev_id, rocpd::agent::device_type::cpu);
+    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto  base_id  = agent_mngr.get_agent_by_id(dev_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
 
     do_for_enabled_cpus([&](size_t cpu_id) {
         data_processor.insert_pmc_description(
-            ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+            ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
             get_cpu_freq_track_name<category::cpu_freq>(cpu_id).c_str(), "Frequency",
             trait::name<category::cpu_freq>::description, LONG_DESCRIPTION, COMPONENT,
             component::cpu_freq::display_unit().c_str(), "ABS", BLOCK, EXPRESSION, 0, 0);
     });
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::process_page>::value, "Memory Usage",
         trait::name<category::process_page>::description, LONG_DESCRIPTION, COMPONENT,
         MEMORY, "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::process_virt>::value, "Virtual Memory Usage",
         trait::name<category::process_virt>::description, LONG_DESCRIPTION, COMPONENT,
         MEMORY, "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::process_peak>::value, "Peak Memory",
         trait::name<category::process_peak>::description, LONG_DESCRIPTION, COMPONENT,
         MEMORY, "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::process_context_switch>::value, "Context Switches",
         trait::name<category::process_context_switch>::description, LONG_DESCRIPTION,
         COMPONENT, "", "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::process_page_fault>::value, "Page Faults",
         trait::name<category::process_page_fault>::description, LONG_DESCRIPTION,
         COMPONENT, "", "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::process_user_mode_time>::value, "User Time",
         trait::name<category::process_user_mode_time>::description, LONG_DESCRIPTION,
         COMPONENT, TIME, "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.device_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::process_kernel_mode_time>::value, "Kernel Time",
         trait::name<category::process_kernel_mode_time>::description, LONG_DESCRIPTION,
         COMPONENT, TIME, "ABS", BLOCK, EXPRESSION, 0, 0);
@@ -215,11 +226,11 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, uint64_t timestamp,
     auto& data_processor = get_data_processor();
     auto  event_id = data_processor.insert_event(ROCPROFSYS_CATEGORY_CPU_FREQ, 0, 0, 0);
 
-    auto& agents = rocpd::agent_manager::get_instance();
-    auto  agent  = agents.get_agent_by_id(device_id, rocpd::agent::device_type::cpu);
+    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto  base_id  = agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
 
     auto insert_event_and_sample = [&](const char* name, double value) {
-        data_processor.insert_pmc_event(event_id, agent.device_id, name, value);
+        data_processor.insert_pmc_event(event_id, base_id, name, value);
         data_processor.insert_sample(name, timestamp, event_id);
     };
 
@@ -256,15 +267,17 @@ setup()
                   category::process_peak, category::process_context_switch,
                   category::process_page_fault, category::process_user_mode_time,
                   category::process_kernel_mode_time>{});
+
     rocpd_initialize_cpu_freq_category();
-    rocpd_initialize_cpu_usage_tracks();
+    auto thread_idx = rocpd_initialize_thread_info(gettid());
+    rocpd_initialize_cpu_usage_tracks(thread_idx);
+    rocpd_initialize_cpu_freq_tracks(thread_idx);
 }
 
 void
 config()
 {
     component::cpu_freq::configure();
-    rocpd_initialize_cpu_freq_tracks();
 }
 
 void
@@ -349,7 +362,11 @@ post_process()
     // seems to be assigned per device basis not per core.
     // TODO: `get_enabled_cpus()` should be fixed in the future to align with GPU
     // implementation.
-    rocpd_initialize_cpu_freq_pmc(0);
+    auto cpu_agents = rocpd::agent_manager::get_instance()
+                                .get_agents_by_type(ROCPROFILER_AGENT_TYPE_CPU);
+    for(auto& agent : cpu_agents) {
+        rocpd_initialize_cpu_freq_pmc(agent->device_id);
+    }
 
     auto _process_frequencies = [](size_t _idx, size_t _offset) {
         using freq_track = perfetto_counter_track<category::cpu_freq>;

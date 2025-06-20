@@ -40,6 +40,9 @@
 #include "core/perfetto_fwd.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
+#include "core/rocpd/data_processor.hpp"
+#include "core/rocpd/agent_manager.hpp"
+#include "core/rocpd/node_info.hpp"
 #include "library/causal/data.hpp"
 #include "library/causal/experiment.hpp"
 #include "library/causal/sampling.hpp"
@@ -76,6 +79,8 @@
 #include <timemory/utility/backtrace.hpp>
 #include <timemory/utility/join.hpp>
 #include <timemory/utility/procfs/maps.hpp>
+
+#include <rocprofiler-sdk/agent.h>
 
 #include <atomic>
 #include <chrono>
@@ -297,6 +302,73 @@ namespace
 bool                  _set_mpi_called   = false;
 std::function<void()> _preinit_callback = []() { get_preinit_bundle()->start(); };
 
+std::vector<std::string>
+read_command_line(pid_t _pid)
+{
+    auto _cmdline = std::vector<std::string>{};
+    auto fcmdline = std::stringstream{};
+    fcmdline << "/proc/" << _pid << "/cmdline";
+    auto ifs = std::ifstream{ fcmdline.str().c_str() };
+    if(ifs)
+    {
+        char        cstr;
+        std::string sarg;
+        while(!ifs.eof())
+        {
+            ifs >> cstr;
+            if(!ifs.eof())
+            {
+                if(cstr != '\0')
+                {
+                    sarg += cstr;
+                }
+                else
+                {
+                    _cmdline.push_back(sarg);
+                    sarg = "";
+                }
+            }
+        }
+        ifs.close();
+    }
+
+    return _cmdline;
+}
+
+void
+rocprofsys_preinit_rocpd()
+{
+    auto&       data_processor = rocpd::data_processor::get_instance();
+    const auto& n_info         = node_info::get_instance();
+    auto        cmd_line       = read_command_line(getpid());
+    auto&       agent_mngr     = rocpd::agent_manager::get_instance();
+
+
+    if(cmd_line.empty())
+    {
+        cmd_line.push_back("rocpd");
+    }
+
+    data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
+                                    n_info.system_name.c_str(), n_info.node_name.c_str(),
+                                    n_info.release.c_str(), n_info.version.c_str(),
+                                    n_info.machine.c_str(), n_info.domain_name.c_str());
+    data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
+                                       cmd_line[0].c_str(), "{}");
+
+    const auto& agents = agent_mngr.get_agents();
+    for (auto& rocpd_agent : agents)
+    {
+        auto _base_id = rocpd::data_processor::get_instance().insert_agent(
+                        n_info.id, getpid(), ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
+                        rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
+                        rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
+                        rocpd_agent->agent->name, rocpd_agent->agent->model_name,
+                        rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
+        rocpd_agent->base_id = _base_id;
+    }
+}
+
 void
 rocprofsys_preinit_hidden()
 {
@@ -460,6 +532,8 @@ rocprofsys_init_tooling_hidden(void)
     auto _dtor = scope::destructor{ []() {
         // if set to finalized, don't continue
         if(get_state() > State::Active) return;
+        // ToDo: Should be under get_use_rocpd() once added
+        rocprofsys_preinit_rocpd();
         if(get_use_process_sampling())
         {
             ROCPROFSYS_SCOPED_SAMPLING_ON_CHILD_THREADS(false);
