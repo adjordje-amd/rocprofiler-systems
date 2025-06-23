@@ -110,7 +110,9 @@ rocpd_initialize_track()
     auto  _init_track = [&](const char* label) {
         std::cout << "INSERT_TRACK label: " << label << " n_info.id: " << n_info.id
                   << " pid: " << getpid() << " tid: " << gettid() << "\n";
-        get_data_processor().insert_track(label, n_info.id, getpid(), gettid());
+        auto tid_id = get_data_processor().insert_thread_info(n_info.id, 0, getpid(),
+                                                              gettid(), "MPI");
+        get_data_processor().insert_track(label, n_info.id, getpid(), tid_id);
     };
 
     static std::once_flag _once{};
@@ -134,7 +136,8 @@ rocpd_initialize_comm_data_pmc()
     const auto  DEVICE_ID        = 0;  // Assuming CPU device ID is 0
 
     auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id  = agent_mngr.get_agent_by_id(DEVICE_ID, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto  base_id =
+        agent_mngr.get_agent_by_id(DEVICE_ID, ROCPROFILER_AGENT_TYPE_CPU).base_id;
 
 #if defined(ROCPROFSYS_USE_MPI)
     data_processor.insert_pmc_description(
@@ -184,6 +187,13 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, int bytes)
 }  // namespace
 
 void
+comm_data::start()
+{
+    rocpd_initialize_comm_data_categories();
+    rocpd_initialize_comm_data_pmc();
+}
+
+void
 comm_data::preinit()
 {
     configure();
@@ -193,8 +203,6 @@ void
 comm_data::global_finalize()
 {
     configure();
-    rocpd_initialize_comm_data_categories();
-    rocpd_initialize_comm_data_pmc();
 }
 
 void
