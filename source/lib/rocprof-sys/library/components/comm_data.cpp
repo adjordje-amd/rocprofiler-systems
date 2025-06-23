@@ -108,10 +108,9 @@ rocpd_initialize_track()
 {
     auto& n_info      = node_info::get_instance();
     auto  _init_track = [&](const char* label) {
-        std::cout << "INSERT_TRACK label: " << label << " n_info.id: " << n_info.id
-                  << " pid: " << getpid() << " tid: " << gettid() << "\n";
-        auto tid_id = get_data_processor().insert_thread_info(n_info.id, 0, getpid(),
-                                                              gettid(), "MPI");
+        auto tid    = gettid();
+        auto tid_id = get_data_processor().insert_thread_info(
+            n_info.id, 0, getpid(), tid, JOIN(" ", "Thread", tid).c_str());
         get_data_processor().insert_track(label, n_info.id, getpid(), tid_id);
     };
 
