@@ -1400,7 +1400,6 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     auto _track_desc = [](int32_t                 _device_id_v,
                                           rocprofiler_thread_id_t _tid) {
                         const auto& _tid_v = thread_info::get(_tid, SystemTID);
-                        std::cout << "THREAD_ID :" <<  _tid_v->index_data->sequent_value << "\n";
                         return JOIN("", "GPU Memory Copy to Agent [", _device_id_v,
                                     "] Thread ", _tid_v->index_data->sequent_value);
                     };

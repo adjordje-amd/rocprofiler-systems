@@ -17,10 +17,10 @@ agent_manager::get_instance()
 void
 agent_manager::insert_agent(const rocprofiler_agent_v0_t* _agent)
 {
-    std::cout << "Inserting agent with device handle: " << _agent->id.handle
-              << ", and agent id: " << (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? _gpu_agents_cnt : _cpu_agents_cnt)
-              << ", device type: " << (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU")
-              << std::endl;
+    ROCPROFSYS_VERBOSE(3, "Inserting agent with device handle: %d, and agent id: %ld, device type: %s",
+        _agent->id.handle,
+        (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? _gpu_agents_cnt : _cpu_agents_cnt),
+        (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU"));
 
     _agents.emplace_back(std::make_shared<agent>(agent{
         _agent,

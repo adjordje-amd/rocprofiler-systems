@@ -748,7 +748,7 @@ post_process()
 {
     for(auto itr : data::device_list)
     {
-        std::cout << "Post-processing amd-smi data for device " << itr << std::endl;
+        ROCPROFSYS_VERBOSE(2, "Post-processing amd-smi data for device: %d", itr);
         data::post_process(itr);
     }
 }
