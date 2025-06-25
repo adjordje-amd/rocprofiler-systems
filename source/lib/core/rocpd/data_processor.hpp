@@ -1,3 +1,25 @@
+// MIT License
+//
+// Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #pragma once
 
 #include <any>
@@ -17,26 +39,25 @@ namespace rocprofsys
 {
 namespace rocpd
 {
-
 struct data_processor
 {
     using insert_event_stmt =
-        std::function<void(const char*, size_t, size_t, size_t, size_t,
-                           const char*, const char*, const char*)>;
+        std::function<void(const char*, size_t, size_t, size_t, size_t, const char*,
+                           const char*, const char*)>;
     using insert_pmc_event_stms =
         std::function<void(const char*, size_t, size_t, double, const char*)>;
     using insert_sample_stmt =
         std::function<void(const char*, size_t, uint64_t, size_t, const char*)>;
     using insert_region_stmt =
-        std::function<void(const char*, size_t, size_t, size_t, uint64_t,
-                           uint64_t, size_t, size_t, const char*)>;
+        std::function<void(const char*, size_t, size_t, size_t, uint64_t, uint64_t,
+                           size_t, size_t, const char*)>;
     using insert_kernel_dispatch_stmt       = std::function<void(
-        const char*, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
-        size_t, uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, size_t,
-        size_t, size_t, size_t, size_t, const char*)>;
+        const char*, size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+        uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+        size_t, size_t, size_t, const char*)>;
     using insert_memory_copy_stmt           = std::function<void(
-        const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t,
-        size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t, const char*)>;
+        const char*, size_t, size_t, size_t, uint64_t, uint64_t, size_t, size_t, size_t,
+        size_t, size_t, size_t, size_t, size_t, size_t, size_t, const char*)>;
     using insert_memory_alloc_stmt          = std::function<void(
         const char*, size_t, size_t, size_t, size_t, const char*, const char*, uint64_t,
         uint64_t, size_t, size_t, size_t, size_t, size_t, const char*)>;
@@ -105,10 +126,10 @@ public:
                              const char* environment = "{}", const char* extdata = "{}");
 
     size_t insert_agent(size_t node_id, size_t pid, const char* agent_type,
-                      size_t absolute_index, size_t logical_index, size_t type_index,
-                      uint64_t uuid, const char* name, const char* model_name,
-                      const char* vendor_name, const char* product_name,
-                      const char* user_name, const char* extdata = "{}");
+                        size_t absolute_index, size_t logical_index, size_t type_index,
+                        uint64_t uuid, const char* name, const char* model_name,
+                        const char* vendor_name, const char* product_name,
+                        const char* user_name, const char* extdata = "{}");
 
     void insert_track(const char* track_name, size_t node_id, size_t process_id,
                       size_t thread_id, const char* extdata = "{}");
@@ -139,8 +160,8 @@ public:
                        const char* extdata = "{}");
 
     size_t insert_thread_info(size_t node_id, size_t parent_process_id, size_t process_id,
-                            size_t thread_id, const char* name, uint64_t start = 0,
-                            uint64_t end = 0, const char* extdata = "{}");
+                              size_t thread_id, const char* name, uint64_t start = 0,
+                              uint64_t end = 0, const char* extdata = "{}");
 
     void insert_stream_info(size_t stream_id, size_t node_id, size_t process_id,
                             const char* name, const char* extdata = "{}");
@@ -187,6 +208,8 @@ public:
                              size_t address, size_t size, size_t queue_id,
                              size_t stream_id, size_t event_id,
                              const char* extdata = "{}");
+
+    void flush();
 
 private:
     data_processor();
