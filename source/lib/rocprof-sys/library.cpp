@@ -767,6 +767,14 @@ rocprofsys_finalize_hidden(void)
     }
     else if(_is_child)
     {
+#if defined(ROCPROFSYS_USE_ROCM) && ROCPROFSYS_USE_ROCM > 0
+        // Flush buffered traces in case of child process
+        if(get_use_rocm())
+        {
+            ROCPROFSYS_VERBOSE_F(1, "Shutting down ROCm...\n");
+            rocprofiler_sdk::shutdown();
+        }
+#endif
         rocpd::data_processor::get_instance().flush();
         set_state(State::Finalized);
         std::quick_exit(EXIT_SUCCESS);
