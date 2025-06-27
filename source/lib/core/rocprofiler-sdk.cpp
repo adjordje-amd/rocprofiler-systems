@@ -513,7 +513,6 @@ get_buffered_domains()
             for(auto eitr : { ROCPROFILER_BUFFER_TRACING_HSA_CORE_API,
                               ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API,
                               ROCPROFILER_BUFFER_TRACING_HSA_IMAGE_EXT_API,
-                              ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION,
                               ROCPROFILER_BUFFER_TRACING_HSA_FINALIZE_EXT_API })
                 _data.emplace(eitr);
         }
@@ -527,9 +526,13 @@ get_buffered_domains()
         {
             _data.emplace(ROCPROFILER_BUFFER_TRACING_MARKER_CORE_API);
         }
-        else if(itr == "memory_allocate")
+        else if(itr == "memory_allocation")
         {
             _data.emplace(ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION);
+        }
+        else if(itr == "memory_copy")
+        {
+            _data.emplace(ROCPROFILER_BUFFER_TRACING_MEMORY_COPY);
         }
         else
         {
