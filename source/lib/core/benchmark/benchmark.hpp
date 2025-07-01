@@ -1,88 +1,120 @@
-#include <chrono>
-#include <unordered_map>
+#pragma once
+
+#include <algorithm>
 #include <array>
-#include <string>
-#include <iostream>
+#include <bitset>
+#include <chrono>
+#include <cstdlib>
 #include <iomanip>
-#include <type_traits>
+#include <iostream>
 #include <limits>
 #include <mutex>
-#include <vector>
-#include <cstdlib>
 #include <sstream>
-#include <algorithm>
-#include <bitset>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <vector>
 
-#include "category.hpp"
+#include "core/benchmark/category.hpp"
+#include "core/debug.hpp"
 
+namespace rocprofiler
+{
 namespace benchmark
 {
-  template <bool Enabled, typename CategoryEnum,
-            CategoryEnum... EnabledCategories>
-  struct benchmark_impl
-  {
-    template <CategoryEnum... Categories> static void start() {}
-    template <CategoryEnum... Categories> static void end() {}
-    static void initFromEnv(const char * = nullptr) {}
+namespace
+{
+template <bool Enabled, typename CategoryEnum, CategoryEnum... EnabledCategories>
+struct benchmark_impl
+{
+    template <CategoryEnum... Categories>
+    static void start()
+    {}
+    template <CategoryEnum... Categories>
+    static void end()
+    {}
+    static void initFromEnv(const char* = nullptr) {}
     static void printResults() {}
-  };
+};
 
-  template <typename CategoryEnum, CategoryEnum... EnabledCategories>
-  class benchmark_impl<true, CategoryEnum, EnabledCategories...>
-  {
-    static_assert(std::is_enum_v<CategoryEnum>,
-                  "CategoryEnum must be an enum");
+template <typename CategoryEnum, CategoryEnum... EnabledCategories>
+struct benchmark_impl<true, CategoryEnum, EnabledCategories...>
+{
+    static_assert(std::is_enum_v<CategoryEnum>, "CategoryEnum must be an enum");
 
-  public:
-    using Clock = std::chrono::high_resolution_clock;
-    using TimePoint = Clock::time_point;
-    static constexpr size_t kMaxCategories
-      = static_cast<size_t>(CategoryEnum::Count);
+public:
+    using clock                            = std::chrono::high_resolution_clock;
+    using time_point                       = clock::time_point;
+    static constexpr size_t kMaxCategories = static_cast<size_t>(CategoryEnum::Count);
 
-    template <CategoryEnum... Categories> static void start()
+    template <CategoryEnum... Categories>
+    struct scope
     {
-      const TimePoint now = Clock::now();
-      std::lock_guard lock(mutex_);
-      (..., (if_compiled<Categories>([&] {
-         if(runtimeEnabled_.test(to_index(Categories)))
-           startTimes_[to_index(Categories)] = now;
-       })));
+        friend benchmark_impl;
+
+    public:
+        scope(const scope&)            = delete;
+        scope& operator=(const scope&) = delete;
+        ~scope() { end<Categories...>(); }
+
+    protected:
+        scope() { start<Categories...>(); }
+
+        scope(scope&&)            = default;
+        scope& operator=(scope&&) = default;
+    };
+
+    template <CategoryEnum... Categories>
+    static void start()
+    {
+        const auto      now = clock::now();
+        std::lock_guard lock(mutex_);
+        (..., (if_compiled<Categories>([&] {
+             if(runtimeEnabled_.test(to_index(Categories)))
+                 startTimes_[to_index(Categories)] = now;
+         })));
     }
 
-    template <CategoryEnum... Categories> static void end()
+    template <CategoryEnum... Categories>
+    static void end()
     {
-      const TimePoint endTime = Clock::now();
-      std::lock_guard lock(mutex_);
-      (..., (if_compiled<Categories>([&] {
-         if(runtimeEnabled_.test(to_index(Categories)))
-           endCategory(endTime, Categories);
-       })));
+        const auto      endTime = clock::now();
+        std::lock_guard lock(mutex_);
+        (..., (if_compiled<Categories>([&] {
+             if(runtimeEnabled_.test(to_index(Categories)))
+                 endCategory(endTime, Categories);
+         })));
     }
 
-    static void init_from_env(const char *envVar = "BENCHMARK_CATEGORIES")
+    template <CategoryEnum... Categories>
+    [[nodiscard]] static scope<Categories...> scoped_trace()
     {
-      std::lock_guard lock(mutex_);
-      const char *env = std::getenv(envVar);
-      if(!env || std::string(env).empty())
+        return scope<Categories...>{};
+    }
+
+    static void init_from_env(const char* envVar = "BENCHMARK_CATEGORIES")
+    {
+        std::lock_guard lock(mutex_);
+        const auto*     env = std::getenv(envVar);
+        if(env == nullptr || std::string(env).empty())
         {
-          std::cerr << "No benchmark_impl categories specified in environment "
-                       "variable: "
-                    << envVar << "\n";
-          return;
+            ROCPROFSYS_WARNING(
+                1, "No BENCHMARK categories specified in environment variable.\n");
+            return;
         }
-      std::string str(env);
-      std::istringstream ss(str);
-      std::string token;
+        std::string        str(env);
+        std::istringstream ss(str);
+        std::string        token;
 
-      while(std::getline(ss, token, ','))
+        while(std::getline(ss, token, ','))
         {
-          token.erase(0, token.find_first_not_of(" \t"));
-          token.erase(token.find_last_not_of(" \t") + 1);
-          for(CategoryEnum cat : compiledCategories)
+            token.erase(0, token.find_first_not_of(" \t"));
+            token.erase(token.find_last_not_of(" \t") + 1);
+            for(CategoryEnum cat : compiledCategories)
             {
-              if(to_string(cat) == token)
+                if(to_string(cat) == token)
                 {
-                  runtimeEnabled_.set(to_index(cat));
+                    runtimeEnabled_.set(to_index(cat));
                 }
             }
         }
@@ -90,127 +122,158 @@ namespace benchmark
 
     static void show_results()
     {
-      std::lock_guard lock(mutex_);
-      std::vector<std::pair<CategoryEnum, result_data> > sorted;
+        std::lock_guard                                   lock(mutex_);
+        std::vector<std::pair<CategoryEnum, result_data>> sorted;
 
-      for(CategoryEnum cat : compiledCategories)
+        for(CategoryEnum cat : compiledCategories)
         {
-          const auto &data = results_[to_index(cat)];
-          if(data.count > 0)
+            const auto& data = results_[to_index(cat)];
+            if(data.count > 0)
             {
-              sorted.emplace_back(cat, data);
+                sorted.emplace_back(cat, data);
             }
         }
 
-      std::sort(sorted.begin(), sorted.end(),
-                [](const auto &a, const auto &b) {
-                  return a.second.totalTime > b.second.totalTime;
-                });
+        std::sort(sorted.begin(), sorted.end(), [](const auto& a, const auto& b) {
+            return a.second.totalTime > b.second.totalTime;
+        });
 
-      constexpr int wCategory = 30;
-      constexpr int wCalls = 8;
-      constexpr int wTotal = 12;
-      constexpr int wAvg = 10;
-      constexpr int wMin = 10;
-      constexpr int wMax = 10;
+        constexpr uint32_t wCategory = 30;
+        constexpr uint32_t wCalls    = 8;
+        constexpr uint32_t wTotal    = 12;
+        constexpr uint32_t wAvg      = 10;
+        constexpr uint32_t wMin      = 10;
+        constexpr uint32_t wMax      = 10;
 
-      std::cout << "\n============ Benchmark Results (Sorted by Total Time) "
-                   "============\n";
-      std::cout << std::left << std::setw(wCategory) << "Category"
-                << std::right << std::setw(wCalls) << "Calls"
-                << std::setw(wTotal) << "Total(ms)" << std::setw(wAvg)
-                << "Avg(us)" << std::setw(wMin) << "Min(us)" << std::setw(wMax)
-                << "Max(us)" << "\n";
+        std::cout << "\033[32m"
+                  << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '=')
+                  << "\n";
+        std::cout << "Benchmark Results (Sorted by Total Time):\n";
+        std::cout << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '-')
+                  << "\n";
+        std::cout << std::left << std::setw(wCategory) << "Category" << std::right
+                  << std::setw(wCalls) << "Calls" << std::setw(wTotal) << "Total(ms)"
+                  << std::setw(wAvg) << "Avg(us)" << std::setw(wMin) << "Min(us)"
+                  << std::setw(wMax) << "Max(us)" << "\n";
 
-      std::cout << std::string(
-        wCategory + wCalls + wTotal + wAvg + wMin + wMax, '-')
-                << "\n";
+        std::cout << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '-')
+                  << "\n";
 
-      for(const auto &[cat, data] : sorted)
+        for(const auto& [cat, data] : sorted)
         {
-          double totalMs = static_cast<double>(data.totalTime) / 1000.0;
-          double avgUs = static_cast<double>(data.totalTime) / data.count;
+            double totalMs = static_cast<double>(data.totalTime) / 1000.0;
+            double avgUs   = static_cast<double>(data.totalTime) / data.count;
 
-          std::cout << std::left << std::setw(wCategory) << to_string(cat)
-                    << std::right << std::setw(wCalls) << data.count
-                    << std::setw(wTotal) << std::fixed << std::setprecision(3)
-                    << totalMs << std::setw(wAvg) << std::fixed
-                    << std::setprecision(1) << avgUs << std::setw(wMin)
-                    << data.minTime << std::setw(wMax) << data.maxTime << "\n";
+            std::cout << std::left << std::setw(wCategory) << to_string(cat) << std::right
+                      << std::setw(wCalls) << data.count << std::setw(wTotal)
+                      << std::fixed << std::setprecision(3) << totalMs << std::setw(wAvg)
+                      << std::fixed << std::setprecision(1) << avgUs << std::setw(wMin)
+                      << data.minTime << std::setw(wMax) << data.maxTime << "\n";
         }
 
-      std::cout << std::string(
-        wCategory + wCalls + wTotal + wAvg + wMin + wMax, '=')
-                << "\n\n";
+        std::cout << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '=')
+                  << "\033[0m" << "\n\n";
     }
 
-  private:
+private:
     struct result_data
     {
-      long long totalTime = 0;
-      int count = 0;
-      long long minTime = std::numeric_limits<long long>::max();
-      long long maxTime = std::numeric_limits<long long>::min();
+        uint64_t totalTime = 0;
+        size_t   count     = 0;
+        uint64_t minTime   = std::numeric_limits<uint64_t>::max();
+        uint64_t maxTime   = std::numeric_limits<uint64_t>::min();
 
-      void update(long long duration)
-      {
-        totalTime += duration;
-        count += 1;
-        if(duration < minTime)
-          minTime = duration;
-        if(duration > maxTime)
-          maxTime = duration;
-      }
+        void update(uint64_t duration)
+        {
+            totalTime += duration;
+            count += 1;
+            if(duration < minTime) minTime = duration;
+            if(duration > maxTime) maxTime = duration;
+        }
     };
 
     static constexpr size_t to_index(CategoryEnum cat)
     {
-      return static_cast<size_t>(cat);
+        return static_cast<size_t>(cat);
     }
 
-    static void endCategory(const TimePoint &endTime, CategoryEnum cat)
+    static void endCategory(const time_point& endTime, CategoryEnum cat)
     {
-      const size_t idx = to_index(cat);
-      auto it = startTimes_.find(idx);
-      if(it == startTimes_.end())
+        const size_t idx = to_index(cat);
+        auto         it  = startTimes_.find(idx);
+        if(it == startTimes_.end())
         {
-          std::cerr << "Benchmark error: no start time for category "
-                    << to_string(cat) << "\n";
-          return;
+            ROCPROFSYS_WARNING(1, "Benchmark error: missing start time for category!\n");
+            return;
         }
 
-      auto duration = std::chrono::duration_cast<std::chrono::microseconds>(
-                        endTime - it->second)
-                        .count();
-      startTimes_.erase(it);
-      results_[idx].update(duration);
+        auto duration =
+            std::chrono::duration_cast<std::chrono::microseconds>(endTime - it->second)
+                .count();
+        startTimes_.erase(it);
+        results_[idx].update(duration);
     }
 
     template <CategoryEnum Cat, typename Func>
-    static constexpr void if_compiled(Func &&f)
+    static constexpr void if_compiled(Func&& f)
     {
-      if constexpr(((Cat == EnabledCategories) || ...))
+        if constexpr(((Cat == EnabledCategories) || ...))
         {
-          f();
+            f();
         }
     }
 
     static constexpr std::array<CategoryEnum, sizeof...(EnabledCategories)>
-      compiledCategories = {EnabledCategories...};
+        compiledCategories = { EnabledCategories... };
 
-    static inline std::unordered_map<size_t, TimePoint> startTimes_;
+    static inline std::unordered_map<size_t, time_point>  startTimes_;
     static inline std::array<result_data, kMaxCategories> results_{};
-    static inline std::bitset<kMaxCategories> runtimeEnabled_;
-    static inline std::mutex mutex_;
-  };
-
-} // namespace benchmark
+    static inline std::bitset<kMaxCategories>             runtimeEnabled_;
+    static inline std::mutex                              mutex_;
+};
 
 using rps_benchmark = benchmark::benchmark_impl<
-  true, benchmark::category,
-  benchmark::category::Kernel_Dispatch,
-  benchmark::category::Memory_Copy,
-  benchmark::category::Memory_Allocate,
-  benchmark::category::DB_Entry_Kernel_Dispatch,
-  benchmark::category::DB_Entry_Memory_Copy,
-  benchmark::category::DB_Entry_Memory_Allocate>;
+    true, benchmark::category, benchmark::category::Kernel_Dispatch,
+    benchmark::category::Memory_Copy, benchmark::category::Memory_Allocate,
+    benchmark::category::DB_Entry_Kernel_Dispatch,
+    benchmark::category::DB_Entry_Memory_Copy,
+    benchmark::category::DB_Entry_Memory_Allocate,
+    benchmark::category::Perfetto_Kernel_Dispatch,
+    benchmark::category::Sdk_Tool_Buffered_Tracing>;
+}  // namespace
+
+template <category... Categories>
+void
+start()
+{
+    rps_benchmark::template start<Categories...>();
+}
+
+template <category... Categories>
+void
+end()
+{
+    rps_benchmark::template end<Categories...>();
+}
+
+template <category... Categories>
+[[nodiscard]] auto
+scoped_trace()
+{
+    return rps_benchmark::template scoped_trace<Categories...>();
+}
+
+inline void
+init_from_env(const char* envVar = "BENCHMARK_CATEGORIES")
+{
+    rps_benchmark::init_from_env(envVar);
+}
+
+inline void
+show_results()
+{
+    rps_benchmark::show_results();
+}
+
+}  // namespace benchmark
+}  // namespace rocprofiler

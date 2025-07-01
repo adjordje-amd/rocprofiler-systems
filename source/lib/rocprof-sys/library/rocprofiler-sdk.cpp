@@ -23,6 +23,7 @@
 #include "library/rocprofiler-sdk.hpp"
 #include "api.hpp"
 #include "common/synchronized.hpp"
+#include "core/benchmark/benchmark.hpp"
 #include "core/benchmark/category.hpp"
 #include "core/config.hpp"
 #include "core/containers/stable_vector.hpp"
@@ -30,7 +31,6 @@
 #include "core/gpu.hpp"
 #include "core/perfetto.hpp"
 #include "core/rocpd/agent_manager.hpp"
-#include "core/benchmark/benchmark.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
 #include "core/rocpd/node_info.hpp"
@@ -507,7 +507,8 @@ rocpd_insert_thread_info(uint64_t tid)
     auto& n_info         = node_info::get_instance();
 
     return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
-                                                JOIN(" ", "Thread", tid).c_str(), 0, 0, "{}");
+                                             JOIN(" ", "Thread", tid).c_str(), 0, 0,
+                                             "{}");
 }
 
 void
@@ -920,9 +921,9 @@ tool_tracing_callback_stop(
         record, iterate_args_callback, 2, &args);
     rocpd_initialize_category<CategoryT>();
 
-    auto        call_stack      = get_backtrace(_bt_data);
-    auto        stack_id        = record.correlation_id.internal;
-    auto        parent_stack_id = get_parent_stack_id(record.correlation_id);
+    auto call_stack      = get_backtrace(_bt_data);
+    auto stack_id        = record.correlation_id.internal;
+    auto parent_stack_id = get_parent_stack_id(record.correlation_id);
 
     auto thread_idx = rocpd_insert_thread_info(record.thread_id);
 
@@ -1232,6 +1233,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                       rocprofiler_record_header_t** headers, size_t num_headers,
                       void* /*user_data*/, uint64_t /*drop_count*/)
 {
+    auto _ = rocprofiler::benchmark::scoped_trace<
+        rocprofiler::benchmark::category::Sdk_Tool_Buffered_Tracing>();
     if(num_headers == 0 || headers == nullptr) return;
 
     for(size_t i = 0; i < num_headers; ++i)
@@ -1242,7 +1245,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
         {
             if(header->kind == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH)
             {
-                rps_benchmark::start<benchmark::category::Kernel_Dispatch>();
+                auto _ = rocprofiler::benchmark::scoped_trace<
+                    rocprofiler::benchmark::category::Kernel_Dispatch>();
 
                 auto* record =
                     static_cast<rocprofiler_buffer_tracing_kernel_dispatch_record_t*>(
@@ -1261,7 +1265,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 const auto* _agent    = tool_data->get_gpu_tool_agent(_agent_id);
 
                 auto thread_idx = rocpd_insert_thread_info(record->thread_id);
-                rps_benchmark::start<benchmark::category::DB_Entry_Kernel_Dispatch>();
+                rocprofiler::benchmark::start<
+                    rocprofiler::benchmark::category::DB_Entry_Kernel_Dispatch>();
                 rocpd_initialize_category<category::rocm_kernel_dispatch>();
                 auto event_id = get_data_processor().insert_event(
                     category_enum_id<category::rocm_kernel_dispatch>::value, _corr_id,
@@ -1274,7 +1279,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                                  thread_idx);
                 rocpd_insert_kernel_dispatch(record, event_id, record_name_id, thread_idx,
                                              "{}");
-                rps_benchmark::end<benchmark::category::DB_Entry_Kernel_Dispatch>();
+                rocprofiler::benchmark::end<
+                    rocprofiler::benchmark::category::DB_Entry_Kernel_Dispatch>();
 
                 if(get_use_timemory())
                 {
@@ -1293,6 +1299,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                 if(get_use_perfetto())
                 {
+                    auto _ = rocprofiler::benchmark::scoped_trace<
+                        rocprofiler::benchmark::category::Perfetto_Kernel_Dispatch>();
                     auto _track_desc = [](int32_t _device_id_v, int64_t _queue_id_v) {
                         return JOIN("", "GPU Kernel Dispatch [", _device_id_v, "] Queue ",
                                     _queue_id_v);
@@ -1347,11 +1355,11 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     tracing::pop_perfetto(category::rocm_kernel_dispatch{}, _name.c_str(),
                                           _track, _end_ns);
                 }
-                rps_benchmark::end<benchmark::category::Kernel_Dispatch>();
             }
             else if(header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_COPY)
             {
-                rps_benchmark::start<benchmark::category::Memory_Copy>();
+                auto _ = rocprofiler::benchmark::scoped_trace<
+                    rocprofiler::benchmark::category::Memory_Copy>();
                 auto* record =
                     static_cast<rocprofiler_buffer_tracing_memory_copy_record_t*>(
                         header->payload);
@@ -1368,7 +1376,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     tool_data->buffered_tracing_info.at(record->kind, record->operation);
 
                 // Insert memory copy record into database
-                rps_benchmark::start<benchmark::category::DB_Entry_Memory_Copy>();
+                rocprofiler::benchmark::start<
+                    rocprofiler::benchmark::category::DB_Entry_Memory_Copy>();
                 auto thread_idx = rocpd_insert_thread_info(record->thread_id);
 
                 rocpd_initialize_category<category::rocm_memory_copy>();
@@ -1381,13 +1390,15 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 auto region_name_id = get_data_processor().insert_string(_name.data());
 
                 rocpd_init_track(JOIN("", "GPU Memory Copy to Agent [",
-                                      _dst_agent->logical_node_id, "] Thread ", thread_idx)
+                                      _dst_agent->logical_node_id, "] Thread ",
+                                      thread_idx)
                                      .c_str(),
                                  thread_idx);
 
-                rocpd_insert_memory_copy(record, name_id, event_id, region_name_id, thread_idx,
-                                         "{}");
-                rps_benchmark::end<benchmark::category::DB_Entry_Memory_Copy>();
+                rocpd_insert_memory_copy(record, name_id, event_id, region_name_id,
+                                         thread_idx, "{}");
+                rocprofiler::benchmark::end<
+                    rocprofiler::benchmark::category::DB_Entry_Memory_Copy>();
 
                 if(get_use_timemory())
                 {
@@ -1437,11 +1448,11 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     tracing::pop_perfetto(category::rocm_memory_copy{}, "", _track,
                                           _end_ns);
                 }
-                rps_benchmark::end<benchmark::category::Memory_Copy>();
             }
             else if(header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION)
             {
-                rps_benchmark::start<benchmark::category::Memory_Allocate>();
+                rocprofiler::benchmark::start<
+                    rocprofiler::benchmark::category::Memory_Allocate>();
                 auto* record =
                     static_cast<rocprofiler_buffer_tracing_memory_allocation_record_t*>(
                         header->payload);
@@ -1454,7 +1465,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     tool_data->buffered_tracing_info.at(record->kind, record->operation);
 
                 // Insert memory allocation record into database
-                rps_benchmark::start<benchmark::category::DB_Entry_Memory_Allocate>();
+                rocprofiler::benchmark::start<
+                    rocprofiler::benchmark::category::DB_Entry_Memory_Allocate>();
                 rocpd_initialize_category<category::rocm_memory_allocate>();
                 auto thread_idx = rocpd_insert_thread_info(record->thread_id);
 
@@ -1469,7 +1481,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 auto [type, level] = memtype_to_db(_name);
                 rocpd_insert_memory_allocation(record, type.c_str(), level.c_str(),
                                                event_id, thread_idx);
-                rps_benchmark::end<benchmark::category::DB_Entry_Memory_Allocate>();
+                rocprofiler::benchmark::end<
+                    rocprofiler::benchmark::category::DB_Entry_Memory_Allocate>();
             }
             else if(header->kind == ROCPROFILER_BUFFER_TRACING_HSA_CORE_API ||
                     header->kind == ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API)
@@ -1671,7 +1684,7 @@ flush()
 int
 tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 {
-    rps_benchmark::init_from_env();
+    rocprofiler::benchmark::init_from_env();
 
     auto domains = settings::instance()->at("ROCPROFSYS_ROCM_DOMAINS");
 
@@ -1914,7 +1927,7 @@ tool_fini(void* callback_data)
     delete tool_data;
     tool_data = nullptr;
 
-    rps_benchmark::show_results();
+    rocprofiler::benchmark::show_results();
 }
 }  // namespace
 
@@ -2007,7 +2020,6 @@ rocprofiler_configure(uint32_t version, const char* runtime_version, uint32_t pr
     if(!tim::get_env("ROCPROFSYS_INIT_TOOLING", true)) return nullptr;
     if(!tim::settings::enabled()) return nullptr;
 
-    
     if(!rocprofsys::config::settings_are_configured() &&
        rocprofsys::get_state() < rocprofsys::State::Active)
         rocprofsys_init_tooling_hidden();
