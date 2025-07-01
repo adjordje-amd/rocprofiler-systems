@@ -1,30 +1,72 @@
 {
     "required_tables": [
         {
-            "name_prefix": "rocpd_kernel_dispatch_",
+            "name": "kernel_summary",
             "required_columns": [
-                "id",
-                "start_time",
-                "end_time",
-                "kernel_name"
-            ]
-        },
-        {
-            "name_prefix": "rocpd_info_thread_",
-            "min_rows": 0,
-            "required_columns": [
-                "id",
-                "function_name",
-                "start_time",
-                "end_time"
+                "name",
+                "calls",
+                "DURATION (nsec)"
             ],
             "validation_queries": [
                 {
                     "description": "Check for null function names",
-                    "query": "SELECT COUNT(*) as count FROM api_calls WHERE function_name IS NULL",
+                    "query": "SELECT COUNT(*) as count FROM kernel_summary WHERE name IS NULL",
                     "expected_result": 0,
+                    "comparison": "equals",
                     "error_message": "Found API calls with null function names"
+                },
+                {
+                    "description": "Check that we have some kernel calls",
+                    "query": "SELECT COUNT(*) as count FROM kernel_summary",
+                    "expected_result": 0,
+                    "comparison": "greater_than",
+                    "error_message": "No kernel calls found in summary"
                 }
+            ]
+        },
+        {
+            "name": "kernels",
+            "required_columns": [
+                "id",
+                "category",
+                "name",
+                "start",
+                "end",
+                "queue",
+                "stream"
+            ],
+            "validation_queries": [
+                {
+                    "description": "Check for null function names",
+                    "query": "SELECT COUNT(*) as count FROM kernels WHERE name IS NULL",
+                    "expected_result": 0,
+                    "comparison": "equals",
+                    "error_message": "Found kernels with null function names"
+                },
+                {
+                    "description": "Check that we have kernel entries",
+                    "query": "SELECT COUNT(*) as count FROM kernels",
+                    "expected_result": 0,
+                    "comparison": "greater_than",
+                    "error_message": "No kernel entries found"
+                },
+                {
+                    "description": "Check for kernels with no active time",
+                    "query": "SELECT COUNT(*) as count FROM kernels WHERE (end - start) = 0",
+                    "expected_result": 0,
+                    "comparison": "equals",
+                    "error_message": "Kernels with no active execution times found"
+                }
+            ]
+        },
+        {
+            "name": "threads",
+            "min_rows": 0,
+            "required_columns": [
+                "tid",
+                "start",
+                "end",
+                "name"
             ]
         }
     ]
