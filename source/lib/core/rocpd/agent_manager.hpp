@@ -31,7 +31,6 @@ namespace rocprofsys
 {
 namespace rocpd
 {
-
 struct agent_manager
 {
     static agent_manager& get_instance();
@@ -58,6 +57,7 @@ struct agent_manager
 
 private:
     std::vector<std::shared_ptr<agent>> _agents;
+    size_t                              _base_cnt{ 0 };
     size_t                              _gpu_agents_cnt{ 0 };
     size_t                              _cpu_agents_cnt{ 0 };
     agent_manager() = default;

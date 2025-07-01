@@ -41,6 +41,9 @@
 #include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
+#include "core/sample_cache/cache_storage.hpp"
+#include "core/sample_cache/cache_storage_parser.hpp"
+#include "core/sample_cache/metadata_storage.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
 #include "library/causal/data.hpp"
@@ -323,6 +326,7 @@ read_command_line(pid_t _pid)
     return _cmdline;
 }
 
+// TODO: Rename
 void
 rocprofsys_preinit_rocpd()
 {
@@ -343,6 +347,7 @@ rocprofsys_preinit_rocpd()
     data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
                                        cmd_line[0].c_str(), "{}");
 
+    cache::metadata::storage::get_instance().set_process({ getpid(), cmd_line.at(0) });
     const auto& agents = agent_mngr.get_agents();
     for(const auto& rocpd_agent : agents)
     {
@@ -993,6 +998,22 @@ rocprofsys_finalize_hidden(void)
     }
 
     tracing::copy_timemory_hash_ids();
+
+    {
+        std::cout << "CACHE SHUTDOWN\n";
+        cache::storage::get_instance().shutdown();
+
+        std::cout << "CACHE POSTPROCESSING\n";
+
+        std::cout << "NODE: " << node_info::get_instance().node_name << "\n";
+
+        for(const auto& agent : rocpd::agent_manager::get_instance().get_agents())
+        {
+            std::cout << "agent global id:" << agent->global_id << "\n";
+        }
+
+        cache::storage_parser::get_instance().consume_storage();
+    }
 
     bool _perfetto_output_error = false;
     if(get_use_perfetto())

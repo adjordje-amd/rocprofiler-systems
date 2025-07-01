@@ -331,6 +331,10 @@ if(ROCPROFSYS_BUILD_TESTING OR "$ENV{ROCPROFSYS_CI}" MATCHES "[1-9]+|ON|on|y|yes
     include(CTest)
 endif()
 
+rocprofiler_systems_add_option(ROCPROFSYS_ENABLE_BENCHMARK
+                               "Enable benchmarking" ON
+)
+
 # ------------------------------------------------------------------------------#
 #
 # library and executables

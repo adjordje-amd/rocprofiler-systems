@@ -45,10 +45,10 @@ agent_manager::insert_agent(const rocprofiler_agent_v0_t* _agent)
         (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU"));
 
     _agents.emplace_back(std::make_shared<agent>(agent{
-        _agent,
-        (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? _gpu_agents_cnt++
-                                                    : _cpu_agents_cnt++),
-    }));
+        .agent     = _agent,
+        .device_id = (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? _gpu_agents_cnt++
+                                                                 : _cpu_agents_cnt++),
+        .global_id = _base_cnt++ }));
 }
 
 const agent&

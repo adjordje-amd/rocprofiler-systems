@@ -21,29 +21,21 @@
 // SOFTWARE.
 
 #pragma once
-
-#include <cstddef>
-#include <rocprofiler-sdk/agent.h>
-
-#if ROCPROFSYS_USE_ROCM > 0
-#    include <amd_smi/amdsmi.h>
-#endif
+#include <stdint.h>
 
 namespace rocprofsys
 {
-namespace rocpd
+namespace cache
 {
-struct agent
+enum class sample_type : uint32_t
 {
-    const rocprofiler_agent_v0_t* agent = nullptr;
-    size_t                        device_id{ 0 };
-    size_t                        base_id{ 0 };
-    size_t                        global_id{ 0 };
-
-#if ROCPROFSYS_USE_ROCM > 0
-    amdsmi_processor_handle smi_handle = nullptr;
-#endif
+    pmc_event,  //  Should be cached? It's already cached in amd smi
+    sample,
+    region,
+    kernel_dispatch,
+    memory_copy,
+    memory_alloc,
+    fragmented_space = 0xFFFF
 };
-
-}  // namespace rocpd
+}  // namespace cache
 }  // namespace rocprofsys

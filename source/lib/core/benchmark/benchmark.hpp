@@ -40,6 +40,7 @@
 #include "core/benchmark/category.hpp"
 #include "core/debug.hpp"
 
+#define ROCPROFSYS_ENABLE_BENCHMARK 1
 namespace rocprofiler
 {
 namespace benchmark
@@ -50,34 +51,34 @@ template <bool Enabled, typename CategoryEnum, CategoryEnum... EnabledCategories
 struct benchmark_impl
 {
     template <CategoryEnum... Categories>
-    struct scope
-    {
-        scope(const scope&)            = delete;
-        scope& operator=(const scope&) = delete;
-        ~scope()                       = default;
-
-    protected:
-        scope()                   = default;
-        scope(scope&&)            = default;
-        scope& operator=(scope&&) = default;
-    };
-
-    template <CategoryEnum... Categories>
     static void start()
     {}
-
     template <CategoryEnum... Categories>
     static void end()
     {}
+    static void initFromEnv(const char* = nullptr) {}
+    static void printResults() {}
+};
 
-    template <CategoryEnum... Categories>
-    [[nodiscard]] static scope<Categories...> scoped_trace()
+struct indexed_category
+{
+    size_t category;
+    size_t index;
+
+    friend bool operator==(const indexed_category& lhs, const indexed_category& rhs)
     {
-        return scope<Categories...>{};
+        return lhs.category == rhs.category && lhs.index == rhs.index;
     }
+};
 
-    static void init_from_env(const char* = nullptr) {}
-    static void show_results() {}
+struct hash_indexed_category
+{
+    size_t operator()(const indexed_category& p) const noexcept
+    {
+        std::size_t hash1 = std::hash<size_t>{}(p.category);
+        std::size_t hash2 = std::hash<size_t>{}(p.index);
+        return hash1 ^ (hash2 << 1);
+    }
 };
 
 template <typename CategoryEnum, CategoryEnum... EnabledCategories>
@@ -98,37 +99,45 @@ public:
     public:
         scope(const scope&)            = delete;
         scope& operator=(const scope&) = delete;
-        ~scope() { end<Categories...>(); }
+        ~scope() { end<Categories...>(m_index); }
 
     protected:
-        scope() { start<Categories...>(); }
+        scope()
+        {
+            static size_t index_count = 0;
+            m_index                   = index_count++;
+            start<Categories...>(m_index);
+        }
 
         scope(scope&&)            = default;
         scope& operator=(scope&&) = default;
+        size_t m_index;
     };
 
+private:
     template <CategoryEnum... Categories>
-    static void start()
+    static void start(size_t index)
     {
         const auto      now = clock::now();
         std::lock_guard lock(mutex_);
         (..., (if_compiled<Categories>([&] {
              if(runtimeEnabled_.test(to_index(Categories)))
-                 startTimes_[to_index(Categories)] = now;
+                 startTimes_[{ to_index(Categories), index }] = now;
          })));
     }
 
     template <CategoryEnum... Categories>
-    static void end()
+    static void end(size_t index)
     {
         const auto      endTime = clock::now();
         std::lock_guard lock(mutex_);
         (..., (if_compiled<Categories>([&] {
              if(runtimeEnabled_.test(to_index(Categories)))
-                 endCategory(endTime, Categories);
+                 endCategory(endTime, Categories, index);
          })));
     }
 
+public:
     template <CategoryEnum... Categories>
     [[nodiscard]] static scope<Categories...> scoped_trace()
     {
@@ -197,7 +206,8 @@ public:
         std::cout << std::left << std::setw(wCategory) << "Category" << std::right
                   << std::setw(wCalls) << "Calls" << std::setw(wTotal) << "Total(ms)"
                   << std::setw(wAvg) << "Avg(us)" << std::setw(wMin) << "Min(us)"
-                  << std::setw(wMax) << "Max(us)" << "\n";
+                  << std::setw(wMax) << "Max(us)"
+                  << "\n";
 
         std::cout << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '-')
                   << "\n";
@@ -215,7 +225,8 @@ public:
         }
 
         std::cout << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '=')
-                  << "\033[0m" << "\n\n";
+                  << "\033[0m"
+                  << "\n\n";
     }
 
 private:
@@ -240,10 +251,10 @@ private:
         return static_cast<size_t>(cat);
     }
 
-    static void endCategory(const time_point& endTime, CategoryEnum cat)
+    static void endCategory(const time_point& endTime, CategoryEnum cat, size_t index)
     {
         const size_t idx = to_index(cat);
-        auto         it  = startTimes_.find(idx);
+        auto         it  = startTimes_.find({ idx, index });
         if(it == startTimes_.end())
         {
             ROCPROFSYS_WARNING(1, "Benchmark error: missing start time for category!\n");
@@ -269,7 +280,8 @@ private:
     static constexpr std::array<CategoryEnum, sizeof...(EnabledCategories)>
         compiledCategories = { EnabledCategories... };
 
-    static inline std::unordered_map<size_t, time_point>  startTimes_;
+    static inline std::unordered_map<indexed_category, time_point, hash_indexed_category>
+                                                          startTimes_;
     static inline std::array<result_data, kMaxCategories> results_{};
     static inline std::bitset<kMaxCategories>             runtimeEnabled_;
     static inline std::mutex                              mutex_;
@@ -283,7 +295,9 @@ using rps_benchmark = benchmark::benchmark_impl<
     benchmark::category::DB_Entry_Memory_Copy,
     benchmark::category::DB_Entry_Memory_Allocate,
     benchmark::category::Perfetto_Kernel_Dispatch,
-    benchmark::category::Sdk_Tool_Buffered_Tracing>;
+    benchmark::category::Sdk_Tool_Buffered_Tracing, benchmark::category::Event,
+    benchmark::category::Event_Cached, benchmark::category::Kernel_Dispatch_Cached,
+    benchmark::category::Memory_Copy_Cached, benchmark::category::Memory_Allocate_Cached>;
 #else
 using rps_benchmark = benchmark::benchmark_impl<false, benchmark::category>;
 #endif

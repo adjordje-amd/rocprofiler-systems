@@ -40,6 +40,7 @@
 #include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
+#include "core/sample_cache/metadata_storage.hpp"
 #include "core/state.hpp"
 #include "library/runtime.hpp"
 #include "library/thread_info.hpp"
@@ -170,6 +171,31 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
         trait::name<category::amd_smi_memory_usage>::value, "MemUsg",
         trait::name<category::amd_smi_memory_usage>::description, LONG_DESCRIPTION,
         COMPONENT, "MB", "ABS", BLOCK, EXPRESSION, 0, 0);
+
+    // Cache
+    cache::metadata::storage::get_instance().add_pmc_info(
+        { base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+          trait::name<category::amd_smi_mm_busy>::value, "Busy",
+          trait::name<category::amd_smi_mm_busy>::description, LONG_DESCRIPTION,
+          COMPONENT, "$", "ABS", BLOCK, EXPRESSION, 0, 0, "{}" });
+
+    cache::metadata::storage::get_instance().add_pmc_info(
+        { base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+          trait::name<category::amd_smi_temp>::value, "Temp",
+          trait::name<category::amd_smi_temp>::description, LONG_DESCRIPTION, COMPONENT,
+          CELSIUS_DEGREES, "ABS", BLOCK, EXPRESSION, 0, 0 });
+
+    cache::metadata::storage::get_instance().add_pmc_info(
+        { base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+          trait::name<category::amd_smi_power>::value, "Pow",
+          trait::name<category::amd_smi_power>::description, LONG_DESCRIPTION, COMPONENT,
+          "w", "ABS", BLOCK, EXPRESSION, 0, 0 });
+
+    cache::metadata::storage::get_instance().add_pmc_info(
+        { base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+          trait::name<category::amd_smi_memory_usage>::value, "MemUsg",
+          trait::name<category::amd_smi_memory_usage>::description, LONG_DESCRIPTION,
+          COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0 });
 };
 
 void
@@ -308,7 +334,7 @@ data::sample(uint32_t _dev_id)
     ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).temp, amdsmi_get_temp_metric,
                           sample_handle, AMDSMI_TEMPERATURE_TYPE_JUNCTION,
                           AMDSMI_TEMP_CURRENT, &m_temp);
-#if(AMDSMI_LIB_VERSION_MAJOR == 2 && AMDSMI_LIB_VERSION_MINOR == 0) ||                   \
+#if (AMDSMI_LIB_VERSION_MAJOR == 2 && AMDSMI_LIB_VERSION_MINOR == 0) ||                  \
     (AMDSMI_LIB_VERSION_MAJOR == 25 && AMDSMI_LIB_VERSION_MINOR == 2)
     // This was a transient change in the AMD SMI API. It was never officially released.
     ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).power, amdsmi_get_power_info,
