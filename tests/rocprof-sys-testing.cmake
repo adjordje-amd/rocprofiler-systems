@@ -1232,6 +1232,14 @@ function(ROCPROFILER_SYSTEMS_ADD_VALIDATION_TEST)
         )
     endif()
 
+    add_test(
+        NAME validate-${TEST_NAME}-rocpd
+        COMMAND
+            ${ROCPROFSYS_VALIDATION_PYTHON}
+            ${CMAKE_CURRENT_LIST_DIR}/validate-rocpd.py -m
+        WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
+
+
     list(APPEND TEST_ENVIRONMENT "ROCPROFSYS_CI_TIMEOUT=${TEST_TIMEOUT}")
 
     foreach(_TEST validate-${TEST_NAME}-timemory validate-${TEST_NAME}-perfetto)

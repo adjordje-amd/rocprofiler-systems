@@ -1,0 +1,31 @@
+{
+    "required_tables": [
+        {
+            "name_prefix": "rocpd_kernel_dispatch_",
+            "required_columns": [
+                "id",
+                "start_time",
+                "end_time",
+                "kernel_name"
+            ]
+        },
+        {
+            "name_prefix": "rocpd_info_thread_",
+            "min_rows": 0,
+            "required_columns": [
+                "id",
+                "function_name",
+                "start_time",
+                "end_time"
+            ],
+            "validation_queries": [
+                {
+                    "description": "Check for null function names",
+                    "query": "SELECT COUNT(*) as count FROM api_calls WHERE function_name IS NULL",
+                    "expected_result": 0,
+                    "error_message": "Found API calls with null function names"
+                }
+            ]
+        }
+    ]
+}
