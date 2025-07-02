@@ -42,6 +42,12 @@ rocprofiler_systems_add_validation_test(
     EXIST_FILES ${ROCPROFSYS_FILE_CHECKS}
     LABELS "rocprofiler")
 
+ROCPROFILER_SYSTEMS_ADD_VALIDATION_TEST(
+    NAME transpose-sampling
+    ROCPD_FILE "rocpd.db"
+    DEPENDS transpose-rocpd
+    LABELS "rocprofiler"
+)
 # if(ROCPROFSYS_USE_ROCM)
 #     set(NAVI_REGEX "gfx(10|11|12)[A-Fa-f0-9][A-Fa-f0-9]")
 #     rocprofiler_systems_get_gfx_archs(NAVI_DETECTED GFX_MATCH ${NAVI_REGEX} ECHO)

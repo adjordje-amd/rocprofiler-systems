@@ -263,7 +263,7 @@ if __name__ == "__main__":
         "-r", "--validation_rules",
         type=Path,
         help="Rules against which to validate database",
-        default=Path(f"{os.path.dirname(os.path.abspath(__file__))}/default_rules.json")
+        default=Path(f"{os.path.dirname(os.path.abspath(__file__))}/rocpd_validation_rules/default_rules.json")
     )
 
     parser.add_argument(
