@@ -71,6 +71,7 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/timemory.hpp
     ${CMAKE_CURRENT_LIST_DIR}/utility.hpp
     ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_storage.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/metadata_storage.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_processor.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/node_info.hpp
