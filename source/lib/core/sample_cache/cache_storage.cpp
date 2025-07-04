@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include "cache_storage.hpp"
+#include <mutex>
 
 namespace rocprofsys
 {
@@ -78,10 +79,13 @@ storage::storage()
         }
     };
 
+    std::mutex shutdown_condition_mutex;
     while(!m_shutdown)
     {
         execute_flush(ofs);
-        std::this_thread::sleep_for(std::chrono::milliseconds(30));
+        std::unique_lock lock{ shutdown_condition_mutex };
+        m_shutdown_condition.wait_for(lock, std::chrono::milliseconds(30),
+                                      [&]() { return m_shutdown; });
     }
 
     execute_flush(ofs, true);
@@ -92,7 +96,8 @@ storage::storage()
 void
 storage::shutdown()
 {
-    m_shutdown = false;
+    m_shutdown = true;
+    m_shutdown_condition.notify_all();
     m_flushing_thread.join();
 }
 

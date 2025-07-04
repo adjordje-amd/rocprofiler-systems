@@ -26,6 +26,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <condition_variable>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -120,7 +121,8 @@ private:
 
 private:
     std::mutex                    m_mutex;
-    bool                          m_shutdown{ true };
+    bool                          m_shutdown{ false };
+    std::condition_variable       m_shutdown_condition;
     std::thread                   m_flushing_thread;
     size_t                        m_head{ 0 };
     size_t                        m_tail{ 0 };
