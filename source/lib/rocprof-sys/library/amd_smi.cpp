@@ -85,55 +85,6 @@ get_data_processor()
     return rocpd::data_processor::get_instance();
 }
 
-// TODO: Move this to a proper location
-std::vector<std::string>
-read_command_line(pid_t _pid)
-{
-    auto _cmdline = std::vector<std::string>{};
-    auto fcmdline = std::stringstream{};
-    fcmdline << "/proc/" << _pid << "/cmdline";
-    auto ifs = std::ifstream{ fcmdline.str().c_str() };
-    if(ifs)
-    {
-        char        cstr;
-        std::string sarg;
-        while(!ifs.eof())
-        {
-            ifs >> cstr;
-            if(!ifs.eof())
-            {
-                if(cstr != '\0')
-                {
-                    sarg += cstr;
-                }
-                else
-                {
-                    _cmdline.push_back(sarg);
-                    sarg = "";
-                }
-            }
-        }
-        ifs.close();
-    }
-
-    return _cmdline;
-}
-
-// TODO: Move this to a proper location
-void
-rocpd_initilaize_process_info()
-{
-    auto& data_processor = get_data_processor();
-    auto& n_info         = node_info::get_instance();
-    auto  cmd_line       = read_command_line(getpid());
-    if(cmd_line.empty())
-    {
-        cmd_line.emplace_back("rocpd");
-    }
-    data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
-                                       cmd_line[0].c_str(), "{}");
-}
-
 size_t
 rocpd_initialize_thread_info(uint64_t tid)
 {
@@ -193,29 +144,29 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
     auto        ni               = node_info::get_instance();
     const auto  TARGET_ARCH      = "GPU";
 
-    auto& agents = rocpd::agent_manager::get_instance();
-    auto  agent  = agents.get_agent_by_id(gpu_id, rocpd::agent::device_type::gpu);
+    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto base_id = agent_mngr.get_agent_by_id(gpu_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::amd_smi_mm_busy>::value, "Busy",
         trait::name<category::amd_smi_mm_busy>::description, LONG_DESCRIPTION, COMPONENT,
         "%", "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::amd_smi_temp>::value, "Temp",
         trait::name<category::amd_smi_temp>::description, LONG_DESCRIPTION, COMPONENT,
         CELSIUS_DEGREES, "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::amd_smi_power>::value, "Pow",
         trait::name<category::amd_smi_power>::description, LONG_DESCRIPTION, COMPONENT,
         "w", "ABS", BLOCK, EXPRESSION, 0, 0);
 
     data_processor.insert_pmc_description(
-        ni.id, getpid(), agent.base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+        ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::amd_smi_memory_usage>::value, "MemUsg",
         trait::name<category::amd_smi_memory_usage>::description, LONG_DESCRIPTION,
         COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0);
@@ -231,12 +182,13 @@ rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& 
     auto& data_processor = get_data_processor();
     auto  event_id = data_processor.insert_event(ROCPROFSYS_CATEGORY_AMD_SMI, 0, 0, 0);
 
-    auto& agents = rocpd::agent_manager::get_instance();
-    auto  agent  = agents.get_agent_by_id(device_id, rocpd::agent::device_type::gpu);
+    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto  base_id =
+        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
 
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if(!enabled) return;
-        data_processor.insert_pmc_event(event_id, agent.base_id, name, value);
+        data_processor.insert_pmc_event(event_id, base_id, name, value);
         data_processor.insert_sample(name, timestamp, event_id);
     };
 
@@ -462,19 +414,6 @@ data::setup()
     perfetto_counter_track<data>::init();
     amd_smi::set_state(State::PreInit);
 
-    if(get_use_rocpd())
-    {
-        const auto& n_info         = node_info::get_instance();
-        auto&       data_processor = rocpd::data_processor::get_instance();
-
-        data_processor.insert_node_info(
-            n_info.id, n_info.hash, n_info.machine_id.c_str(), n_info.system_name.c_str(),
-            n_info.node_name.c_str(), n_info.release.c_str(), n_info.version.c_str(),
-            n_info.machine.c_str(), n_info.domain_name.c_str());
-
-        rocpd_initilaize_process_info();
-    }
-
     return true;
 }
 
@@ -658,7 +597,7 @@ setup()
     ROCPROFSYS_VERBOSE_F(0, "AMD SMI version: %u.%u.%u - str: %s.\n", _version.major,
                          _version.minor, _version.release, _version.build);
 
-    data::device_count = gpu::get_processor_count();
+    data::device_count = gpu::device_count();
 
     auto _devices_v = get_sampling_gpus();
     for(auto& itr : _devices_v)
@@ -790,7 +729,7 @@ post_process()
 {
     for(auto itr : data::device_list)
     {
-        std::cout << "Post-processing amd-smi data for device " << itr << std::endl;
+        ROCPROFSYS_VERBOSE(2, "Post-processing amd-smi data for device: %d", itr);
         data::post_process(itr);
     }
 }

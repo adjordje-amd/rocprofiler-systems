@@ -1,11 +1,10 @@
 #pragma once
 #include "common/traits.hpp"
-#include "queries/table_insert_query.hpp"
-#include <functional>
 #include <memory>
 #include <mutex>
-#include <optional>
 #include <sqlite3.h>
+#include <sstream>
+#include <stdexcept>
 
 namespace rocprofsys
 {
@@ -30,29 +29,56 @@ private:
     database();
 
     template <typename... Args>
-    static inline void validate_sqlite3_result(int sqlite3_error_code, Args&&... args)
+    inline void validate_sqlite3_result(int sqlite3_error_code, const char* query,
+                                        Args&&... args)
     {
-        if(SQLITE_OK != sqlite3_error_code && SQLITE_DONE != sqlite3_error_code)
+        std::stringstream ss;
+        ss << "\n===========================================================\n";
+        ss << "Database Error\n";
+        ((ss << args << " "), ...);
+        ss << "\nQuery: " << query << "\n";
+        switch(sqlite3_error_code)
         {
-            std::stringstream ss;
-            ((ss << args << ", "), ...);
-            ss << " [Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code) << "]";
-            throw std::runtime_error(ss.str());
-        }
-    }
+            case SQLITE_OK:
+            case SQLITE_DONE: return;
+            case SQLITE_CONSTRAINT:
+            {
+                sqlite3_stmt* stmt;
 
-    template <typename... Args>
-    static inline void validate_sqlite3_result(int sqlite3_error_code, sqlite3* db,
-                                               Args&&... args)
-    {
-        if(SQLITE_OK != sqlite3_error_code && SQLITE_DONE != sqlite3_error_code)
-        {
-            std::stringstream ss;
-            ((ss << args << ", "), ...);
-            ss << " [Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code);
-            ss << " (Extended error message: " << sqlite3_errmsg(db) << ")]";
-            throw std::runtime_error(ss.str());
+                ss << "Constraint violation(s): " << "\n";
+
+                sqlite3_exec(_sqlite3_db_temp, "PRAGMA foreign_keys = OFF;", nullptr,
+                             nullptr, nullptr);
+                sqlite3_exec(_sqlite3_db_temp, query, nullptr, nullptr, nullptr);
+                sqlite3_exec(_sqlite3_db_temp, "PRAGMA foreign_keys = ON;", nullptr,
+                             nullptr, nullptr);
+                sqlite3_prepare_v2(_sqlite3_db_temp, "PRAGMA foreign_key_check", -1,
+                                   &stmt, nullptr);
+                int rc = 0;
+                while((rc = sqlite3_step(stmt)) == SQLITE_ROW)
+                {
+                    const char* table  = (const char*) sqlite3_column_text(stmt, 0);
+                    int         rowid  = sqlite3_column_int(stmt, 1);
+                    const char* parent = (const char*) sqlite3_column_text(stmt, 2);
+                    int         fkid   = sqlite3_column_int(stmt, 3);
+
+                    ss << "  - " << "FK Violation - Table: " << (table ? table : "NULL")
+                       << ", RowID: " << rowid
+                       << ", Parent: " << (parent ? parent : "NULL") << ", FKID: " << fkid
+                       << "\n";
+                }
+
+                sqlite3_finalize(stmt);
+            }
+            break;
+            default:
+            {
+            }
+            break;
         }
+        ss << " [Sqlite3 error: " << sqlite3_errstr(sqlite3_error_code);
+        ss << " (Extended error message: " << sqlite3_errmsg(_sqlite3_db_temp) << ")]";
+        throw std::runtime_error(ss.str());
     }
 
 public:
@@ -71,45 +97,44 @@ public:
     auto create_statment_executor(const std::string& query)
     {
         sqlite3_stmt* p_stmt;
-        sqlite3*      db = _ram_sqlite_db ? _ram_sqlite_db : _sqlite3_db;
         validate_sqlite3_result(
-            sqlite3_prepare_v2(_ram_sqlite_db, query.c_str(), -1, &p_stmt, nullptr),
-            "Failed to create statement!", query);
+            sqlite3_prepare_v2(_sqlite3_db_temp, query.c_str(), -1, &p_stmt, nullptr),
+            query.c_str(), "Failed to create statement!");
         std::shared_ptr<sqlite3_stmt> stmt{ p_stmt, sqlite3_finalize };
 
-        return [stmt, query, db](Values... value) {
+        return [stmt, query, this](Values... value) {
             std::lock_guard lock{ _mutex };
             int             position   = 1;
             auto            bind_value = [&](auto value) {
                 using T = decltype(value);
                 if constexpr(std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>)
                 {
-                    database::validate_sqlite3_result(
-                        sqlite3_bind_int(stmt.get(), position, value), db,
+                    validate_sqlite3_result(
+                        sqlite3_bind_int(stmt.get(), position, value), query.c_str(),
                         "Failed to bind int32_t/uint32_t! Position: ", position,
-                        ", Values: ", value);
+                        ", Value: ", value);
                 }
                 else if constexpr(std::is_same_v<T, int64_t> ||
                                   std::is_same_v<T, uint64_t>)
                 {
-                    database::validate_sqlite3_result(
-                        sqlite3_bind_int64(stmt.get(), position, value), db,
+                    validate_sqlite3_result(
+                        sqlite3_bind_int64(stmt.get(), position, value), query.c_str(),
                         "Failed to bind int64_t/uint64_t! Position: ", position,
-                        ", Values: ", value);
+                        ", Value: ", value);
                 }
                 else if constexpr(std::is_floating_point_v<T>)
                 {
-                    database::validate_sqlite3_result(
-                        sqlite3_bind_double(stmt.get(), position, value), db,
+                    validate_sqlite3_result(
+                        sqlite3_bind_double(stmt.get(), position, value), query.c_str(),
                         "Failed to bind double! Position: ", position,
-                        ", Values: ", value);
+                        ", Value: ", value);
                 }
                 else if constexpr(common::traits::is_string_literal_v<std::decay_t<T>>)
                 {
-                    database::validate_sqlite3_result(
+                    validate_sqlite3_result(
                         sqlite3_bind_text(stmt.get(), position, value, -1, SQLITE_STATIC),
-                        db, "Failed to bind text! Position: ", position,
-                        ", Values: ", value);
+                        query.c_str(), "Failed to bind text! Position: ", position,
+                        ", Value: ", value);
                 }
                 else
                 {
@@ -120,9 +145,8 @@ public:
 
             (bind_value(value), ...);
 
-            validate_sqlite3_result(sqlite3_step(stmt.get()), db,
-                                    "Failed to execute step! Query: ", query,
-                                    ", Values: ", value...);
+            validate_sqlite3_result(sqlite3_step(stmt.get()), query.c_str(),
+                                    "Failed to execute step!\n", "Values: ", value...);
             sqlite3_reset(stmt.get());
         };
     }
@@ -131,7 +155,7 @@ public:
 
 private:
     sqlite3* _sqlite3_db{ nullptr };
-    sqlite3* _ram_sqlite_db{ nullptr };
+    sqlite3* _sqlite3_db_temp{ nullptr };
 };
 
 }  // namespace data_storage

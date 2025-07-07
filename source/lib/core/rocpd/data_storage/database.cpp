@@ -12,10 +12,7 @@
 #include <regex>
 #include <timemory/environment/types.hpp>
 
-#define USE_RAM_DB 1
-
 namespace fs = std::filesystem;
-
 namespace
 {
 void
@@ -49,31 +46,22 @@ database::database()
     create_directory_for_database_file(abs_db_path);
     ROCPROFSYS_VERBOSE(0, "Database: %s\r\n", abs_db_path.c_str());
 
-#ifdef USE_RAM_DB
-    validate_sqlite3_result(sqlite3_open(":memory:", &_ram_sqlite_db),
+    validate_sqlite3_result(sqlite3_open(":memory:", &_sqlite3_db_temp), "",
                             "database open failed!");
-    validate_sqlite3_result(sqlite3_open(abs_db_path.c_str(), &_sqlite3_db),
+    validate_sqlite3_result(sqlite3_open(abs_db_path.c_str(), &_sqlite3_db), "",
                             "database open failed!");
-#else
-    validate_sqlite3_result(sqlite3_open(abs_db_path.c_str(), &_ram_sqlite_db),
-                            "database open failed!");
-#endif
 };
 
 database::~database()
 {
-#ifdef USE_RAM_DB
-    auto backup = sqlite3_backup_init(_sqlite3_db, "main", _ram_sqlite_db, "main");
+    auto* backup = sqlite3_backup_init(_sqlite3_db, "main", _sqlite3_db_temp, "main");
     if(backup)
     {
         sqlite3_backup_step(backup, -1);  // Copy all pages
         sqlite3_backup_finish(backup);
     }
-    sqlite3_close(_ram_sqlite_db);
+    sqlite3_close(_sqlite3_db_temp);
     sqlite3_close(_sqlite3_db);
-#else
-    sqlite3_close(_ram_sqlite_db);
-#endif
 }
 
 void
@@ -123,7 +111,7 @@ database::initialize_schema()
         query = std::regex_replace(query, view_upid_pattern, "");
 
         validate_sqlite3_result(
-            sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0),
+            sqlite3_exec(_sqlite3_db_temp, query.c_str(), 0, 0, 0), query.c_str(),
             std::string("Invalid schema file, init database failed!").append(file_path));
         file.close();
     }
@@ -132,7 +120,7 @@ database::initialize_schema()
 void
 database::execute_query(const std::string& query)
 {
-    validate_sqlite3_result(sqlite3_exec(_ram_sqlite_db, query.c_str(), 0, 0, 0),
+    validate_sqlite3_result(sqlite3_exec(_sqlite3_db_temp, query.c_str(), 0, 0, 0),
                             "Failed to execute query - ", query);
 }
 
@@ -150,7 +138,7 @@ database::get_upid()
 size_t
 database::get_last_insert_id() const
 {
-    return sqlite3_last_insert_rowid(_ram_sqlite_db);
+    return sqlite3_last_insert_rowid(_sqlite3_db_temp);
 }
 
 }  // namespace data_storage
