@@ -128,7 +128,7 @@ rocpd_initilaize_process_info()
     auto  cmd_line       = read_command_line(getpid());
     if(cmd_line.empty())
     {
-        cmd_line.push_back("rocpd");
+        cmd_line.emplace_back("rocpd");
     }
     data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
                                        cmd_line[0].c_str(), "{}");
@@ -527,134 +527,113 @@ data::post_process(uint32_t _dev_id)
         rocpd_initialize_smi_pmc(_dev_id);
     }
 
-    auto _process_perfetto = [&]() {
-        constexpr uint8_t AMD_SMI_METRICS_COUNT = 8;
-        auto              _idx = std::array<uint64_t, AMD_SMI_METRICS_COUNT>{};
+    for(auto& itr : _amd_smi)
+    {
+        using counter_track = perfetto_counter_track<data>;
+        if(itr.m_dev_id != _dev_id) continue;
 
-        {
-            _idx.fill(_idx.size());
-            uint64_t nidx = 0;
-            if(_settings.busy)
-            {
-                _idx.at(0) = nidx++;  // GFX Busy
-                _idx.at(1) = nidx++;  // UMC Busy
-                _idx.at(2) = nidx++;  // MM Busy
-            }
-            if(_settings.temp) _idx.at(3) = nidx++;
-            if(_settings.power) _idx.at(4) = nidx++;
-            if(_settings.mem_usage) _idx.at(5) = nidx++;
-            if(_settings.vcn_activity) _idx.at(6) = nidx++;
-            if(_settings.jpeg_activity) _idx.at(7) = nidx++;
-        }
+        uint64_t _ts = itr.m_ts;
+        if(!_thread_info->is_valid_time(_ts)) continue;
 
-        for(auto& itr : _amd_smi)
-        {
-            using counter_track = perfetto_counter_track<data>;
-            if(itr.m_dev_id != _dev_id) continue;
-            if(!counter_track::exists(_dev_id))
-            {
-                auto addendum = [&](const char* _v) {
-                    return JOIN(" ", "GPU", _v, JOIN("", '[', _dev_id, ']'), "(S)");
-                };
-                auto addendum_blk = [&](std::size_t _i, const char* _metric) {
-                    if(_i < 10)
-                    {
-                        return JOIN(" ", "GPU", JOIN("", '[', _dev_id, ']'), _metric,
-                                    JOIN("", "[0", _i, ']'), "(S)");
-                    }
-                    else
-                    {
-                        return JOIN(" ", "GPU", JOIN("", '[', _dev_id, ']'), _metric,
-                                    JOIN("", '[', _i, ']'), "(S)");
-                    }
-                };
+        double _gfxbusy = itr.m_busy_perc.gfx_activity;
+        double _umcbusy = itr.m_busy_perc.umc_activity;
+        double _mmbusy  = itr.m_busy_perc.mm_activity;
+        double _temp    = itr.m_temp;
+        double _power   = itr.m_power.current_socket_power;
+        double _usage   = itr.m_mem_usage / static_cast<double>(units::megabyte);
 
-                if(_settings.busy)
-                {
-                    counter_track::emplace(_dev_id, addendum("GFX Busy"), "%");
-                    counter_track::emplace(_dev_id, addendum("UMC Busy"), "%");
-                    counter_track::emplace(_dev_id, addendum("MM Busy"), "%");
-                }
-                if(_settings.temp)
-                    counter_track::emplace(_dev_id, addendum("Temperature"), "deg C");
-                if(_settings.power)
-                    counter_track::emplace(_dev_id, addendum("Current Power"), "watts");
-                if(_settings.mem_usage)
-                    counter_track::emplace(_dev_id, addendum("Memory Usage"),
-                                           "megabytes");
-                if(_settings.vcn_activity)
-                {
-                    for(std::size_t i = 0; i < std::size(itr.m_vcn_metrics); ++i)
-                        counter_track::emplace(_dev_id, addendum_blk(i, "  VCN Activity"),
-                                               "%");
-                }
-                if(_settings.jpeg_activity)
-                {
-                    for(std::size_t i = 0; i < std::size(itr.m_jpeg_metrics); ++i)
-                        counter_track::emplace(_dev_id, addendum_blk(i, "JPEG Activity"),
-                                               "%");
-                }
-            }
-            uint64_t _ts = itr.m_ts;
-            if(!_thread_info->is_valid_time(_ts)) continue;
+        auto setup_perfetto_counter_tracks = [&]() {
+            if(counter_track::exists(_dev_id)) return;
 
-            double _gfxbusy = itr.m_busy_perc.gfx_activity;
-            double _umcbusy = itr.m_busy_perc.umc_activity;
-            double _mmbusy  = itr.m_busy_perc.mm_activity;
-            double _temp    = itr.m_temp;
-            double _power   = itr.m_power.current_socket_power;
-            double _usage   = itr.m_mem_usage / static_cast<double>(units::megabyte);
+            auto addendum = [&](const char* _v) {
+                return JOIN(" ", "GPU", _v, JOIN("", '[', _dev_id, ']'), "(S)");
+            };
+            auto addendum_blk = [&](std::size_t _i, const char* _metric) {
+                auto _id = [](std::size_t _i) {
+                    return _i < 10 ? JOIN("[0", _i, ']') : JOIN('[', _i, ']');
+                }(_i);
 
-            // TODO: Refactor
-            if(get_use_rocpd())
-            {
-                rocpd_process_smi_pmc_events(_dev_id, _settings, _ts, _mmbusy, _temp,
-                                             _power, _usage);
-            }
+                return JOIN(" ", "GPU", JOIN("", '[', _dev_id, ']'), _metric,
+                            JOIN("", _id), "(S)");
+            };
 
             if(_settings.busy)
             {
-                TRACE_COUNTER("device_busy_gfx", counter_track::at(_dev_id, _idx.at(0)),
-                              _ts, _gfxbusy);
-                TRACE_COUNTER("device_busy_umc", counter_track::at(_dev_id, _idx.at(1)),
-                              _ts, _umcbusy);
-                TRACE_COUNTER("device_busy_mm", counter_track::at(_dev_id, _idx.at(2)),
+                counter_track::emplace(_dev_id, addendum("GFX Busy"), "%");
+                counter_track::emplace(_dev_id, addendum("UMC Busy"), "%");
+                counter_track::emplace(_dev_id, addendum("MM Busy"), "%");
+            }
+            if(_settings.temp)
+                counter_track::emplace(_dev_id, addendum("Temperature"), "deg C");
+            if(_settings.power)
+                counter_track::emplace(_dev_id, addendum("Current Power"), "watts");
+            if(_settings.mem_usage)
+                counter_track::emplace(_dev_id, addendum("Memory Usage"), "megabytes");
+            if(_settings.vcn_activity)
+            {
+                for(std::size_t i = 0; i < std::size(itr.m_vcn_metrics); ++i)
+                    counter_track::emplace(_dev_id, addendum_blk(i, "  VCN Activity"),
+                                           "%");
+            }
+            if(_settings.jpeg_activity)
+            {
+                for(std::size_t i = 0; i < std::size(itr.m_jpeg_metrics); ++i)
+                    counter_track::emplace(_dev_id, addendum_blk(i, "JPEG Activity"),
+                                           "%");
+            }
+        };
+
+        auto write_perfetto_metrics = [&]() {
+            size_t track_index = 0;
+
+            if(_settings.busy)
+            {
+                TRACE_COUNTER("device_busy_gfx",
+                              counter_track::at(_dev_id, track_index++), _ts, _gfxbusy);
+                TRACE_COUNTER("device_busy_umc",
+                              counter_track::at(_dev_id, track_index++), _ts, _umcbusy);
+                TRACE_COUNTER("device_busy_mm", counter_track::at(_dev_id, track_index++),
                               _ts, _mmbusy);
             }
             if(_settings.temp)
-                TRACE_COUNTER("device_temp", counter_track::at(_dev_id, _idx.at(3)), _ts,
-                              _temp);
+                TRACE_COUNTER("device_temp", counter_track::at(_dev_id, track_index++),
+                              _ts, _temp);
             if(_settings.power)
-                TRACE_COUNTER("device_power", counter_track::at(_dev_id, _idx.at(4)), _ts,
-                              _power);
+                TRACE_COUNTER("device_power", counter_track::at(_dev_id, track_index++),
+                              _ts, _power);
             if(_settings.mem_usage)
                 TRACE_COUNTER("device_memory_usage",
-                              counter_track::at(_dev_id, _idx.at(5)), _ts, _usage);
+                              counter_track::at(_dev_id, track_index++), _ts, _usage);
             if(_settings.vcn_activity)
             {
-                uint64_t idx = _idx.at(6);
-                for(const auto& temp : itr.m_vcn_metrics)
+                for(const auto& metric : itr.m_vcn_metrics)
                 {
-                    TRACE_COUNTER("device_vcn_activity", counter_track::at(_dev_id, idx),
-                                  _ts, temp);
-                    ++idx;
+                    TRACE_COUNTER("device_vcn_activity",
+                                  counter_track::at(_dev_id, track_index++), _ts, metric);
                 }
             }
             if(_settings.jpeg_activity)
             {
-                uint64_t idx = _idx.at(7);
-                if(_settings.vcn_activity) idx += (itr.m_vcn_metrics.size() - 1);
                 for(const auto& temp : itr.m_jpeg_metrics)
                 {
-                    TRACE_COUNTER("device_jpeg_activity", counter_track::at(_dev_id, idx),
-                                  _ts, temp);
-                    ++idx;
+                    TRACE_COUNTER("device_jpeg_activity",
+                                  counter_track::at(_dev_id, track_index++), _ts, temp);
                 }
             }
-        }
-    };
+        };
 
-    if(get_use_perfetto()) _process_perfetto();
+        if(get_use_perfetto())
+        {
+            setup_perfetto_counter_tracks();
+            write_perfetto_metrics();
+        }
+
+        if(get_use_rocpd())
+        {
+            rocpd_process_smi_pmc_events(_dev_id, _settings, _ts, _mmbusy, _temp, _power,
+                                         _usage);
+        }
+    }
 }
 
 //--------------------------------------------------------------------------------------//
