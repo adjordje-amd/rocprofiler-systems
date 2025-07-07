@@ -41,6 +41,7 @@
 #include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
+#include "core/sample_cache/cache_storage.hpp"
 #include "core/sample_cache/metadata_storage.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
@@ -340,14 +341,36 @@ read_command_line(pid_t _pid)
 void
 rocprofsys_preinit_rocpd()
 {
-    auto cmd_line = read_command_line(getpid());
+    auto&       data_processor = rocpd::data_processor::get_instance();
+    const auto& n_info         = node_info::get_instance();
+    auto        cmd_line       = read_command_line(getpid());
+    auto&       agent_mngr     = rocpd::agent_manager::get_instance();
 
     if(cmd_line.empty())
     {
         cmd_line.push_back("rocprof-systems");
     }
 
+    data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
+                                    n_info.system_name.c_str(), n_info.node_name.c_str(),
+                                    n_info.release.c_str(), n_info.version.c_str(),
+                                    n_info.machine.c_str(), n_info.domain_name.c_str());
+    data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
+                                       cmd_line[0].c_str(), "{}");
+
     cache::metadata::storage::get_instance().set_process({ getpid(), cmd_line.at(0) });
+    const auto& agents = agent_mngr.get_agents();
+    for(const auto& rocpd_agent : agents)
+    {
+        auto _base_id = rocpd::data_processor::get_instance().insert_agent(
+            n_info.id, getpid(),
+            ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
+            rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
+            rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
+            rocpd_agent->agent->name, rocpd_agent->agent->model_name,
+            rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
+        rocpd_agent->base_id = _base_id;
+    }
 }
 
 void
@@ -840,7 +863,6 @@ rocprofsys_finalize_hidden(void)
         ompt::shutdown();
     }
 
-    rocprofiler_sdk::post_process();
 #if defined(ROCPROFSYS_USE_ROCM) && ROCPROFSYS_USE_ROCM > 0
     if(get_use_rocm())
     {
@@ -976,6 +998,25 @@ rocprofsys_finalize_hidden(void)
     }
 
     tracing::copy_timemory_hash_ids();
+
+    {
+        std::cout << "CACHE POSTPROCESSING\n";
+
+        std::cout << "NODE: " << node_info::get_instance().node_name << "\n";
+
+        for(const auto& agent : rocpd::agent_manager::get_instance().get_agents())
+        {
+            std::cout << "agent global id:" << agent->global_id << "\n";
+        }
+
+        cache::metadata::storage::get_instance().print_process();
+        cache::metadata::storage::get_instance().print_threads();
+        cache::metadata::storage::get_instance().print_pmc_info();
+        cache::metadata::storage::get_instance().print_code_objects();
+        cache::metadata::storage::get_instance().print_kernel_symbols();
+
+        cache::storage::get_instance().shutdown();
+    }
 
     bool _perfetto_output_error = false;
     if(get_use_perfetto())

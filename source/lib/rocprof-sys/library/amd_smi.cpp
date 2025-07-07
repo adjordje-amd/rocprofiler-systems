@@ -780,7 +780,6 @@ post_process()
         ROCPROFSYS_VERBOSE(2, "Post-processing amd-smi data for device: %d", itr);
         data::post_process(itr);
     }
-    cache::metadata::storage::get_instance().print_pmc_info();
 }
 
 uint32_t

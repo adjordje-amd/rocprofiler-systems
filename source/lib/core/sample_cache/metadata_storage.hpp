@@ -204,6 +204,12 @@ struct storage
         });
     }
 
+    void print_process()
+    {
+        std::cout << "Process PID: " << m_process.pid << " " << m_process.command
+                  << std::endl;
+    }
+
 private:
     storage() = default;
     // TODO: add syncronized

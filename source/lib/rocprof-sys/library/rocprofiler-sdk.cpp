@@ -670,8 +670,8 @@ rocpd_insert_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t
     auto  agent_id =
         agent_mngr.get_agent_by_handle(record->dispatch_info.agent_id.handle).base_id;
 
-    // rocpd_insert_stream_info(stream_id);
-    // rocpd_insert_queue_info(record->dispatch_info.queue_id);
+    rocpd_insert_stream_info(stream_id);
+    rocpd_insert_queue_info(record->dispatch_info.queue_id);
 
     data_processor.insert_kernel_dispatch(
         n_info.id, getpid(), thread_id, agent_id, record->dispatch_info.kernel_id,
@@ -717,7 +717,7 @@ rocpd_insert_memory_allocation(
     auto& n_info         = node_info::get_instance();
 
     auto stream_id = get_stream_id(record);
-    // rocpd_insert_stream_info(stream_id);
+    rocpd_insert_stream_info(stream_id);
 
     auto agent_id = std::optional<uint64_t>{};
     if(record->agent_id.handle != static_cast<uint64_t>(-1))
@@ -968,22 +968,20 @@ tool_tracing_callback_stop(
     auto stack_id        = record.correlation_id.internal;
     auto parent_stack_id = get_parent_stack_id(record.correlation_id);
 
-    // Add Caching
+    auto thread_idx = rocpd_insert_thread_info(record.thread_id);
 
-    // auto thread_idx = rocpd_insert_thread_info(record.thread_id);
+    auto event_id = get_data_processor().insert_event(
+        category_enum_id<CategoryT>::value, stack_id, parent_stack_id, 0,
+        call_stack->to_string().c_str(), "{}", "{}");
 
-    // auto event_id = get_data_processor().insert_event(
-    //     category_enum_id<CategoryT>::value, stack_id, parent_stack_id, 0,
-    //     call_stack->to_string().c_str(), "{}", "{}");
-
-    // for(const auto& arg : args)
-    // {
-    //     get_data_processor().insert_args(event_id, arg.arg_number,
-    //                                      demangle(arg.arg_type).c_str(),
-    //                                      arg.arg_name.c_str(), arg.arg_value.c_str());
-    // }
-    // rocpd_insert_region<CategoryT>(thread_idx, user_data->value, ts, _name.data(),
-    //                                event_id, "{}");
+    for(const auto& arg : args)
+    {
+        get_data_processor().insert_args(event_id, arg.arg_number,
+                                         demangle(arg.arg_type).c_str(),
+                                         arg.arg_name.c_str(), arg.arg_value.c_str());
+    }
+    rocpd_insert_region<CategoryT>(thread_idx, user_data->value, ts, _name.data(),
+                                   event_id, "{}");
 }
 
 void
@@ -1311,28 +1309,28 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 auto _queue_id        = record->dispatch_info.queue_id;
                 const auto* _agent    = tool_data->get_gpu_tool_agent(_agent_id);
 
+                auto thread_idx = rocpd_insert_thread_info(record->thread_id);
                 cache_add_thread_info(record->thread_id);
+
                 rocprofiler::benchmark::start<
                     rocprofiler::benchmark::category::DB_Entry_Kernel_Dispatch>();
                 rocpd_initialize_category<category::rocm_kernel_dispatch>();
-                // auto event_id = get_data_processor().insert_event(
-                //     category_enum_id<category::rocm_kernel_dispatch>::value, _corr_id,
-                //     _parent_stack_id, 0, "{}", "{}", "{}");
+                auto event_id = get_data_processor().insert_event(
+                    category_enum_id<category::rocm_kernel_dispatch>::value, _corr_id,
+                    _parent_stack_id, 0, "{}", "{}", "{}");
 
-                // auto record_name_id =
-                // get_data_processor().insert_string(_name.c_str());
+                auto record_name_id = get_data_processor().insert_string(_name.c_str());
 
                 cache_add_track(JOIN("", "GPU Kernel Dispatch [", _agent->device_id,
                                      "] Queue ", _queue_id.handle)
                                     .c_str(),
                                 record->thread_id);
-                // rocpd_init_track(JOIN("", "GPU Kernel Dispatch [", _agent->device_id,
-                //                       "] Queue ", _queue_id.handle)
-                //                      .c_str(),
-                //                  thread_idx);
-                // rocpd_insert_kernel_dispatch(record, event_id, record_name_id,
-                // thread_idx,
-                //                              "{}");
+                rocpd_init_track(JOIN("", "GPU Kernel Dispatch [", _agent->device_id,
+                                      "] Queue ", _queue_id.handle)
+                                     .c_str(),
+                                 thread_idx);
+                rocpd_insert_kernel_dispatch(record, event_id, record_name_id, thread_idx,
+                                             "{}");
 
                 cache_kernel_dispatch(
                     record, record->thread_id,
@@ -1438,25 +1436,25 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 // Insert memory copy record into database
                 rocprofiler::benchmark::start<
                     rocprofiler::benchmark::category::DB_Entry_Memory_Copy>();
-                // auto thread_idx = rocpd_insert_thread_info(record->thread_id);
+                auto thread_idx = rocpd_insert_thread_info(record->thread_id);
 
-                // rocpd_initialize_category<category::rocm_memory_copy>();
+                rocpd_initialize_category<category::rocm_memory_copy>();
 
-                // auto name_id  = get_data_processor().insert_string(_name.data());
-                // auto event_id = get_data_processor().insert_event(
-                //     category_enum_id<category::rocm_memory_copy>::value, _corr_id,
-                //     _parent_stack_id, 0, "{}", "{}", "{}");
+                auto name_id  = get_data_processor().insert_string(_name.data());
+                auto event_id = get_data_processor().insert_event(
+                    category_enum_id<category::rocm_memory_copy>::value, _corr_id,
+                    _parent_stack_id, 0, "{}", "{}", "{}");
 
-                // auto region_name_id = get_data_processor().insert_string(_name.data());
+                auto region_name_id = get_data_processor().insert_string(_name.data());
 
-                // rocpd_init_track(JOIN("", "GPU Memory Copy to Agent [",
-                //                       _dst_agent->logical_node_id, "] Thread ",
-                //                       thread_idx)
-                //                      .c_str(),
-                //                  thread_idx);
+                rocpd_init_track(JOIN("", "GPU Memory Copy to Agent [",
+                                      _dst_agent->logical_node_id, "] Thread ",
+                                      thread_idx)
+                                     .c_str(),
+                                 thread_idx);
 
-                // rocpd_insert_memory_copy(record, name_id, event_id, region_name_id,
-                //                          thread_idx, "{}");
+                rocpd_insert_memory_copy(record, name_id, event_id, region_name_id,
+                                         thread_idx, "{}");
                 rocprofiler::benchmark::end<
                     rocprofiler::benchmark::category::DB_Entry_Memory_Copy>();
 
@@ -1789,8 +1787,8 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
     // Insert the default stream and queue info to ensure that the default entry is
     // created
-    // rocpd_insert_stream_info(rocprofiler_stream_id_t{ .handle = 0 });
-    // rocpd_insert_queue_info(rocprofiler_queue_id_t{ .handle = 0 });
+    rocpd_insert_stream_info(rocprofiler_stream_id_t{ .handle = 0 });
+    rocpd_insert_queue_info(rocprofiler_queue_id_t{ .handle = 0 });
 
     // ROCPROFILER_CALL(rocprofiler_configure_callback_tracing_service(
     //     _data->primary_ctx, ROCPROFILER_CALLBACK_TRACING_CODE_OBJECT, nullptr, 0,
