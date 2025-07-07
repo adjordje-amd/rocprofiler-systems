@@ -23,6 +23,7 @@
 #pragma once
 
 #include "common/synchronized.hpp"
+#include "core/perfetto.hpp"
 #include "library/thread_info.hpp"
 #include "sample_type.hpp"
 #include <array>
@@ -54,7 +55,7 @@ namespace metadata
 {
 struct process_info
 {
-    int         pid;
+    int         pid;  // < Unique
     std::string command;
 };
 struct pmc_info
@@ -63,7 +64,7 @@ struct pmc_info
     std::string target_arch;
     size_t      event_code;
     size_t      instance_id;
-    std::string name;
+    std::string name;  // < Unique
     std::string symbol;
     std::string description;
     std::string long_description;
@@ -86,13 +87,25 @@ struct thread_info
 {
     int32_t     parent_process_id;
     int32_t     process_id;
-    uint64_t    thread_id;
+    uint64_t    thread_id;  // < Unique
     uint32_t    start;
     uint32_t    end;
     std::string extdata;
     friend bool operator<(const thread_info& lhs, const thread_info& rhs)
     {
         return lhs.thread_id < rhs.thread_id;
+    }
+};
+
+struct track_info
+{
+    std::string_view track_name;  // < Unique
+    size_t           thread_id;
+    std::string_view extdata;
+
+    friend bool operator<(const track_info& lhs, const track_info& rhs)
+    {
+        return lhs.track_name.compare(rhs.track_name) < 0;
     }
 };
 
@@ -128,6 +141,9 @@ struct storage
 
     void                       add_thread_info(const thread_info& thread_info);
     std::optional<thread_info> get_thread_info(const uint32_t& thread_id) const;
+
+    void                      add_track(const track_info& track_info);
+    std::optional<track_info> get_track_info(const std::string_view& track_name) const;
 
     void add_code_object(
         const rocprofiler_callback_tracing_code_object_load_data_t& code_object);
@@ -190,9 +206,11 @@ struct storage
 
 private:
     storage() = default;
+    // TODO: add syncronized
     process_info                                m_process;
     common::synchronized<std::set<pmc_info>>    m_pmc_infos;
     common::synchronized<std::set<thread_info>> m_threads;
+    common::synchronized<std::set<track_info>>  m_tracks;
     common::synchronized<
         std::set<rocprofiler_callback_tracing_code_object_load_data_t, code_object_less>>
         m_code_objects;

@@ -92,6 +92,17 @@ storage::add_kernel_symbol(
     });
 }
 
+void
+storage::add_track(const track_info& track_info)
+{
+    m_tracks.wlock([&track_info](auto& _data) {
+        if(_data.count(track_info) > 0)
+        {
+            return;
+        }
+        _data.emplace(track_info);
+    });
+}
 process_info
 storage::get_process_info() const
 {
@@ -179,6 +190,24 @@ storage::get_kernel_symbol(uint64_t kernel_id) const
     return result;
 }
 
+std::optional<track_info>
+storage::get_track_info(const std::string_view& track_name) const
+{
+    std::optional<track_info> result = std::nullopt;
+    m_tracks.rlock([&track_name, &result](const auto& data) {
+        auto it =
+            std::find_if(data.begin(), data.end(), [&track_name](const track_info& val) {
+                return val.track_name == track_name;
+            });
+        if(it == data.end())
+        {
+            result = std::nullopt;
+            return;
+        }
+        result = *it;
+    });
+    return result;
+}
 }  // namespace metadata
 }  // namespace cache
 }  // namespace rocprofsys
