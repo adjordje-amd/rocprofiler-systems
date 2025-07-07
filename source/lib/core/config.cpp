@@ -1249,10 +1249,17 @@ configure_signal_handler(const std::shared_ptr<settings>& _config)
     static auto _dyninst_trampoline_signal =
         getenv("DYNINST_SIGNAL_TRAMPOLINE_SIGILL") ? SIGILL : SIGTRAP;
 
+    static auto root_pid =
+        get_env<pid_t>("ROCPROFSYS_ROOT_PROCESS", process::get_id(), false);
     if(_config->get_enable_signal_handler())
     {
         tim::signals::disable_signal_detection();
         signal_settings::enable(sys_signal::Interrupt);
+        auto is_child_process = root_pid != getpid();
+        if(is_child_process)
+        {
+            signal_settings::enable(sys_signal::Terminate);
+        }
         signal_settings::set_exit_action(rocprofsys_exit_action);
         signal_settings::check_environment();
         auto default_signals = signal_settings::get_default();

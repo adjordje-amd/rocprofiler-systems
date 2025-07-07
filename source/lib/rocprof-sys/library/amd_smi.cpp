@@ -273,6 +273,8 @@ data::data(uint32_t _dev_id) { sample(_dev_id); }
 void
 data::sample(uint32_t _dev_id)
 {
+    if(is_child_process()) return;
+
     auto _ts = tim::get_clock_real_now<size_t, std::nano>();
     assert(_ts < std::numeric_limits<int64_t>::max());
     amdsmi_gpu_metrics_t _gpu_metrics;
@@ -413,7 +415,6 @@ data::setup()
 {
     perfetto_counter_track<data>::init();
     amd_smi::set_state(State::PreInit);
-
     return true;
 }
 
