@@ -425,12 +425,13 @@ struct scope_destructor
     ///
     /// \brief Provides a utility to perform an operation when exiting a scope.
     template <typename FuncT, typename InitT = void (*)()>
-    scope_destructor(FuncT&& _fini, InitT&& _init = []() {});
+    scope_destructor(
+        FuncT&& _fini, InitT&& _init = []() {});
 
     ~scope_destructor() { m_functor(); }
 
     // delete copy operations
-    scope_destructor(const scope_destructor&)            = delete;
+    scope_destructor(const scope_destructor&) = delete;
     scope_destructor& operator=(const scope_destructor&) = delete;
 
     // allow move operations
@@ -1743,18 +1744,18 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
 
     for(auto itr : {
             ROCPROFILER_CALLBACK_TRACING_HSA_CORE_API,
-            ROCPROFILER_CALLBACK_TRACING_HSA_AMD_EXT_API,
-            ROCPROFILER_CALLBACK_TRACING_HSA_IMAGE_EXT_API,
-            ROCPROFILER_CALLBACK_TRACING_HSA_FINALIZE_EXT_API,
-            ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API,
-            ROCPROFILER_CALLBACK_TRACING_HIP_COMPILER_API,
-            ROCPROFILER_CALLBACK_TRACING_MARKER_CORE_API,
-            ROCPROFILER_CALLBACK_TRACING_RCCL_API,
+                ROCPROFILER_CALLBACK_TRACING_HSA_AMD_EXT_API,
+                ROCPROFILER_CALLBACK_TRACING_HSA_IMAGE_EXT_API,
+                ROCPROFILER_CALLBACK_TRACING_HSA_FINALIZE_EXT_API,
+                ROCPROFILER_CALLBACK_TRACING_HIP_RUNTIME_API,
+                ROCPROFILER_CALLBACK_TRACING_HIP_COMPILER_API,
+                ROCPROFILER_CALLBACK_TRACING_MARKER_CORE_API,
+                ROCPROFILER_CALLBACK_TRACING_RCCL_API,
 #if(ROCPROFILER_VERSION >= 600)
-            ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API,
+                ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API,
 #endif
 #if(ROCPROFILER_VERSION >= 700)
-            ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API,
+                ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API,
 #endif
         })
     {
