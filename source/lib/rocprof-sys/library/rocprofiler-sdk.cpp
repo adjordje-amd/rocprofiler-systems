@@ -36,6 +36,7 @@
 #include "core/rocpd/node_info.hpp"
 #include "core/rocprofiler-sdk.hpp"
 #include "core/sample_cache/cache_storage.hpp"
+#include "core/sample_cache/cache_storage_parser.hpp"
 #include "core/sample_cache/metadata_storage.hpp"
 #include "core/sample_cache/sample_type.hpp"
 #include "core/state.hpp"
@@ -645,6 +646,13 @@ cache_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t* recor
 {
     auto& n_info        = node_info::get_instance();
     auto  stream_handle = get_stream_id(record).handle;
+
+    cache::storage_parser::get_instance().register_type_callback(
+        cache::sample_type::kernel_dispatch,
+        [&](const cache::storage_parsed_type_base& data) {
+            auto kernel_data = static_cast<const cache::kernel_dispatch_sample&>(data);
+            std::cout << "PARSED DATA: " << kernel_data.kernel_id << "\n";
+        });
 
     cache::storage::get_instance().store(
         cache::sample_type::kernel_dispatch, record->dispatch_info.kernel_id,

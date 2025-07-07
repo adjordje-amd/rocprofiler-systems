@@ -42,6 +42,7 @@
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
 #include "core/sample_cache/cache_storage.hpp"
+#include "core/sample_cache/cache_storage_parser.hpp"
 #include "core/sample_cache/metadata_storage.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
@@ -1000,6 +1001,9 @@ rocprofsys_finalize_hidden(void)
     tracing::copy_timemory_hash_ids();
 
     {
+        std::cout << "CACHE SHUTDOWN\n";
+        cache::storage::get_instance().shutdown();
+
         std::cout << "CACHE POSTPROCESSING\n";
 
         std::cout << "NODE: " << node_info::get_instance().node_name << "\n";
@@ -1015,7 +1019,7 @@ rocprofsys_finalize_hidden(void)
         cache::metadata::storage::get_instance().print_code_objects();
         cache::metadata::storage::get_instance().print_kernel_symbols();
 
-        cache::storage::get_instance().shutdown();
+        cache::storage_parser::get_instance().load_storage();
     }
 
     bool _perfetto_output_error = false;
