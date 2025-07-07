@@ -306,8 +306,11 @@ extern "C"
             rocprofsys_init_hidden(_mode.c_str(), false, _arg0.c_str());
             rocprofsys_push_trace_hidden("kokkos_main");
 
-            rocpd_initialize_kokkos_category();
-            rocpd_initialize_kokos_track();
+            if(rocprofsys::get_use_rocpd())
+            {
+                rocpd_initialize_kokkos_category();
+                rocpd_initialize_kokos_track();
+            }
         }
 
         setup_kernel_logger();
