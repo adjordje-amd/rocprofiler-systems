@@ -504,10 +504,11 @@ rocpd_insert_thread_info(uint64_t tid)
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
+    const auto& t_info = thread_info::get(tid, SequentTID);
 
     return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
-                                             JOIN(" ", "Thread", tid).c_str(), 0, 0,
-                                             "{}");
+                                                JOIN(" ", "Thread", tid).c_str(),
+                                                t_info->get_start(), t_info->get_stop(), "{}");
 }
 
 void
@@ -518,24 +519,6 @@ rocpd_init_track(const char* track_name, int64_t tid)
 
     data_processor.insert_track(track_name, n_info.id, getpid(), tid, "{}");
 }
-
-// void
-// rocpd_insert_agent_info(const tool_agent_vec_t& gpu_agents,
-//                         const tool_agent_vec_t& cpu_agents)
-// {
-//     auto& node           = node_info::get_instance();
-//     auto& agent_m        = rocpd::agent_manager::get_instance();
-
-//     auto insert_agent = [&](const auto& itr) {
-//         rocpd::agent::device_type type = itr.agent->type == ROCPROFILER_AGENT_TYPE_GPU
-//                                              ? rocpd::agent::device_type::gpu
-//                                              : rocpd::agent::device_type::cpu;
-//         agent_m.insert_agent(itr, type, node.id, getpid());
-//     };
-
-//     std::for_each(gpu_agents.begin(), gpu_agents.end(), insert_agent);
-//     std::for_each(cpu_agents.begin(), cpu_agents.end(), insert_agent);
-// }
 
 void
 rocpd_insert_stream_info(const rocprofiler_stream_id_t& stream_id)

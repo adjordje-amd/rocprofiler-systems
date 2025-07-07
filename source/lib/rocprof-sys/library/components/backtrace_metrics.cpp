@@ -367,7 +367,12 @@ rocpd_init_tracks(int64_t _tid)
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
+    const auto& t_info = thread_info::get(_tid, SequentTID);
     auto  _tid_name      = JOIN("", '[', _tid, ']');
+
+    auto thread_idx = data_processor.insert_thread_info(n_info.id, getppid(), getpid(), t_info->index_data->system_value,
+                                                JOIN(" ", "Thread", _tid).c_str(),
+                                                t_info->get_start(), t_info->get_stop(), "{}");
 
     if constexpr(std::is_same_v<Category, category::thread_hardware_counter>)
     {
@@ -380,14 +385,14 @@ rocpd_init_tracks(int64_t _tid)
             ROCPROFSYS_CI_THROW(_desc.empty(), "Empty description for %s\n", itr.c_str());
 
             std::string track_name = JOIN(' ', "Thread", _desc, _tid_name, "(S)");
-            data_processor.insert_track(track_name.c_str(), n_info.id, getpid(), _tid,
+            data_processor.insert_track(track_name.c_str(), n_info.id, getpid(), thread_idx,
                                         "{}");
         }
     }
     else
         data_processor.insert_track(
             JOIN('_', trait::name<Category>::value, _tid_name).c_str(), n_info.id,
-            getpid(), _tid, "{}");
+            getpid(), thread_idx, "{}");
 }
 
 template <typename Category>
