@@ -37,21 +37,45 @@ storage::get_instance()
 }
 
 void
+storage::set_process(const process_info& process)
+{
+    m_process = process;
+}
+
+void
 storage::add_pmc_info(const pmc_info& pmc_info)
 {
-    m_pmc_infos.wlock([&pmc_info](auto& _data) { _data.emplace(pmc_info); });
+    m_pmc_infos.wlock([&pmc_info](auto& _data) {
+        if(_data.count(pmc_info) > 0)
+        {
+            return;
+        }
+        _data.emplace(pmc_info);
+    });
 }
 
 void
 storage::add_thread_info(const thread_info& thread_info)
 {
-    m_threads.wlock([&thread_info](auto& _data) { _data.emplace(thread_info); });
+    m_threads.wlock([&thread_info](auto& _data) {
+        if(_data.count(thread_info) > 0)
+        {
+            return;
+        }
+        _data.emplace(thread_info);
+    });
 }
 void
 storage::add_code_object(
     const rocprofiler_callback_tracing_code_object_load_data_t& code_object)
 {
-    m_code_objects.wlock([&code_object](auto& _data) { _data.emplace(code_object); });
+    m_code_objects.wlock([&code_object](auto& _data) {
+        if(_data.count(code_object) > 0)
+        {
+            return;
+        }
+        _data.emplace(code_object);
+    });
 }
 
 void
@@ -59,12 +83,23 @@ storage::add_kernel_symbol(
     const rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t&
         kernel_symbol)
 {
-    m_kernel_symbols.wlock(
-        [&kernel_symbol](auto& _data) { _data.emplace(kernel_symbol); });
+    m_kernel_symbols.wlock([&kernel_symbol](auto& _data) {
+        if(_data.count(kernel_symbol) > 0)
+        {
+            return;
+        }
+        _data.emplace(kernel_symbol);
+    });
+}
+
+process_info
+storage::get_process_info() const
+{
+    return m_process;
 }
 
 std::optional<pmc_info>
-storage::get_pmc_info(const std::string_view& unique_name)
+storage::get_pmc_info(const std::string_view& unique_name) const
 {
     std::optional<pmc_info> result = std::nullopt;
     m_pmc_infos.rlock([&unique_name, &result](const auto& data) {
@@ -83,7 +118,7 @@ storage::get_pmc_info(const std::string_view& unique_name)
 }
 
 std::optional<thread_info>
-storage::get_thread_info(const uint32_t& thread_id)
+storage::get_thread_info(const uint32_t& thread_id) const
 {
     std::optional<thread_info> result = std::nullopt;
     m_threads.rlock([&thread_id, &result](const auto& data) {
@@ -102,7 +137,7 @@ storage::get_thread_info(const uint32_t& thread_id)
 }
 
 std::optional<rocprofiler_callback_tracing_code_object_load_data_t>
-storage::get_code_object(uint64_t code_object_id)
+storage::get_code_object(uint64_t code_object_id) const
 {
     std::optional<rocprofiler_callback_tracing_code_object_load_data_t> result =
         std::nullopt;
@@ -124,7 +159,7 @@ storage::get_code_object(uint64_t code_object_id)
 }
 
 std::optional<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
-storage::get_kernel_symbol(uint64_t kernel_id)
+storage::get_kernel_symbol(uint64_t kernel_id) const
 {
     std::optional<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
         result = std::nullopt;

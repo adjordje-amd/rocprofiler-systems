@@ -52,6 +52,11 @@ namespace cache
 {
 namespace metadata
 {
+struct process_info
+{
+    int         pid;
+    std::string command;
+};
 struct pmc_info
 {
     size_t      agent_abs_index;
@@ -115,24 +120,27 @@ struct storage
 {
     static storage& get_instance();
 
+    void         set_process(const process_info& process);
+    process_info get_process_info() const;
+
     void                    add_pmc_info(const pmc_info& pmc_info);
-    std::optional<pmc_info> get_pmc_info(const std::string_view& unique_name);
+    std::optional<pmc_info> get_pmc_info(const std::string_view& unique_name) const;
 
     void                       add_thread_info(const thread_info& thread_info);
-    std::optional<thread_info> get_thread_info(const uint32_t& thread_id);
+    std::optional<thread_info> get_thread_info(const uint32_t& thread_id) const;
 
     void add_code_object(
         const rocprofiler_callback_tracing_code_object_load_data_t& code_object);
     std::optional<rocprofiler_callback_tracing_code_object_load_data_t> get_code_object(
-        uint64_t code_object_id);
+        uint64_t code_object_id) const;
 
     void add_kernel_symbol(
         const rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t&
             kernel_symbol);
     std::optional<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
-    get_kernel_symbol(uint64_t kernel_id);
+    get_kernel_symbol(uint64_t kernel_id) const;
 
-    void print_pmc_info()
+    void print_pmc_info() const
     {
         m_pmc_infos.rlock([](auto& _pmcs) {
             std::cout << "Printing PMCs:\n";
@@ -144,7 +152,7 @@ struct storage
         });
     }
 
-    void print_threads()
+    void print_threads() const
     {
         m_threads.rlock([](auto& _set) {
             std::cout << "Printing Threads:\n";
@@ -156,7 +164,7 @@ struct storage
         });
     }
 
-    void print_code_objects()
+    void print_code_objects() const
     {
         m_code_objects.rlock([](auto& _set) {
             std::cout << "Printing CodeObjects:\n";
@@ -168,7 +176,7 @@ struct storage
         });
     }
 
-    void print_kernel_symbols()
+    void print_kernel_symbols() const
     {
         m_kernel_symbols.rlock([](auto& _set) {
             std::cout << "Printing KernelSymbols:\n";
@@ -182,6 +190,7 @@ struct storage
 
 private:
     storage() = default;
+    process_info                                m_process;
     common::synchronized<std::set<pmc_info>>    m_pmc_infos;
     common::synchronized<std::set<thread_info>> m_threads;
     common::synchronized<

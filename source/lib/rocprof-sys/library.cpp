@@ -41,6 +41,7 @@
 #include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
+#include "core/sample_cache/metadata_storage.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
 #include "library/causal/data.hpp"
@@ -335,38 +336,18 @@ read_command_line(pid_t _pid)
     return _cmdline;
 }
 
+// TODO: Rename
 void
 rocprofsys_preinit_rocpd()
 {
-    auto&       data_processor = rocpd::data_processor::get_instance();
-    const auto& n_info         = node_info::get_instance();
-    auto        cmd_line       = read_command_line(getpid());
-    auto&       agent_mngr     = rocpd::agent_manager::get_instance();
+    auto cmd_line = read_command_line(getpid());
 
     if(cmd_line.empty())
     {
-        cmd_line.push_back("rocpd");
+        cmd_line.push_back("rocprof-systems");
     }
 
-    data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
-                                    n_info.system_name.c_str(), n_info.node_name.c_str(),
-                                    n_info.release.c_str(), n_info.version.c_str(),
-                                    n_info.machine.c_str(), n_info.domain_name.c_str());
-    data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
-                                       cmd_line[0].c_str(), "{}");
-
-    const auto& agents = agent_mngr.get_agents();
-    for(auto& rocpd_agent : agents)
-    {
-        auto _base_id = rocpd::data_processor::get_instance().insert_agent(
-            n_info.id, getpid(),
-            ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
-            rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
-            rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
-            rocpd_agent->agent->name, rocpd_agent->agent->model_name,
-            rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
-        rocpd_agent->base_id = _base_id;
-    }
+    cache::metadata::storage::get_instance().set_process({ getpid(), cmd_line.at(0) });
 }
 
 void
