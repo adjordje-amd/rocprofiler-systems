@@ -511,7 +511,6 @@ rocpd_insert_thread_info(uint64_t tid)
         { .parent_process_id = getppid(),
           .process_id        = getpid(),
           .thread_id         = tid,
-          .name              = JOIN(" ", "Thread", tid),
           .start             = 0,
           .end               = 0,
           .extdata           = "{}" });
@@ -992,7 +991,6 @@ tool_code_object_callback(rocprofiler_callback_tracing_record_t record,
                         code_object_callback_record_t{ ts, record, data_v });
                 });
                 rocpd_insert_code_object_info(&data_v);
-                // add meta cache
                 cache::metadata::storage::get_instance().add_code_object(data_v);
             }
             else if(record.operation ==
@@ -1005,7 +1003,7 @@ tool_code_object_callback(rocprofiler_callback_tracing_record_t record,
                             new kernel_symbol_callback_record_t{ ts, record, data_v });
                     });
                 rocpd_insert_kernel_symbol_info(&data_v);
-                // add meta cache
+                cache::metadata::storage::get_instance().add_kernel_symbol(data_v);
             }
         }
         return;
@@ -1971,6 +1969,7 @@ post_process()
 {
     cache::metadata::storage::get_instance().print_threads();
     cache::metadata::storage::get_instance().print_code_objects();
+    cache::metadata::storage::get_instance().print_kernel_symbols();
 }
 
 void

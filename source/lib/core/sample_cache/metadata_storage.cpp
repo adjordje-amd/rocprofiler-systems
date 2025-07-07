@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include "metadata_storage.hpp"
+#include <rocprofiler-sdk/callback_tracing.h>
 
 namespace rocprofsys
 {
@@ -38,44 +39,109 @@ storage::get_instance()
 void
 storage::add_pmc_info(const pmc_info& pmc_info)
 {
-    m_pmc_infos.emplace(pmc_info);
+    m_pmc_infos.wlock([&pmc_info](auto& _data) { _data.emplace(pmc_info); });
 }
 
 void
 storage::add_thread_info(const thread_info& thread_info)
 {
-    m_threads.emplace(thread_info);
+    m_threads.wlock([&thread_info](auto& _data) { _data.emplace(thread_info); });
+}
+void
+storage::add_code_object(
+    const rocprofiler_callback_tracing_code_object_load_data_t& code_object)
+{
+    m_code_objects.wlock([&code_object](auto& _data) { _data.emplace(code_object); });
+}
+
+void
+storage::add_kernel_symbol(
+    const rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t&
+        kernel_symbol)
+{
+    m_kernel_symbols.wlock(
+        [&kernel_symbol](auto& _data) { _data.emplace(kernel_symbol); });
 }
 
 std::optional<pmc_info>
 storage::get_pmc_info(const std::string_view& unique_name)
 {
-    return m_pmc_infos.find(
-        [&](const metadata::pmc_info& value) { return value.name == unique_name; });
+    std::optional<pmc_info> result = std::nullopt;
+    m_pmc_infos.rlock([&unique_name, &result](const auto& data) {
+        auto it =
+            std::find_if(data.begin(), data.end(), [&unique_name](const pmc_info& val) {
+                return val.name == unique_name;
+            });
+        if(it == data.end())
+        {
+            result = std::nullopt;
+            return;
+        }
+        result = *it;
+    });
+    return result;
 }
 
 std::optional<thread_info>
 storage::get_thread_info(const uint32_t& thread_id)
 {
-    return m_threads.find(
-        [&](const metadata::thread_info& value) { return value.thread_id == thread_id; });
-}
-
-void
-storage::add_code_object(
-    const rocprofiler_callback_tracing_code_object_load_data_t& code_object)
-{
-    std::cout << "Insert Code object in meta cache\n" << std::flush;
-    m_code_objects.emplace(code_object);
+    std::optional<thread_info> result = std::nullopt;
+    m_threads.rlock([&thread_id, &result](const auto& data) {
+        auto it =
+            std::find_if(data.begin(), data.end(), [&thread_id](const thread_info& val) {
+                return val.thread_id == thread_id;
+            });
+        if(it == data.end())
+        {
+            result = std::nullopt;
+            return;
+        }
+        result = *it;
+    });
+    return result;
 }
 
 std::optional<rocprofiler_callback_tracing_code_object_load_data_t>
 storage::get_code_object(uint64_t code_object_id)
 {
-    return m_code_objects.find(
-        [&](const rocprofiler_callback_tracing_code_object_load_data_t& value) {
-            return value.code_object_id == code_object_id;
-        });
+    std::optional<rocprofiler_callback_tracing_code_object_load_data_t> result =
+        std::nullopt;
+    m_code_objects.rlock([&code_object_id, &result](const auto& data) {
+        auto it = std::find_if(
+            data.begin(), data.end(),
+            [&code_object_id](
+                const rocprofiler_callback_tracing_code_object_load_data_t& val) {
+                return val.code_object_id == code_object_id;
+            });
+        if(it == data.end())
+        {
+            result = std::nullopt;
+            return;
+        }
+        result = *it;
+    });
+    return result;
+}
+
+std::optional<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
+storage::get_kernel_symbol(uint64_t kernel_id)
+{
+    std::optional<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
+        result = std::nullopt;
+    m_kernel_symbols.rlock([&kernel_id, &result](const auto& data) {
+        auto it = std::find_if(
+            data.begin(), data.end(),
+            [&kernel_id](
+                const rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t&
+                    val) { return val.kernel_id == kernel_id; });
+        if(it == data.end())
+        {
+            result = std::nullopt;
+            return;
+        }
+        result = *it;
+    });
+    return result;
 }
 
 }  // namespace metadata

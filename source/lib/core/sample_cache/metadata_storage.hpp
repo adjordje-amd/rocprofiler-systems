@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "common/synchronized.hpp"
 #include "library/thread_info.hpp"
 #include "sample_type.hpp"
 #include <array>
@@ -51,34 +52,6 @@ namespace cache
 {
 namespace metadata
 {
-template <typename T, typename Less = std::less<T>>
-class synced_set
-{
-public:
-    void emplace(const T& value)
-    {
-        std::lock_guard guard{ m_mutex };
-        m_set.emplace(value);
-    }
-
-    std::optional<T> find(std::function<bool(const T&)> predicate)
-    {
-        std::lock_guard guard{ m_mutex };
-        auto            it = std::find_if(m_set.begin(), m_set.end(), predicate);
-        if(it == m_set.end())
-        {
-            return std::nullopt;
-        }
-        return *it;
-    }
-
-    std::set<T, Less>& get_set() { return m_set; }
-
-private:
-    std::mutex        m_mutex;
-    std::set<T, Less> m_set;
-};
-
 struct pmc_info
 {
     size_t      agent_abs_index;
@@ -109,7 +82,6 @@ struct thread_info
     int32_t     parent_process_id;
     int32_t     process_id;
     uint64_t    thread_id;
-    std::string name;
     uint32_t    start;
     uint32_t    end;
     std::string extdata;
@@ -128,6 +100,17 @@ struct code_object_less
     }
 };
 
+struct kernel_symbol_less
+{
+    bool operator()(
+        const rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t& lhs,
+        const rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t& rhs)
+        const
+    {
+        return lhs.kernel_object < rhs.kernel_object;
+    }
+};
+
 struct storage
 {
     static storage& get_instance();
@@ -143,44 +126,71 @@ struct storage
     std::optional<rocprofiler_callback_tracing_code_object_load_data_t> get_code_object(
         uint64_t code_object_id);
 
+    void add_kernel_symbol(
+        const rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t&
+            kernel_symbol);
+    std::optional<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
+    get_kernel_symbol(uint64_t kernel_id);
+
     void print_pmc_info()
     {
-        std::cout << "Printing PMCS: \n";
-        auto pmcs = m_pmc_infos.get_set();
-        for(const auto& pmc : pmcs)
-        {
-            std::cout << pmc.symbol << "\n";
-        }
-        std::cout << std::endl;
+        m_pmc_infos.rlock([](auto& _pmcs) {
+            std::cout << "Printing PMCs:\n";
+            for(const auto& pmc : _pmcs)
+            {
+                std::cout << pmc.symbol << "\n";
+            }
+            std::cout << std::endl;
+        });
     }
+
     void print_threads()
     {
-        std::cout << "Printing Threads:\n";
-        auto threads = m_threads.get_set();
-        for(const auto& thread : threads)
-        {
-            std::cout << thread.name << "\n";
-        }
-        std::cout << std::endl;
+        m_threads.rlock([](auto& _set) {
+            std::cout << "Printing Threads:\n";
+            for(const auto& thread : _set)
+            {
+                std::cout << thread.thread_id << "\n";
+            }
+            std::cout << std::endl;
+        });
     }
+
     void print_code_objects()
     {
-        std::cout << "Printing CodeObjects:\n";
-        auto code_objects = m_code_objects.get_set();
-        for(const auto& code_object : code_objects)
-        {
-            std::cout << code_object.uri << "\n";
-        }
-        std::cout << std::endl;
+        m_code_objects.rlock([](auto& _set) {
+            std::cout << "Printing CodeObjects:\n";
+            for(const auto& code_object : _set)
+            {
+                std::cout << code_object.uri << "\n";
+            }
+            std::cout << std::endl;
+        });
+    }
+
+    void print_kernel_symbols()
+    {
+        m_kernel_symbols.rlock([](auto& _set) {
+            std::cout << "Printing KernelSymbols:\n";
+            for(const auto& kernel_symbol : _set)
+            {
+                std::cout << kernel_symbol.kernel_id << "\n";
+            }
+            std::cout << std::endl;
+        });
     }
 
 private:
     storage() = default;
-    // todo: switch to common::syncronized
-    synced_set<pmc_info>    m_pmc_infos;
-    synced_set<thread_info> m_threads;
-    synced_set<rocprofiler_callback_tracing_code_object_load_data_t, code_object_less>
+    common::synchronized<std::set<pmc_info>>    m_pmc_infos;
+    common::synchronized<std::set<thread_info>> m_threads;
+    common::synchronized<
+        std::set<rocprofiler_callback_tracing_code_object_load_data_t, code_object_less>>
         m_code_objects;
+    common::synchronized<
+        std::set<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t,
+                 kernel_symbol_less>>
+        m_kernel_symbols;
 };
 
 }  // namespace metadata
