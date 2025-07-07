@@ -38,11 +38,11 @@
 #include "core/gpu.hpp"
 #include "core/locking.hpp"
 #include "core/perfetto_fwd.hpp"
+#include "core/rocpd/agent_manager.hpp"
+#include "core/rocpd/data_processor.hpp"
+#include "core/rocpd/node_info.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
-#include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/agent_manager.hpp"
-#include "core/rocpd/node_info.hpp"
 #include "library/causal/data.hpp"
 #include "library/causal/experiment.hpp"
 #include "library/causal/sampling.hpp"
@@ -91,6 +91,7 @@
 #include <pthread.h>
 #include <stdexcept>
 #include <string_view>
+#include <unistd.h>
 #include <utility>
 
 using namespace rocprofsys;
@@ -343,7 +344,6 @@ rocprofsys_preinit_rocpd()
     auto        cmd_line       = read_command_line(getpid());
     auto&       agent_mngr     = rocpd::agent_manager::get_instance();
 
-
     if(cmd_line.empty())
     {
         cmd_line.push_back("rocpd");
@@ -357,14 +357,15 @@ rocprofsys_preinit_rocpd()
                                        cmd_line[0].c_str(), "{}");
 
     const auto& agents = agent_mngr.get_agents();
-    for (auto& rocpd_agent : agents)
+    for(auto& rocpd_agent : agents)
     {
         auto _base_id = rocpd::data_processor::get_instance().insert_agent(
-                        n_info.id, getpid(), ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
-                        rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
-                        rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
-                        rocpd_agent->agent->name, rocpd_agent->agent->model_name,
-                        rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
+            n_info.id, getpid(),
+            ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
+            rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
+            rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
+            rocpd_agent->agent->name, rocpd_agent->agent->model_name,
+            rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
         rocpd_agent->base_id = _base_id;
     }
 }
@@ -495,17 +496,17 @@ rocprofsys_init_tooling_hidden(void)
                                                  { ROCPROFSYS_DEFAULT_ROCM_PATH }) };
 #endif
 
-    static bool _once       = false;
-    static auto _debug_init = get_debug_init();
+    static pid_t _once       = 0;
+    static auto  _debug_init = get_debug_init();
 
     ROCPROFSYS_CONDITIONAL_BASIC_PRINT_F(_debug_init, "State is %s...\n",
                                          std::to_string(get_state()).c_str());
 
-    if(get_state() != State::PreInit || get_state() == State::Init || _once)
+    if(get_state() != State::PreInit || get_state() == State::Init || _once == getpid())
     {
         return false;
     }
-    _once = true;
+    _once = getpid();
 
     ROCPROFSYS_SCOPED_THREAD_STATE(ThreadState::Internal);
 
@@ -755,7 +756,6 @@ rocprofsys_finalize_hidden(void)
     threading::remove_callback(&ensure_initialization);
 
     bool _is_child = is_child_process();
-
     set_thread_state(ThreadState::Completed);
 
     // return if not active
@@ -767,6 +767,15 @@ rocprofsys_finalize_hidden(void)
     }
     else if(_is_child)
     {
+#if defined(ROCPROFSYS_USE_ROCM) && ROCPROFSYS_USE_ROCM > 0
+        // Flush buffered traces in case of child process
+        if(get_use_rocm())
+        {
+            ROCPROFSYS_VERBOSE_F(1, "Shutting down ROCm...\n");
+            rocprofiler_sdk::shutdown();
+        }
+#endif
+        rocpd::data_processor::get_instance().flush();
         set_state(State::Finalized);
         std::quick_exit(EXIT_SUCCESS);
         return;
@@ -1057,6 +1066,7 @@ rocprofsys_finalize_hidden(void)
         [](int) {});
 
     common::destroy_static_objects();
+    rocpd::data_processor::get_instance().flush();
 }
 
 //======================================================================================//
