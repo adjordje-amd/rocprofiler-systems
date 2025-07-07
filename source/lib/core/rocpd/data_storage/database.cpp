@@ -77,12 +77,6 @@ database::database()
 
 database::~database()
 {
-    auto* backup = sqlite3_backup_init(_sqlite3_db, "main", _sqlite3_db_temp, "main");
-    if(backup)
-    {
-        sqlite3_backup_step(backup, -1);  // Copy all pages
-        sqlite3_backup_finish(backup);
-    }
     sqlite3_close(_sqlite3_db_temp);
     sqlite3_close(_sqlite3_db);
 }
@@ -162,6 +156,17 @@ size_t
 database::get_last_insert_id() const
 {
     return sqlite3_last_insert_rowid(_sqlite3_db_temp);
+}
+
+void
+database::flush()
+{
+    auto* backup = sqlite3_backup_init(_sqlite3_db, "main", _sqlite3_db_temp, "main");
+    if(backup)
+    {
+        sqlite3_backup_step(backup, -1);  // Copy all pages
+        sqlite3_backup_finish(backup);
+    }
 }
 
 }  // namespace data_storage
