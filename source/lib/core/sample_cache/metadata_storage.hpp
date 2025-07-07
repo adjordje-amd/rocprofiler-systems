@@ -38,6 +38,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <rocprofiler-sdk/callback_tracing.h>
 #include <set>
 #include <stdint.h>
 #include <string.h>
@@ -50,7 +51,7 @@ namespace cache
 {
 namespace metadata
 {
-template <typename T>
+template <typename T, typename Less = std::less<T>>
 class synced_set
 {
 public:
@@ -71,17 +72,19 @@ public:
         return *it;
     }
 
+    std::set<T, Less>& get_set() { return m_set; }
+
 private:
-    std::mutex  m_mutex;
-    std::set<T> m_set;
+    std::mutex        m_mutex;
+    std::set<T, Less> m_set;
 };
 
 struct pmc_info
 {
-    uint32_t    agent_abs_index;
+    size_t      agent_abs_index;
     std::string target_arch;
-    uint32_t    event_code;
-    uint32_t    instance_id;
+    size_t      event_code;
+    size_t      instance_id;
     std::string name;
     std::string symbol;
     std::string description;
@@ -103,9 +106,9 @@ struct pmc_info
 
 struct thread_info
 {
-    uint32_t    parent_process_id;
-    uint32_t    process_id;
-    uint32_t    thread_id;
+    int32_t     parent_process_id;
+    int32_t     process_id;
+    uint64_t    thread_id;
     std::string name;
     uint32_t    start;
     uint32_t    end;
@@ -116,17 +119,68 @@ struct thread_info
     }
 };
 
+struct code_object_less
+{
+    bool operator()(const rocprofiler_callback_tracing_code_object_load_data_t& lhs,
+                    const rocprofiler_callback_tracing_code_object_load_data_t& rhs) const
+    {
+        return lhs.code_object_id < rhs.code_object_id;
+    }
+};
+
 struct storage
 {
+    static storage& get_instance();
+
     void                    add_pmc_info(const pmc_info& pmc_info);
     std::optional<pmc_info> get_pmc_info(const std::string_view& unique_name);
 
     void                       add_thread_info(const thread_info& thread_info);
     std::optional<thread_info> get_thread_info(const uint32_t& thread_id);
 
+    void add_code_object(
+        const rocprofiler_callback_tracing_code_object_load_data_t& code_object);
+    std::optional<rocprofiler_callback_tracing_code_object_load_data_t> get_code_object(
+        uint64_t code_object_id);
+
+    void print_pmc_info()
+    {
+        std::cout << "Printing PMCS: \n";
+        auto pmcs = m_pmc_infos.get_set();
+        for(const auto& pmc : pmcs)
+        {
+            std::cout << pmc.symbol << "\n";
+        }
+        std::cout << std::endl;
+    }
+    void print_threads()
+    {
+        std::cout << "Printing Threads:\n";
+        auto threads = m_threads.get_set();
+        for(const auto& thread : threads)
+        {
+            std::cout << thread.name << "\n";
+        }
+        std::cout << std::endl;
+    }
+    void print_code_objects()
+    {
+        std::cout << "Printing CodeObjects:\n";
+        auto code_objects = m_code_objects.get_set();
+        for(const auto& code_object : code_objects)
+        {
+            std::cout << code_object.uri << "\n";
+        }
+        std::cout << std::endl;
+    }
+
 private:
+    storage() = default;
+    // todo: switch to common::syncronized
     synced_set<pmc_info>    m_pmc_infos;
     synced_set<thread_info> m_threads;
+    synced_set<rocprofiler_callback_tracing_code_object_load_data_t, code_object_less>
+        m_code_objects;
 };
 
 }  // namespace metadata

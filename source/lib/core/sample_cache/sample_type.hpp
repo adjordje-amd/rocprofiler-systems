@@ -29,24 +29,12 @@ namespace cache
 {
 enum class sample_type : uint32_t
 {
-    string = 1,
-    node_info,
-    process_info,
-    agent,
-    track,
     event,
-    pmc_info,
     pmc_event,
     sample,
     region,
-    thread_info,
-    stream_info,
-    queue_info,
     kernel_dispatch,
     memory_copy,
-    kernel_symbol,
-    code_object,
-    args,
     memory_alloc,
     fragmented_space = 0xFFFF
 };

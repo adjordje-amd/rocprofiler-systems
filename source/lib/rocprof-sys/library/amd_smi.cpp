@@ -40,6 +40,7 @@
 #include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
+#include "core/sample_cache/metadata_storage.hpp"
 #include "core/state.hpp"
 #include "library/runtime.hpp"
 #include "library/thread_info.hpp"
@@ -88,19 +89,20 @@ get_data_processor()
 size_t
 rocpd_initialize_thread_info(uint64_t tid)
 {
-    auto& data_processor     = get_data_processor();
-    auto& n_info             = node_info::get_instance();
-    const auto& thread_info = thread_info::get(tid, SequentTID);
+    auto&       data_processor = get_data_processor();
+    auto&       n_info         = node_info::get_instance();
+    const auto& thread_info    = thread_info::get(tid, SequentTID);
 
-    if(!thread_info) {
+    if(!thread_info)
+    {
         ROCPROFSYS_CI_THROW(!thread_info, "Missing thread info for thread 0");
         return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
-                                        JOIN(" ", "Thread", tid).c_str());
+                                                 JOIN(" ", "Thread", tid).c_str());
     }
 
-    return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
-                                        threading::get_thread_name().c_str(),
-                                        thread_info->get_start(), thread_info->get_stop(), "{}");
+    return data_processor.insert_thread_info(
+        n_info.id, getppid(), getpid(), tid, threading::get_thread_name().c_str(),
+        thread_info->get_start(), thread_info->get_stop(), "{}");
 }
 void
 rocpd_initialize_category()
@@ -112,9 +114,9 @@ rocpd_initialize_category()
 void
 rocpd_initialize_smi_tracks()
 {
-    auto& data_processor = get_data_processor();
-    auto& n_info         = node_info::get_instance();
-    const auto thread_id = gettid();  // Internal thread ID for amd-smi
+    auto&      data_processor = get_data_processor();
+    auto&      n_info         = node_info::get_instance();
+    const auto thread_id      = gettid();  // Internal thread ID for amd-smi
 
     auto thread_idx = rocpd_initialize_thread_info(thread_id);
 
@@ -144,7 +146,7 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
     const auto  TARGET_ARCH      = "GPU";
 
     auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id  = agent_mngr.get_agent_by_id(gpu_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
+    auto base_id = agent_mngr.get_agent_by_id(gpu_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
 
     data_processor.insert_pmc_description(
         ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
@@ -169,6 +171,31 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
         trait::name<category::amd_smi_memory_usage>::value, "MemUsg",
         trait::name<category::amd_smi_memory_usage>::description, LONG_DESCRIPTION,
         COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0);
+
+    // Cache
+    cache::metadata::storage::get_instance().add_pmc_info(
+        { base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+          trait::name<category::amd_smi_mm_busy>::value, "Busy",
+          trait::name<category::amd_smi_mm_busy>::description, LONG_DESCRIPTION,
+          COMPONENT, "$", "ABS", BLOCK, EXPRESSION, 0, 0, "{}" });
+
+    cache::metadata::storage::get_instance().add_pmc_info(
+        { base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+          trait::name<category::amd_smi_temp>::value, "Temp",
+          trait::name<category::amd_smi_temp>::description, LONG_DESCRIPTION, COMPONENT,
+          CELSIUS_DEGREES, "ABS", BLOCK, EXPRESSION, 0, 0 });
+
+    cache::metadata::storage::get_instance().add_pmc_info(
+        { base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+          trait::name<category::amd_smi_power>::value, "Pow",
+          trait::name<category::amd_smi_power>::description, LONG_DESCRIPTION, COMPONENT,
+          "w", "ABS", BLOCK, EXPRESSION, 0, 0 });
+
+    cache::metadata::storage::get_instance().add_pmc_info(
+        { base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+          trait::name<category::amd_smi_memory_usage>::value, "MemUsg",
+          trait::name<category::amd_smi_memory_usage>::description, LONG_DESCRIPTION,
+          COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0 });
 };
 
 void
@@ -182,7 +209,8 @@ rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& 
     auto  event_id = data_processor.insert_event(ROCPROFSYS_CATEGORY_AMD_SMI, 0, 0, 0);
 
     auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id  = agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
+    auto  base_id =
+        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
 
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if(!enabled) return;
@@ -305,7 +333,7 @@ data::sample(uint32_t _dev_id)
     ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).temp, amdsmi_get_temp_metric,
                           sample_handle, AMDSMI_TEMPERATURE_TYPE_JUNCTION,
                           AMDSMI_TEMP_CURRENT, &m_temp);
-#if (AMDSMI_LIB_VERSION_MAJOR == 2 && AMDSMI_LIB_VERSION_MINOR == 0) ||                  \
+#if(AMDSMI_LIB_VERSION_MAJOR == 2 && AMDSMI_LIB_VERSION_MINOR == 0) ||                   \
     (AMDSMI_LIB_VERSION_MAJOR == 25 && AMDSMI_LIB_VERSION_MINOR == 2)
     // This was a transient change in the AMD SMI API. It was never officially released.
     ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).power, amdsmi_get_power_info,
@@ -413,9 +441,10 @@ data::setup()
     // auto&       data_processor = rocpd::data_processor::get_instance();
 
     // data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
-    //                                 n_info.system_name.c_str(), n_info.node_name.c_str(),
-    //                                 n_info.release.c_str(), n_info.version.c_str(),
-    //                                 n_info.machine.c_str(), n_info.domain_name.c_str());
+    //                                 n_info.system_name.c_str(),
+    //                                 n_info.node_name.c_str(), n_info.release.c_str(),
+    //                                 n_info.version.c_str(), n_info.machine.c_str(),
+    //                                 n_info.domain_name.c_str());
 
     // rocpd_initilaize_process_info();
 
@@ -751,6 +780,7 @@ post_process()
         ROCPROFSYS_VERBOSE(2, "Post-processing amd-smi data for device: %d", itr);
         data::post_process(itr);
     }
+    cache::metadata::storage::get_instance().print_pmc_info();
 }
 
 uint32_t

@@ -28,6 +28,13 @@ namespace cache
 {
 namespace metadata
 {
+storage&
+storage::get_instance()
+{
+    static storage _instance;
+    return _instance;
+}
+
 void
 storage::add_pmc_info(const pmc_info& pmc_info)
 {
@@ -52,6 +59,23 @@ storage::get_thread_info(const uint32_t& thread_id)
 {
     return m_threads.find(
         [&](const metadata::thread_info& value) { return value.thread_id == thread_id; });
+}
+
+void
+storage::add_code_object(
+    const rocprofiler_callback_tracing_code_object_load_data_t& code_object)
+{
+    std::cout << "Insert Code object in meta cache\n" << std::flush;
+    m_code_objects.emplace(code_object);
+}
+
+std::optional<rocprofiler_callback_tracing_code_object_load_data_t>
+storage::get_code_object(uint64_t code_object_id)
+{
+    return m_code_objects.find(
+        [&](const rocprofiler_callback_tracing_code_object_load_data_t& value) {
+            return value.code_object_id == code_object_id;
+        });
 }
 
 }  // namespace metadata

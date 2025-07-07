@@ -38,11 +38,11 @@
 #include "core/gpu.hpp"
 #include "core/locking.hpp"
 #include "core/perfetto_fwd.hpp"
+#include "core/rocpd/agent_manager.hpp"
+#include "core/rocpd/data_processor.hpp"
+#include "core/rocpd/node_info.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
-#include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/agent_manager.hpp"
-#include "core/rocpd/node_info.hpp"
 #include "library/causal/data.hpp"
 #include "library/causal/experiment.hpp"
 #include "library/causal/sampling.hpp"
@@ -343,7 +343,6 @@ rocprofsys_preinit_rocpd()
     auto        cmd_line       = read_command_line(getpid());
     auto&       agent_mngr     = rocpd::agent_manager::get_instance();
 
-
     if(cmd_line.empty())
     {
         cmd_line.push_back("rocpd");
@@ -357,14 +356,15 @@ rocprofsys_preinit_rocpd()
                                        cmd_line[0].c_str(), "{}");
 
     const auto& agents = agent_mngr.get_agents();
-    for (auto& rocpd_agent : agents)
+    for(auto& rocpd_agent : agents)
     {
         auto _base_id = rocpd::data_processor::get_instance().insert_agent(
-                        n_info.id, getpid(), ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
-                        rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
-                        rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
-                        rocpd_agent->agent->name, rocpd_agent->agent->model_name,
-                        rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
+            n_info.id, getpid(),
+            ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
+            rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
+            rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
+            rocpd_agent->agent->name, rocpd_agent->agent->model_name,
+            rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
         rocpd_agent->base_id = _base_id;
     }
 }
@@ -859,6 +859,7 @@ rocprofsys_finalize_hidden(void)
         ompt::shutdown();
     }
 
+    rocprofiler_sdk::post_process();
 #if defined(ROCPROFSYS_USE_ROCM) && ROCPROFSYS_USE_ROCM > 0
     if(get_use_rocm())
     {

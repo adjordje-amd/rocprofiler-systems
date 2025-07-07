@@ -35,6 +35,7 @@
 #include "core/rocpd/json.hpp"
 #include "core/rocpd/node_info.hpp"
 #include "core/rocprofiler-sdk.hpp"
+#include "core/sample_cache/metadata_storage.hpp"
 #include "core/state.hpp"
 #include "library/amd_smi.hpp"
 #include "library/components/category_region.hpp"
@@ -505,6 +506,15 @@ rocpd_insert_thread_info(uint64_t tid)
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
+
+    cache::metadata::storage::get_instance().add_thread_info(
+        { .parent_process_id = getppid(),
+          .process_id        = getpid(),
+          .thread_id         = tid,
+          .name              = JOIN(" ", "Thread", tid),
+          .start             = 0,
+          .end               = 0,
+          .extdata           = "{}" });
 
     return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
                                              JOIN(" ", "Thread", tid).c_str(), 0, 0,
@@ -982,6 +992,8 @@ tool_code_object_callback(rocprofiler_callback_tracing_record_t record,
                         code_object_callback_record_t{ ts, record, data_v });
                 });
                 rocpd_insert_code_object_info(&data_v);
+                // add meta cache
+                cache::metadata::storage::get_instance().add_code_object(data_v);
             }
             else if(record.operation ==
                     ROCPROFILER_CODE_OBJECT_DEVICE_KERNEL_SYMBOL_REGISTER)
@@ -993,6 +1005,7 @@ tool_code_object_callback(rocprofiler_callback_tracing_record_t record,
                             new kernel_symbol_callback_record_t{ ts, record, data_v });
                     });
                 rocpd_insert_kernel_symbol_info(&data_v);
+                // add meta cache
             }
         }
         return;
@@ -1955,7 +1968,10 @@ config()
 
 void
 post_process()
-{}
+{
+    cache::metadata::storage::get_instance().print_threads();
+    cache::metadata::storage::get_instance().print_code_objects();
+}
 
 void
 sample()
