@@ -22,8 +22,8 @@
 
 #include "library/rocprofiler-sdk/fwd.hpp"
 #include "core/debug.hpp"
-#include "core/state.hpp"
 #include "core/rocpd/node_info.hpp"
+#include "core/state.hpp"
 
 #include <timemory/utility/join.hpp>
 
@@ -130,7 +130,8 @@ client_data::initialize()
 void
 client_data::initialize_event_info()
 {
-    if(rocpd::agent_manager::get_instance().get_agents().empty()) {
+    if(rocpd::agent_manager::get_instance().get_agents().empty())
+    {
         initialize();
     }
 
@@ -232,8 +233,9 @@ client_data::set_agents()
 
     auto fill_agents = [&](rocprofiler_agent_type_t type, std::vector<tool_agent>& out) {
         const auto& _agents = agent_mngr.get_agents_by_type(type);
-        for (const auto &agent : _agents) {
-            out.emplace_back(tool_agent {agent->device_id, agent->agent});
+        for(const auto& agent : _agents)
+        {
+            out.emplace_back(tool_agent{ agent->device_id, agent->agent });
         }
     };
 

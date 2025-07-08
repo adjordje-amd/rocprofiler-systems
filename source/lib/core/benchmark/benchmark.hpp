@@ -52,13 +52,13 @@ struct benchmark_impl
     template <CategoryEnum... Categories>
     struct scope
     {
-        scope(const scope&) = delete;
+        scope(const scope&)            = delete;
         scope& operator=(const scope&) = delete;
         ~scope()                       = default;
 
     protected:
-        scope()        = default;
-        scope(scope&&) = default;
+        scope()                   = default;
+        scope(scope&&)            = default;
         scope& operator=(scope&&) = default;
     };
 
@@ -96,14 +96,14 @@ public:
         friend benchmark_impl;
 
     public:
-        scope(const scope&) = delete;
+        scope(const scope&)            = delete;
         scope& operator=(const scope&) = delete;
         ~scope() { end<Categories...>(); }
 
     protected:
         scope() { start<Categories...>(); }
 
-        scope(scope&&) = default;
+        scope(scope&&)            = default;
         scope& operator=(scope&&) = default;
     };
 
@@ -197,8 +197,7 @@ public:
         std::cout << std::left << std::setw(wCategory) << "Category" << std::right
                   << std::setw(wCalls) << "Calls" << std::setw(wTotal) << "Total(ms)"
                   << std::setw(wAvg) << "Avg(us)" << std::setw(wMin) << "Min(us)"
-                  << std::setw(wMax) << "Max(us)"
-                  << "\n";
+                  << std::setw(wMax) << "Max(us)" << "\n";
 
         std::cout << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '-')
                   << "\n";
@@ -216,8 +215,7 @@ public:
         }
 
         std::cout << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '=')
-                  << "\033[0m"
-                  << "\n\n";
+                  << "\033[0m" << "\n\n";
     }
 
 private:
