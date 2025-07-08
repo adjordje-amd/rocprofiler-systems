@@ -1239,6 +1239,7 @@ function(ROCPROFILER_SYSTEMS_ADD_VALIDATION_TEST)
                 ${ROCPROFSYS_VALIDATION_PYTHON}
                 ${CMAKE_CURRENT_LIST_DIR}/validate-rocpd.py -db
                 ${PROJECT_BINARY_DIR}/rocprof-sys-tests-output/${TEST_NAME}/${TEST_ROCPD_FILE}
+                ${TEST_ARGS}
 
             WORKING_DIRECTORY ${PROJECT_BINARY_DIR})
     endif()

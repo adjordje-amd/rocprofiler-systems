@@ -40,14 +40,25 @@ class validation_rule():
 
 class required_table():
     """Class to represent a required table as defined in JSON rules file"""
-    def __init__(self, name, required_columns, min_rows=1, validation_queries=None):
+    def __init__(self, name, name_prefix, required_columns, min_rows=1, validation_queries=None):
+        if name is None and name_prefix is None:
+            raise ValueError("Either 'name' or 'name_prefix' must be specified")
+        if name is not None and name_prefix is not None:
+            raise ValueError("Cannot specify both 'name' and 'name_prefix'")
+
         self.name = name
+        self.name_prefix = name_prefix
         self.required_columns = required_columns
         self.min_rows = min_rows
         self.validation_queries = validation_queries or []
 
     def __repr__(self):
-        return f"required_table(name={self.name}, required_columns={self.required_columns})"
+        identifier = f"name={self.name}" if self.name else f"name_prefix={self.name_prefix}"
+        return f"required_table({identifier}, required_columns={self.required_columns})"
+
+    def get_table_identifier(self):
+        """Returns the table identifier (name or prefix) for display purposes"""
+        return self.name if self.name else f"{self.name_prefix}*"
 
 def print_help():
     """Print out the help message"""
@@ -107,10 +118,17 @@ def validate_table(cursor, rule, tables):
     """
 
     matching_table = None
-    for table in tables:
-        if table['name'] == rule.name:
-            matching_table = table
-            break
+
+    if rule.name:
+        for table in tables:
+            if table['name'] == rule.name:
+                matching_table = table
+                break
+    elif rule.name_prefix:
+        for table in tables:
+            if table['name'].startswith(rule.name_prefix):
+                matching_table = table
+                break
 
     if not matching_table:
         print(f"❌ ERROR: Required table '{rule.name}' not found in database")
@@ -142,7 +160,8 @@ def validate_table(cursor, rule, tables):
         all_queries_passed = True
         for validation_query in rule.validation_queries:
             try:
-                cursor.execute(validation_query.query)
+                query = validation_query.query.replace('{table_name}', table_name)
+                cursor.execute(query)
                 result = cursor.fetchone()
 
                 if result and 'count' in result.keys():
@@ -188,7 +207,7 @@ def validate_rocpd(cursor, rules, tables):
     db_valid = True
 
     for rule in rules:
-        print(f"\nValidating table: {rule.name}")
+        print(f"\nValidating table: {rule.get_table_identifier()}")
         table_valid = validate_table(cursor, rule, tables)
         db_valid = db_valid and table_valid
 
@@ -235,7 +254,8 @@ def load_validation_rules(rules_file):
                     validation_queries.append(validation_query_obj)
 
                 required_table_obj = required_table(
-                    name=table_data['name'],
+                    name=table_data.get('name', None),
+                    name_prefix=table_data.get('name_prefix', None),
                     required_columns=table_data['required_columns'],
                     min_rows=table_data.get('min_rows', 1),
                     validation_queries=validation_queries
@@ -260,7 +280,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
-        "-r", "--validation_rules",
+        "-r", "--validation-rules",
         type=Path,
         help="Rules against which to validate database",
         default=Path(f"{os.path.dirname(os.path.abspath(__file__))}/rocpd_validation_rules/default_rules.json")

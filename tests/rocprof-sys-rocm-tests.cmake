@@ -26,6 +26,11 @@
 #
 # -------------------------------------------------------------------------------------- #
 
+set(_rocpd_environment
+    "${_base_environment}"
+    "ROCPROFSYS_USE_ROCPD=true"
+)
+
 rocprofiler_systems_add_test(
     NAME transpose
     TARGET transpose
@@ -44,7 +49,7 @@ rocprofiler_systems_add_test(
         args
         -E
         uniform_int_distribution
-    ENVIRONMENT "${_base_environment}"
+    ENVIRONMENT "${_rocpd_environment}"
     RUNTIME_TIMEOUT 480
 )
 
@@ -140,4 +145,13 @@ if(ROCPROFSYS_USE_ROCM)
         EXIST_FILES ${ROCPROFSYS_FILE_CHECKS}
         LABELS "rocprofiler"
     )
+
+    rocprofiler_systems_add_validation_test(
+    NAME transpose-sampling
+    ROCPD_FILE "rocpd.db"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/transpose/validation_rules.json"
+    DEPENDS transpose-sampling
+    LABELS "rocprofiler"
+    )
+
 endif()
