@@ -530,13 +530,21 @@ data::post_process(uint32_t _dev_id)
             auto addendum = [&](const char* _v) {
                 return JOIN(" ", "GPU", _v, JOIN("", '[', _dev_id, ']'), "(S)");
             };
-            auto addendum_blk = [&](std::size_t _i, const char* _metric) {
-                auto _id = [](std::size_t _i) {
-                    return _i < 10 ? JOIN("[0", _i, ']') : JOIN('[', _i, ']');
-                }(_i);
 
-                return JOIN(" ", "GPU", JOIN("", '[', _dev_id, ']'), _metric,
-                            JOIN("", _id), "(S)");
+            auto addendum_blk = [&](std::size_t _i, const char* _metric,
+                                    std::size_t xcp_idx = SIZE_MAX) {
+                if(xcp_idx != SIZE_MAX)
+                {
+                    return JOIN(
+                        " ", "GPU", JOIN("", '[', _dev_id, ']'), _metric,
+                        JOIN("", "XCP_", xcp_idx, ": [", (_i < 10 ? "0" : ""), _i, ']'),
+                        "(S)");
+                }
+                else
+                {
+                    return JOIN(" ", "GPU", JOIN("", '[', _dev_id, ']'), _metric,
+                                JOIN("", "[", (_i < 10 ? "0" : ""), _i, ']'), "(S)");
+                }
             };
 
             if(_settings.busy)
@@ -594,7 +602,6 @@ data::post_process(uint32_t _dev_id)
                 }
                 else if(gpu::is_jpeg_activity_supported(_dev_id))
                 {
-                    // For JPEG activity, use simple indexing
                     for(std::size_t i = 0; i < std::size(itr.m_xcp_metrics[0].jpeg_busy);
                         ++i)
                         counter_track::emplace(_dev_id, addendum_blk(i, "JPEG Activity"),
