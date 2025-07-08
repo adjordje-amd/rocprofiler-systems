@@ -213,44 +213,29 @@ public:
 
 private:
     data_processor();
-
-    data_processor(data_processor&) = delete;
-
+    data_processor(data_processor&)                  = delete;
     data_processor& operator=(const data_processor&) = delete;
 
     void initialize_pmc_event_stmt();
-
     void initialize_event_stmt();
-
     void initialize_sample_stmt();
-
     void initialize_region_stmt();
-
     void initialize_kernel_dispatch_stmt();
-
     void initialize_memory_copy_stmt();
-
     void initialize_kernel_symbol_stmt();
-
     void inintialize_code_object_stmt();
-
     void initialize_metadata();
-
     void initialize_args_stmt();
-
     void initialize_memory_alloc_stmt();
 
 private:
     std::unordered_map<std::string, track_name_map> _tracks;
     std::unordered_map<pmc_identifier, size_t, pmc_identifier_hash, pmc_identifier_equal>
                                             _pmc_descriptor_map;
-    std::unordered_map<size_t, size_t>      _agent_id_map;
     std::unordered_map<size_t, size_t>      _thread_id_map;
     std::unordered_map<size_t, size_t>      _category_map;
     std::unordered_map<std::string, size_t> _string_map;
-    std::unordered_map<size_t, const char*> _kernel_symbol_map;
 
-    std::set<uint64_t> _thread_ids;
     std::set<uint64_t> _code_object_ids;
     std::set<uint64_t> _kernel_sym_ids;
     std::set<uint64_t> _stream_ids;
