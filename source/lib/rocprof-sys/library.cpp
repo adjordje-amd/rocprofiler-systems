@@ -312,23 +312,10 @@ read_command_line(pid_t _pid)
     auto ifs = std::ifstream{ fcmdline.str().c_str() };
     if(ifs)
     {
-        char        cstr;
         std::string sarg;
-        while(!ifs.eof())
+        while(std::getline(ifs, sarg, '\0'))
         {
-            ifs >> cstr;
-            if(!ifs.eof())
-            {
-                if(cstr != '\0')
-                {
-                    sarg += cstr;
-                }
-                else
-                {
-                    _cmdline.push_back(sarg);
-                    sarg = "";
-                }
-            }
+            _cmdline.push_back(sarg);
         }
         ifs.close();
     }
@@ -346,7 +333,7 @@ rocprofsys_preinit_rocpd()
 
     if(cmd_line.empty())
     {
-        cmd_line.push_back("rocpd");
+        cmd_line.emplace_back("rocprofiler-systems");
     }
 
     data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
@@ -357,7 +344,7 @@ rocprofsys_preinit_rocpd()
                                        cmd_line[0].c_str(), "{}");
 
     const auto& agents = agent_mngr.get_agents();
-    for(auto& rocpd_agent : agents)
+    for(const auto& rocpd_agent : agents)
     {
         auto _base_id = rocpd::data_processor::get_instance().insert_agent(
             n_info.id, getpid(),
@@ -775,7 +762,10 @@ rocprofsys_finalize_hidden(void)
             rocprofiler_sdk::shutdown();
         }
 #endif
-        rocpd::data_processor::get_instance().flush();
+        if(get_use_rocpd())
+        {
+            rocpd::data_processor::get_instance().flush();
+        }
         set_state(State::Finalized);
         std::quick_exit(EXIT_SUCCESS);
         return;
@@ -1066,7 +1056,10 @@ rocprofsys_finalize_hidden(void)
         [](int) {});
 
     common::destroy_static_objects();
-    rocpd::data_processor::get_instance().flush();
+    if(get_use_rocpd())
+    {
+        rocpd::data_processor::get_instance().flush();
+    }
 }
 
 //======================================================================================//

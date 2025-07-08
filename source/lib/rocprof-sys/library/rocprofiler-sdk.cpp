@@ -1076,7 +1076,6 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
 #if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
-            // case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
 #endif
 #if(ROCPROFILER_VERSION >= 700)
@@ -1179,7 +1178,6 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
 #if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
-            // case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
 #endif
 #if(ROCPROFILER_VERSION >= 700)
@@ -1473,7 +1471,6 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                 if(get_use_rocpd())
                 {
-                    // Insert memory allocation into database
                     rocprofiler::benchmark::start<
                         rocprofiler::benchmark::category::DB_Entry_Memory_Allocate>();
                     rocpd_initialize_category<category::rocm_memory_allocate>();

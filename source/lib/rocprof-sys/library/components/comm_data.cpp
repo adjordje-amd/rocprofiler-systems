@@ -186,6 +186,13 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, int bytes)
 }  // namespace
 
 void
+comm_data::start()
+{
+    rocpd_initialize_comm_data_categories();
+    rocpd_initialize_comm_data_pmc();
+}
+
+void
 comm_data::preinit()
 {
     configure();

@@ -169,7 +169,7 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
         ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
         trait::name<category::amd_smi_memory_usage>::value, "MemUsg",
         trait::name<category::amd_smi_memory_usage>::description, LONG_DESCRIPTION,
-        COMPONENT, "GB", "ABS", BLOCK, EXPRESSION, 0, 0);
+        COMPONENT, "MB", "ABS", BLOCK, EXPRESSION, 0, 0);
 };
 
 void
@@ -303,10 +303,8 @@ data::sample(uint32_t _dev_id)
     }
 
     amdsmi_processor_handle sample_handle = gpu::get_handle_from_id(_dev_id);
-    // TODO: the line below must be uncommented once the amd-smi bug is fixed, otherwise
-    // it causes runtime error on MI30XXX
-    // ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).busy, amdsmi_get_gpu_activity,
-    // sample_handle, &m_busy_perc);
+    ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).busy, amdsmi_get_gpu_activity,
+                          sample_handle, &m_busy_perc);
     ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).temp, amdsmi_get_temp_metric,
                           sample_handle, AMDSMI_TEMPERATURE_TYPE_JUNCTION,
                           AMDSMI_TEMP_CURRENT, &m_temp);

@@ -23,8 +23,8 @@
 #pragma once
 
 #include "common/synchronized.hpp"
-#include "core/timemory.hpp"
 #include "core/rocpd/agent_manager.hpp"
+#include "core/timemory.hpp"
 
 #include <rocprofiler-sdk/agent.h>
 #include <rocprofiler-sdk/buffer_tracing.h>
@@ -196,7 +196,8 @@ client_data::get_buffers() const
 inline const rocprofiler_agent_t*
 client_data::get_agent(rocprofiler_agent_id_t _id) const
 {
-    const auto& agent = rocpd::agent_manager::get_instance().get_agent_by_handle(_id.handle);
+    const auto& agent =
+        rocpd::agent_manager::get_instance().get_agent_by_handle(_id.handle);
 
     return agent.agent;
 }
@@ -208,14 +209,6 @@ client_data::get_gpu_tool_agent(rocprofiler_agent_id_t id) const
         if(id == itr.agent->id) return &itr;
     return nullptr;
 }
-
-// inline const tool_agent*
-// client_data::get_gpu_tool_agent(size_t gpu_id) const
-// {
-//     for(const auto& itr : gpu_agents)
-//         if(gpu_id == itr.device_id) return &itr;
-//     return nullptr;
-// }
 
 inline const kernel_symbol_data_t*
 client_data::get_kernel_symbol_info(uint64_t _kernel_id) const

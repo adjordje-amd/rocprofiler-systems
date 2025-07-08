@@ -23,6 +23,7 @@
 #include "agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "debug.hpp"
+#include <iterator>
 
 namespace rocprofsys
 {
@@ -110,41 +111,32 @@ agent_manager::get_agent_by_handle(size_t device_handle) const
 }
 
 std::vector<std::shared_ptr<agent>>
-agent_manager::get_agents_by_type(rocprofiler_agent_type_t type)
+agent_manager::get_agents_by_type(rocprofiler_agent_type_t type) const
 {
     ROCPROFSYS_VERBOSE(3, "Getting agent for device type: %s\n",
                        type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU");
 
     std::vector<std::shared_ptr<agent>> agents;
-    for(const auto& agent_ptr : _agents)
-    {
-        if(agent_ptr->agent->type == type)
-        {
-            agents.push_back(agent_ptr);
-        }
-    }
-    if(agents.empty())
-    {
-        ROCPROFSYS_THROW("No %s agents found!",
-                         (type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU"));
-    }
+    std::copy_if(
+        std::begin(_agents), std::end(_agents), std::back_inserter(agents),
+        [&type](const auto& agent_ptr) { return agent_ptr->agent->type == type; });
     return agents;
 }
 
 std::vector<std::shared_ptr<agent>>
-agent_manager::get_agents()
+agent_manager::get_agents() const
 {
     return _agents;
 }
 
 size_t
-agent_manager::get_gpu_agents_count()
+agent_manager::get_gpu_agents_count() const
 {
     return _gpu_agents_cnt;
 }
 
 size_t
-agent_manager::get_cpu_agents_count()
+agent_manager::get_cpu_agents_count() const
 {
     return _cpu_agents_cnt;
 }
