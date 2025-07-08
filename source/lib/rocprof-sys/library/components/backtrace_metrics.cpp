@@ -157,8 +157,7 @@ backtrace_metrics::stop()
 namespace
 {
 template <typename... Tp>
-auto
-get_enabled(tim::type_list<Tp...>)
+auto get_enabled(tim::type_list<Tp...>)
 {
     constexpr size_t N  = sizeof...(Tp);
     auto             _v = std::bitset<N>{};
@@ -412,7 +411,7 @@ rocpd_initialize_backtrace_metrics_pmc(size_t dev_id, const char* units, int64_t
     const auto  TARGET_ARCH      = "CPU";
 
     auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id  = agent_mngr.get_agent_by_id(dev_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto base_id = agent_mngr.get_agent_by_id(dev_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
 
     if constexpr(std::is_same_v<Category, category::thread_hardware_counter>)
     {
@@ -450,7 +449,8 @@ rocpd_process_backtrace_metrics_events(const uint32_t device_id, uint64_t timest
     auto  event_id =
         data_processor.insert_event(category_enum_id<Category>::value, 0, 0, 0);
     auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id  = agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto  base_id =
+        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
 
     auto insert_event_and_sample = [&](const char* name, double value) {
         data_processor.insert_pmc_event(event_id, base_id, name, value);
@@ -550,8 +550,7 @@ backtrace_metrics::fini_rocpd(int64_t _tid, valid_array_t _valid)
     {
         auto              _hw_cnt_labels = *get_papi_labels(_tid);
         hw_counter_data_t zero_counters{};
-        for(size_t i = 0; i < zero_counters.size(); ++i)
-            zero_counters[i] = 0.0;
+        zero_counters.fill(0.0);
 
         rocpd_process_backtrace_metrics_events<category::thread_hardware_counter,
                                                hw_counter_data_t>(0, _ts, zero_counters,

@@ -50,11 +50,32 @@ template <bool Enabled, typename CategoryEnum, CategoryEnum... EnabledCategories
 struct benchmark_impl
 {
     template <CategoryEnum... Categories>
+    struct scope
+    {
+        scope(const scope&) = delete;
+        scope& operator=(const scope&) = delete;
+        ~scope()                       = default;
+
+    protected:
+        scope()        = default;
+        scope(scope&&) = default;
+        scope& operator=(scope&&) = default;
+    };
+
+    template <CategoryEnum... Categories>
     static void start()
     {}
+
     template <CategoryEnum... Categories>
     static void end()
     {}
+
+    template <CategoryEnum... Categories>
+    [[nodiscard]] static scope<Categories...> scoped_trace()
+    {
+        return scope<Categories...>{};
+    }
+
     static void init_from_env(const char* = nullptr) {}
     static void show_results() {}
 };
@@ -256,14 +277,18 @@ private:
     static inline std::mutex                              mutex_;
 };
 
+#ifdef ROCPROFSYS_ENABLE_BENCHMARK
 using rps_benchmark = benchmark::benchmark_impl<
-    true, benchmark::category, benchmark::category::Kernel_Dispatch,
-    benchmark::category::Memory_Copy, benchmark::category::Memory_Allocate,
-    benchmark::category::DB_Entry_Kernel_Dispatch,
+    static_cast<bool>(ROCPROFSYS_ENABLE_BENCHMARK), benchmark::category,
+    benchmark::category::Kernel_Dispatch, benchmark::category::Memory_Copy,
+    benchmark::category::Memory_Allocate, benchmark::category::DB_Entry_Kernel_Dispatch,
     benchmark::category::DB_Entry_Memory_Copy,
     benchmark::category::DB_Entry_Memory_Allocate,
     benchmark::category::Perfetto_Kernel_Dispatch,
     benchmark::category::Sdk_Tool_Buffered_Tracing>;
+#else
+using rps_benchmark = benchmark::benchmark_impl<false, benchmark::category>;
+#endif
 }  // namespace
 
 template <category... Categories>

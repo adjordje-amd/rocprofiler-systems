@@ -63,8 +63,7 @@ using cpu_data_tuple_t = std::tuple<size_t, int64_t, int64_t, int64_t, int64_t, 
 std::deque<cpu_data_tuple_t> data = {};
 
 template <typename... Types>
-void
-init_perfetto_counter_tracks(type_list<Types...>)
+void init_perfetto_counter_tracks(type_list<Types...>)
 {
     (perfetto_counter_track<Types>::init(), ...);
 }
@@ -101,14 +100,15 @@ rocpd_initialize_cpu_freq_category()
                                          trait::name<category::cpu_freq>::value);
 }
 
-
 size_t
-rocpd_initialize_thread_info(size_t tid){
+rocpd_initialize_thread_info(size_t tid)
+{
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
 
     return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
-                                                JOIN(" ", "Thread", tid).c_str(), 0, 0, "{}");
+                                             JOIN(" ", "Thread", tid).c_str(), 0, 0,
+                                             "{}");
 }
 
 void
@@ -163,7 +163,7 @@ rocpd_initialize_cpu_freq_pmc(size_t dev_id)
     const auto  TARGET_ARCH      = "CPU";
 
     auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id  = agent_mngr.get_agent_by_id(dev_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto base_id = agent_mngr.get_agent_by_id(dev_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
 
     do_for_enabled_cpus([&](size_t cpu_id) {
         data_processor.insert_pmc_description(
@@ -227,7 +227,8 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, uint64_t timestamp,
     auto  event_id = data_processor.insert_event(ROCPROFSYS_CATEGORY_CPU_FREQ, 0, 0, 0);
 
     auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id  = agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto  base_id =
+        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
 
     auto insert_event_and_sample = [&](const char* name, double value) {
         data_processor.insert_pmc_event(event_id, base_id, name, value);
@@ -262,16 +263,22 @@ namespace cpu_freq
 void
 setup()
 {
-    init_perfetto_counter_tracks(
-        type_list<category::cpu_freq, category::process_page, category::process_virt,
-                  category::process_peak, category::process_context_switch,
-                  category::process_page_fault, category::process_user_mode_time,
-                  category::process_kernel_mode_time>{});
+    if(get_use_perfetto())
+    {
+        init_perfetto_counter_tracks(
+            type_list<category::cpu_freq, category::process_page, category::process_virt,
+                      category::process_peak, category::process_context_switch,
+                      category::process_page_fault, category::process_user_mode_time,
+                      category::process_kernel_mode_time>{});
+    }
 
-    rocpd_initialize_cpu_freq_category();
-    auto thread_idx = rocpd_initialize_thread_info(gettid());
-    rocpd_initialize_cpu_usage_tracks(thread_idx);
-    rocpd_initialize_cpu_freq_tracks(thread_idx);
+    if(get_use_rocpd())
+    {
+        rocpd_initialize_cpu_freq_category();
+        auto thread_idx = rocpd_initialize_thread_info(gettid());
+        rocpd_initialize_cpu_usage_tracks(thread_idx);
+        rocpd_initialize_cpu_freq_tracks(thread_idx);
+    }
 }
 
 void
@@ -357,15 +364,19 @@ post_process()
 
     const auto& enabled_cpus = component::cpu_freq::get_enabled_cpus();
 
-    // `get_enabled_cpus()` returns the number of cores enabled for monitoring but the
-    // actuall device_id is 0, since there is a single device avaliable. And the agents
-    // seems to be assigned per device basis not per core.
-    // TODO: `get_enabled_cpus()` should be fixed in the future to align with GPU
-    // implementation.
-    auto cpu_agents = rocpd::agent_manager::get_instance()
-                                .get_agents_by_type(ROCPROFILER_AGENT_TYPE_CPU);
-    for(auto& agent : cpu_agents) {
-        rocpd_initialize_cpu_freq_pmc(agent->device_id);
+    if(get_use_rocpd())
+    {
+        // `get_enabled_cpus()` returns the number of cores enabled for monitoring but the
+        // actuall device_id is 0, since there is a single device avaliable. And the
+        // agents seems to be assigned per device basis not per core.
+        // TODO: `get_enabled_cpus()` should be fixed in the future to align with GPU
+        // implementation.
+        auto cpu_agents = rocpd::agent_manager::get_instance().get_agents_by_type(
+            ROCPROFILER_AGENT_TYPE_CPU);
+        for(auto& agent : cpu_agents)
+        {
+            rocpd_initialize_cpu_freq_pmc(agent->device_id);
+        }
     }
 
     auto _process_frequencies = [](size_t _idx, size_t _offset) {
@@ -396,14 +407,17 @@ post_process()
     };
 
     auto _process_cpu_rusage = []() {
-        config_perfetto_counter_tracks(
-            type_list<category::process_page, category::process_virt,
-                      category::process_peak, category::process_context_switch,
-                      category::process_page_fault, category::process_user_mode_time,
-                      category::process_kernel_mode_time>{},
-            { "Memory Usage", "Virtual Memory Usage", "Peak Memory", "Context Switches",
-              "Page Faults", "User Time", "Kernel Time" },
-            { "MB", "MB", "MB", "", "", "sec", "sec" });
+        if(get_use_perfetto())
+        {
+            config_perfetto_counter_tracks(
+                type_list<category::process_page, category::process_virt,
+                          category::process_peak, category::process_context_switch,
+                          category::process_page_fault, category::process_user_mode_time,
+                          category::process_kernel_mode_time>{},
+                { "Memory Usage", "Virtual Memory Usage", "Peak Memory",
+                  "Context Switches", "Page Faults", "User Time", "Kernel Time" },
+                { "MB", "MB", "MB", "", "", "sec", "sec" });
+        }
 
         const auto& _thread_info = thread_info::get(0, InternalTID);
         ROCPROFSYS_CI_THROW(!_thread_info, "Missing thread info for thread 0");
@@ -421,27 +435,39 @@ post_process()
             uint64_t _flts = std::get<5>(itr);
             double   _user = std::get<6>(itr) / units::sec;
             double   _kern = std::get<7>(itr) / units::sec;
-            write_perfetto_counter_track<category::process_page>(_ts, _page);
-            write_perfetto_counter_track<category::process_virt>(_ts, _virt);
-            write_perfetto_counter_track<category::process_peak>(_ts, _peak);
-            write_perfetto_counter_track<category::process_context_switch>(_ts, _cntx);
-            write_perfetto_counter_track<category::process_page_fault>(_ts, _flts);
-            write_perfetto_counter_track<category::process_user_mode_time>(_ts, _user);
-            write_perfetto_counter_track<category::process_kernel_mode_time>(_ts, _kern);
-
-            const auto& freq_data = std::get<8>(itr);
-            rocpd_process_cpu_usage_events(0, _ts, freq_data, _page, _virt, _peak, _cntx,
-                                           _flts, _user, _kern);
+            if(get_use_perfetto())
+            {
+                write_perfetto_counter_track<category::process_page>(_ts, _page);
+                write_perfetto_counter_track<category::process_virt>(_ts, _virt);
+                write_perfetto_counter_track<category::process_peak>(_ts, _peak);
+                write_perfetto_counter_track<category::process_context_switch>(_ts,
+                                                                               _cntx);
+                write_perfetto_counter_track<category::process_page_fault>(_ts, _flts);
+                write_perfetto_counter_track<category::process_user_mode_time>(_ts,
+                                                                               _user);
+                write_perfetto_counter_track<category::process_kernel_mode_time>(_ts,
+                                                                                 _kern);
+            }
+            if(get_use_rocpd())
+            {
+                const auto& freq_data = std::get<8>(itr);
+                rocpd_process_cpu_usage_events(0, _ts, freq_data, _page, _virt, _peak,
+                                               _cntx, _flts, _user, _kern);
+            }
         }
 
-        auto _end_ts = _thread_info->get_stop();
-        write_perfetto_counter_track<category::process_page>(_end_ts, 0.0);
-        write_perfetto_counter_track<category::process_virt>(_end_ts, 0.0);
-        write_perfetto_counter_track<category::process_peak>(_end_ts, 0.0);
-        write_perfetto_counter_track<category::process_context_switch>(_end_ts, 0);
-        write_perfetto_counter_track<category::process_page_fault>(_end_ts, 0);
-        write_perfetto_counter_track<category::process_user_mode_time>(_end_ts, 0.0);
-        write_perfetto_counter_track<category::process_kernel_mode_time>(_end_ts, 0.0);
+        if(get_use_perfetto())
+        {
+            auto _end_ts = _thread_info->get_stop();
+            write_perfetto_counter_track<category::process_page>(_end_ts, 0.0);
+            write_perfetto_counter_track<category::process_virt>(_end_ts, 0.0);
+            write_perfetto_counter_track<category::process_peak>(_end_ts, 0.0);
+            write_perfetto_counter_track<category::process_context_switch>(_end_ts, 0);
+            write_perfetto_counter_track<category::process_page_fault>(_end_ts, 0);
+            write_perfetto_counter_track<category::process_user_mode_time>(_end_ts, 0.0);
+            write_perfetto_counter_track<category::process_kernel_mode_time>(_end_ts,
+                                                                             0.0);
+        }
     };
 
     _process_cpu_rusage();

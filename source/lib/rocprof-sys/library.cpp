@@ -533,8 +533,8 @@ rocprofsys_init_tooling_hidden(void)
     auto _dtor = scope::destructor{ []() {
         // if set to finalized, don't continue
         if(get_state() > State::Active) return;
-        // ToDo: Should be under get_use_rocpd() once added
-        rocprofsys_preinit_rocpd();
+        if(get_use_rocpd()) rocprofsys_preinit_rocpd();
+
         if(get_use_process_sampling())
         {
             ROCPROFSYS_SCOPED_SAMPLING_ON_CHILD_THREADS(false);

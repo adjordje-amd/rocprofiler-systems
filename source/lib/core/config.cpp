@@ -312,6 +312,9 @@ configure_settings(bool _init)
                               "Enable causal profiling analysis", false, "backend",
                               "causal", "analysis");
 
+    ROCPROFSYS_CONFIG_SETTING(bool, "ROCPROFSYS_USE_ROCPD", "Enable rocpd backend", false,
+                              "backend", "rocpd");
+
     ROCPROFSYS_CONFIG_SETTING(bool, "ROCPROFSYS_USE_ROCM",
                               "Enable ROCm API and kernel tracing", true, "backend",
                               "rocm");
@@ -2366,6 +2369,13 @@ get_database_absolute_path(std::string_view database_name)
     if(!_val.empty() && _val.at(0) != '/')
         return settings::format(JOIN('/', "%env{PWD}%", _val), get_config()->get_tag());
     return _val;
+}
+
+bool&
+get_use_rocpd()
+{
+    static auto _v = get_config()->at("ROCPROFSYS_USE_ROCPD");
+    return static_cast<tim::tsettings<bool>&>(*_v).get();
 }
 
 tmp_file::tmp_file(std::string _v)
