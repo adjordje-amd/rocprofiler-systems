@@ -502,13 +502,13 @@ rocpd_initialize_category()
 size_t
 rocpd_insert_thread_info(uint64_t tid)
 {
-    auto& data_processor = get_data_processor();
-    auto& n_info         = node_info::get_instance();
-    const auto& t_info = thread_info::get(tid, SequentTID);
+    auto&       data_processor = get_data_processor();
+    auto&       n_info         = node_info::get_instance();
+    const auto& t_info         = thread_info::get(tid, SequentTID);
 
-    return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
-                                                JOIN(" ", "Thread", tid).c_str(),
-                                                t_info->get_start(), t_info->get_stop(), "{}");
+    return data_processor.insert_thread_info(
+        n_info.id, getppid(), getpid(), tid, JOIN(" ", "Thread", tid).c_str(),
+        t_info->get_start(), t_info->get_stop(), "{}");
 }
 
 void
@@ -1044,7 +1044,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                                             user_data, ts);
                 break;
             }
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API:
             {
                 tool_tracing_callback_start(category::rocm_rocdecode_api{}, record,
@@ -1052,7 +1052,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                 break;
             }
 #endif
-#if (ROCPROFILER_VERSION >= 700)
+#if(ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API:
             {
                 tool_tracing_callback_start(category::rocm_rocjpeg_api{}, record,
@@ -1074,10 +1074,13 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_SCRATCH_MEMORY:
             case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
             // case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
+#endif
+#if(ROCPROFILER_VERSION >= 700)
+            case ROCPROFILER_CALLBACK_TRACING_HIP_STREAM:
 #endif
             {
                 ROCPROFSYS_CI_ABORT(true, "unhandled callback record kind: %i\n",
@@ -1143,7 +1146,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                                            ts, _bt_data);
                 break;
             }
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API:
             {
                 tool_tracing_callback_stop(category::rocm_rocdecode_api{}, record,
@@ -1151,7 +1154,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                 break;
             }
 #endif
-#if (ROCPROFILER_VERSION >= 700)
+#if(ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API:
             {
                 tool_tracing_callback_stop(category::rocm_rocjpeg_api{}, record,
@@ -1174,10 +1177,13 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_SCRATCH_MEMORY:
             case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
             // case ROCPROFILER_CALLBACK_TRACING_MEMORY_ALLOCATION:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
+#endif
+#if(ROCPROFILER_VERSION >= 700)
+            case ROCPROFILER_CALLBACK_TRACING_HIP_STREAM:
 #endif
             {
                 ROCPROFSYS_CI_ABORT(true, "unhandled callback record kind: %i\n",
@@ -1751,10 +1757,10 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
             ROCPROFILER_CALLBACK_TRACING_HIP_COMPILER_API,
             ROCPROFILER_CALLBACK_TRACING_MARKER_CORE_API,
             ROCPROFILER_CALLBACK_TRACING_RCCL_API,
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API,
 #endif
-#if (ROCPROFILER_VERSION >= 700)
+#if(ROCPROFILER_VERSION >= 700)
             ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API,
 #endif
         })

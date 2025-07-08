@@ -1,6 +1,9 @@
 #
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/defines.hpp.in
-               ${CMAKE_CURRENT_BINARY_DIR}/defines.hpp @ONLY)
+configure_file(
+    ${CMAKE_CURRENT_SOURCE_DIR}/defines.hpp.in
+    ${CMAKE_CURRENT_BINARY_DIR}/defines.hpp
+    @ONLY
+)
 
 set(core_sources
     ${CMAKE_CURRENT_LIST_DIR}/argparse.cpp
@@ -19,12 +22,12 @@ set(core_sources
     ${CMAKE_CURRENT_LIST_DIR}/state.cpp
     ${CMAKE_CURRENT_LIST_DIR}/timemory.cpp
     ${CMAKE_CURRENT_LIST_DIR}/utility.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/utility.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_processor.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/node_info.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/json.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.cpp)
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.cpp
+)
 
 set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/argparse.hpp
@@ -54,28 +57,38 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/json.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/table_insert_query.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/query_builders/insert_query_builders.hpp)
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/query_builders/insert_query_builders.hpp
+)
 
 add_library(rocprofiler-systems-core-library STATIC)
-add_library(rocprofiler-systems::rocprofiler-systems-core ALIAS
-            rocprofiler-systems-core-library)
+add_library(
+    rocprofiler-systems::rocprofiler-systems-core
+    ALIAS rocprofiler-systems-core-library
+)
 
 target_sources(
-    rocprofiler-systems-core-library PRIVATE ${core_sources} ${core_headers}
-                                             ${CMAKE_CURRENT_BINARY_DIR}/defines.hpp)
+    rocprofiler-systems-core-library
+    PRIVATE ${core_sources} ${core_headers} ${CMAKE_CURRENT_BINARY_DIR}/defines.hpp
+)
 add_subdirectory(binary)
 add_subdirectory(components)
 add_subdirectory(containers)
 
-target_include_directories(rocprofiler-systems-core-library BEFORE
-                           PRIVATE ${CMAKE_CURRENT_LIST_DIR})
+target_include_directories(
+    rocprofiler-systems-core-library
+    BEFORE
+    PRIVATE ${CMAKE_CURRENT_LIST_DIR}
+)
 
 target_include_directories(
     rocprofiler-systems-core-library
-    PRIVATE ${PROJECT_SOURCE_DIR}/external/timemory/source/timemory/tpls/cereal)
+    PRIVATE ${PROJECT_SOURCE_DIR}/external/timemory/source/timemory/tpls/cereal
+)
 
-target_link_libraries(rocprofiler-systems-core-library
-                      PRIVATE rocprofiler-systems::rocprofiler-systems-interface-library)
+target_link_libraries(
+    rocprofiler-systems-core-library
+    PRIVATE rocprofiler-systems::rocprofiler-systems-interface-library
+)
 target_link_libraries(
     rocprofiler-systems-core-library
     PRIVATE
@@ -93,9 +106,7 @@ target_link_libraries(
         $<BUILD_INTERFACE:rocprofiler-systems::rocprofiler-systems-static-libstdcxx-optional>
         $<BUILD_INTERFACE:rocprofiler-systems::rocprofiler-systems-sanitizer>
         $<BUILD_INTERFACE:$<IF:$<BOOL:${ROCPROFSYS_BUILD_LTO}>,rocprofiler-systems::rocprofiler-systems-lto,>>
-    )
-
-
+)
 
 file(GLOB ROCPD_SCHEMA_FILES "${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/schema/*.sql")
 
@@ -104,12 +115,16 @@ foreach(_SRC ${ROCPD_SCHEMA_FILES})
     configure_file(
         ${_SRC}
         ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/${_BASE}
-        COPYONLY)
+        COPYONLY
+    )
     install(
         FILES ${PROJECT_BINARY_DIR}/${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}/${_BASE}
         DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}
-        COMPONENT core)
+        COMPONENT core
+    )
 endforeach()
 
-set_target_properties(rocprofiler-systems-core-library
-                      PROPERTIES OUTPUT_NAME ${BINARY_NAME_PREFIX}-core)
+set_target_properties(
+    rocprofiler-systems-core-library
+    PROPERTIES OUTPUT_NAME ${BINARY_NAME_PREFIX}-core
+)

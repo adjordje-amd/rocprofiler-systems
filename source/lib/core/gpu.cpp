@@ -75,6 +75,17 @@ check_amdsmi_error(amdsmi_status_t _code, const char* _file, int _line)
                      _msg);
 }
 
+// Ensures initialization happens only once
+std::once_flag amdsmi_once;
+
+// Tracks whether AMD SMI is initialized
+bool&
+_amdsmi_is_initialized()
+{
+    static bool initialized = false;
+    return initialized;
+}
+
 bool
 amdsmi_init()
 {
@@ -84,10 +95,12 @@ amdsmi_init()
             // Currently, only AMDSMI_INIT_AMD_GPUS is supported
             ROCPROFSYS_AMD_SMI_CALL(::amdsmi_init(AMDSMI_INIT_AMD_GPUS));
             get_processor_handles();
+            _amdsmi_is_initialized() = true;  // Mark as initialized
         } catch(std::exception& _e)
         {
             ROCPROFSYS_BASIC_VERBOSE(1, "Exception thrown initializing amd-smi: %s\n",
                                      _e.what());
+            _amdsmi_is_initialized() = false;  // Mark as not initialized
             return false;
         }
         return true;
@@ -144,7 +157,9 @@ bool
 initialize_amdsmi()
 {
 #if ROCPROFSYS_USE_ROCM > 0
-    return (amdsmi_init()) ? true : false;
+    // Ensure initialization happens only once
+    std::call_once(amdsmi_once, amdsmi_init);
+    return _amdsmi_is_initialized();
 #else
     return false;
 #endif
@@ -159,10 +174,12 @@ add_device_metadata(ArchiveT& ar)
 
 #if ROCPROFSYS_USE_ROCM > 0
     using agent_vec_t = std::vector<rocprofiler_agent_v0_t>;
-    auto _gpu_agents  = rocpd::agent_manager::get_instance().get_agents_by_type(ROCPROFILER_AGENT_TYPE_GPU);
+    auto _gpu_agents  = rocpd::agent_manager::get_instance().get_agents_by_type(
+        ROCPROFILER_AGENT_TYPE_GPU);
     auto _agents_vec = agent_vec_t{};
 
-    for(auto& agent : _gpu_agents) {
+    for(auto& agent : _gpu_agents)
+    {
         _agents_vec.emplace_back(*(agent->agent));
     }
     ar(make_nvp("rocm_agents", _agents_vec));
@@ -207,7 +224,7 @@ get_processor_handles()
     processors::processors_list.clear();
 
     auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto gpu_agents = agent_mngr.get_agents_by_type(ROCPROFILER_AGENT_TYPE_GPU);
+    auto  gpu_agents = agent_mngr.get_agents_by_type(ROCPROFILER_AGENT_TYPE_GPU);
 
     // Passing nullptr will return us the number of sockets available for read in this
     // system
@@ -247,45 +264,27 @@ get_processor_handles()
             processors::processors_list.push_back(processor);
 
             amdsmi_gpu_metrics_t gpu_metrics;
-            bool                 vcn_supported    = false;
-            bool                 jpeg_supported   = false;
-            bool                 v_busy_supported = false;
-            bool                 j_busy_supported = false;
-            ret = amdsmi_get_gpu_metrics_info(processor, &gpu_metrics);
-            if(ret == AMDSMI_STATUS_SUCCESS)
+            bool                 vcn_supported = false, jpeg_supported = false;
+            bool                 v_busy_supported = false, j_busy_supported = false;
+            // AMD SMI will not report VCN_activity and JPEG_activity, if VCN_busy or
+            // JPEG_busy fields are available.
+            if(amdsmi_get_gpu_metrics_info(processor, &gpu_metrics) ==
+               AMDSMI_STATUS_SUCCESS)
             {
-                for(const auto& vcn_activity : gpu_metrics.vcn_activity)
-                {
-                    if(vcn_activity != UINT16_MAX)
-                    {
-                        vcn_supported = true;
-                        break;
-                    }
-                }
-                for(const auto& jpeg_activity : gpu_metrics.jpeg_activity)
-                {
-                    if(jpeg_activity != UINT16_MAX)
-                    {
-                        jpeg_supported = true;
-                        break;
-                    }
-                }
+                // Helper lambda to check if any value in the array is valid
+                auto has_valid = [](const auto& arr) {
+                    return std::any_of(std::begin(arr), std::end(arr),
+                                       [](auto val) { return val != UINT16_MAX; });
+                };
+                vcn_supported  = has_valid(gpu_metrics.vcn_activity);
+                jpeg_supported = has_valid(gpu_metrics.jpeg_activity);
+                // Check if VCN and JPEG busy metrics are available
                 for(const auto& xcp : gpu_metrics.xcp_stats)
                 {
-                    if(!v_busy_supported)
-                    {
-                        v_busy_supported =
-                            std::any_of(std::begin(xcp.vcn_busy), std::end(xcp.vcn_busy),
-                                        [](uint16_t val) { return val != UINT16_MAX; });
-                    }
-
-                    if(!j_busy_supported)
-                    {
-                        j_busy_supported = std::any_of(
-                            std::begin(xcp.jpeg_busy), std::end(xcp.jpeg_busy),
-                            [](uint16_t val) { return val != UINT16_MAX; });
-                    }
-
+                    if(!v_busy_supported && has_valid(xcp.vcn_busy))
+                        v_busy_supported = true;
+                    if(!j_busy_supported && has_valid(xcp.jpeg_busy))
+                        j_busy_supported = true;
                     if(v_busy_supported && j_busy_supported) break;
                 }
             }

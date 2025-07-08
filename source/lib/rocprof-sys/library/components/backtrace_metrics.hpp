@@ -77,7 +77,7 @@ struct backtrace_metrics : comp::empty_base
     backtrace_metrics(const backtrace_metrics&)     = default;
     backtrace_metrics(backtrace_metrics&&) noexcept = default;
 
-    backtrace_metrics& operator=(const backtrace_metrics&) = default;
+    backtrace_metrics& operator=(const backtrace_metrics&)     = default;
     backtrace_metrics& operator=(backtrace_metrics&&) noexcept = default;
 
     static void                     configure(bool, int64_t _tid = threading::get_id());
@@ -143,7 +143,8 @@ backtrace_metrics::get_valid(type_list<Tp>, valid_array_t _valid)
 }
 
 template <typename Tp>
-bool backtrace_metrics::operator()(type_list<Tp>) const
+bool
+backtrace_metrics::operator()(type_list<Tp>) const
 {
     static_assert(!concepts::is_type_listing<Tp>::value,
                   "Error! invalid call with tuple");
@@ -160,7 +161,8 @@ backtrace_metrics::get_valid(Tp, valid_array_t _valid)
 }
 
 template <typename Tp>
-bool backtrace_metrics::operator()(Tp) const
+bool
+backtrace_metrics::operator()(Tp) const
 {
     return (*this)(type_list<Tp>{});
 }
