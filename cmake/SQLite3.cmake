@@ -42,3 +42,4 @@ if(ROCPROFILER_BUILD_SQLITE3)
      find_package(SQLite3 REQUIRED)
      target_link_libraries(rocprofiler-systems-sqlite3 INTERFACE SQLite3::SQLite3)
  endif()
+ 
