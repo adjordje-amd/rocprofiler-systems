@@ -1013,12 +1013,6 @@ rocprofsys_finalize_hidden(void)
             std::cout << "agent global id:" << agent->global_id << "\n";
         }
 
-        cache::metadata::storage::get_instance().print_process();
-        cache::metadata::storage::get_instance().print_threads();
-        cache::metadata::storage::get_instance().print_pmc_info();
-        cache::metadata::storage::get_instance().print_code_objects();
-        cache::metadata::storage::get_instance().print_kernel_symbols();
-
         cache::storage_parser::get_instance().load_storage();
     }
 

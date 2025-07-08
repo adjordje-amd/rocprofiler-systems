@@ -75,6 +75,7 @@ struct kernel_dispatch_sample : storage_parsed_type_base
     uint64_t              event_correlation_id;
     std::string           event_call_stack;
     uint64_t              node_info_id;
+    size_t                agent_id;
 };
 
 class storage_parser

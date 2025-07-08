@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include "cache_storage_parser.hpp"
+#include <cstdio>
 #include <mutex>
 
 namespace rocprofsys
@@ -43,14 +44,13 @@ storage_parser::register_type_callback(
     {
         return;
     }
-    std::cout << __LINE__ << "register type" << std::endl;
     m_callbacks.emplace(type, callback);
 }
 
 void
 storage_parser::load_storage(const std::filesystem::path& path)
 {
-    std::ifstream ifs(path, std::ios::binary | std::ios::ate);
+    std::ifstream ifs(path, std::ios::binary);
     if(!ifs)
     {
         std::cerr << "Error opening file for writing: " << path << "\n";
@@ -60,14 +60,11 @@ storage_parser::load_storage(const std::filesystem::path& path)
     sample_type type;
     size_t      sample_size;
 
-    std::cout << __LINE__ << "load storage" << std::endl;
-
     while(!ifs.eof())
     {
         ifs.read(reinterpret_cast<char*>(&type), sizeof(type));
         ifs.read(reinterpret_cast<char*>(&sample_size), sizeof(sample_size));
 
-        std::cout << __LINE__ << "load storage" << std::endl;
         if(sample_size == 0 || ifs.eof())
         {
             continue;
@@ -76,13 +73,11 @@ storage_parser::load_storage(const std::filesystem::path& path)
         std::vector<uint8_t> sample;
         sample.reserve(sample_size);
         ifs.read(reinterpret_cast<char*>(sample.data()), sample_size);
-        std::cout << __LINE__ << "load storage" << std::endl;
 
         switch(type)
         {
             case sample_type::kernel_dispatch:
             {
-                std::cout << __LINE__ << "load storage" << std::endl;
                 kernel_dispatch_sample _kernel_dispatch_sample;
                 parse_data(sample.data(), _kernel_dispatch_sample.kernel_id,
                            _kernel_dispatch_sample.dispatch_id,
@@ -104,12 +99,12 @@ storage_parser::load_storage(const std::filesystem::path& path)
                            _kernel_dispatch_sample.event_parent_stack_id,
                            _kernel_dispatch_sample.event_correlation_id,
                            _kernel_dispatch_sample.event_call_stack,
-                           _kernel_dispatch_sample.node_info_id);
+                           _kernel_dispatch_sample.node_info_id,
+                           _kernel_dispatch_sample.agent_id);
 
                 if(m_callbacks.count(type) > 0)
                 {
                     m_callbacks.at(type)(_kernel_dispatch_sample);
-                    std::cout << __LINE__ << "load storage" << std::endl;
                 }
                 break;
             }

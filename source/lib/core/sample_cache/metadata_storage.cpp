@@ -21,6 +21,8 @@
 // SOFTWARE.
 
 #include "metadata_storage.hpp"
+#include <algorithm>
+#include <cstdint>
 #include <rocprofiler-sdk/callback_tracing.h>
 
 namespace rocprofsys
@@ -103,6 +105,43 @@ storage::add_track(const track_info& track_info)
         _data.emplace(track_info);
     });
 }
+
+void
+storage::add_queue(const uint64_t& queue_handle)
+{
+    m_queues.wlock([&queue_handle](auto& _data) {
+        if(_data.count(queue_handle) > 0)
+        {
+            return;
+        }
+        _data.emplace(queue_handle);
+    });
+}
+
+void
+storage::add_stream(const uint64_t& stream_handle)
+{
+    m_streams.wlock([&stream_handle](auto& _data) {
+        if(_data.count(stream_handle) > 0)
+        {
+            return;
+        }
+        _data.emplace(stream_handle);
+    });
+}
+
+void
+storage::add_string(const std::string_view& string_value)
+{
+    m_strings.wlock([&string_value](auto& _data) {
+        if(_data.count(string_value) > 0)
+        {
+            return;
+        }
+        _data.emplace(string_value);
+    });
+}
+
 process_info
 storage::get_process_info() const
 {
@@ -208,6 +247,69 @@ storage::get_track_info(const std::string_view& track_name) const
     });
     return result;
 }
+
+std::vector<pmc_info>
+storage::get_pmc_info_list() const
+{
+    std::vector<pmc_info> result;
+    m_pmc_infos.rlock(
+        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    return result;
+}
+
+std::vector<thread_info>
+storage::get_thread_info_list() const
+{
+    std::vector<thread_info> result;
+    m_threads.rlock(
+        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    return result;
+}
+
+std::vector<track_info>
+storage::get_track_info_list() const
+{
+    std::vector<track_info> result;
+    m_tracks.rlock([&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    return result;
+}
+
+std::vector<rocprofiler_callback_tracing_code_object_load_data_t>
+storage::get_code_object_list() const
+{
+    std::vector<rocprofiler_callback_tracing_code_object_load_data_t> result;
+    m_code_objects.rlock(
+        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    return result;
+}
+
+std::vector<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
+storage::get_kernel_symbol_list() const
+{
+    std::vector<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
+        result;
+    m_kernel_symbols.rlock(
+        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    return result;
+}
+
+std::vector<uint64_t>
+storage::get_queue_list() const
+{
+    std::vector<uint64_t> result;
+    m_queues.rlock([&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    return result;
+}
+
+std::vector<uint64_t>
+storage::get_stream_list() const
+{
+    std::vector<uint64_t> result;
+    m_streams.rlock(
+        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    return result;
+}
+
 }  // namespace metadata
 }  // namespace cache
 }  // namespace rocprofsys

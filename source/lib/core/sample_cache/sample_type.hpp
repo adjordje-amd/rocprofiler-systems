@@ -29,8 +29,7 @@ namespace cache
 {
 enum class sample_type : uint32_t
 {
-    event,
-    pmc_event,
+    pmc_event,  //  Should be cached? It's already cached in amd smi
     sample,
     region,
     kernel_dispatch,
