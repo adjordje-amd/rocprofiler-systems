@@ -25,12 +25,9 @@
 #include "debug.hpp"
 #include "rocpd/node_info.hpp"
 
-#include <chrono>
 #include <config.hpp>
 #include <filesystem>
 #include <fstream>
-#include <functional>
-#include <memory>
 #include <regex>
 #include <timemory/environment/types.hpp>
 #include <unistd.h>

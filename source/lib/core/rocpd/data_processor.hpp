@@ -22,18 +22,13 @@
 
 #pragma once
 
-#include <any>
 #include <cstdint>
 #include <functional>
 #include <mutex>
 #include <optional>
 #include <set>
 #include <string>
-#include <thread>
 #include <unordered_map>
-
-#include "core/rocpd/data_storage/database.hpp"
-#include "core/rocpd/data_storage/queries/table_insert_query.hpp"
 
 namespace rocprofsys
 {
@@ -107,11 +102,6 @@ private:
     };
 
 public:
-    enum class correlation_id
-    {
-        smi_unused
-    };
-
     static data_processor& get_instance();
 
     size_t insert_string(const char* str);

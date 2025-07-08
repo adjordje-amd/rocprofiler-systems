@@ -22,7 +22,6 @@
 
 #include "library/rocprofiler-sdk/fwd.hpp"
 #include "core/debug.hpp"
-#include "core/rocpd/node_info.hpp"
 #include "core/state.hpp"
 
 #include <timemory/utility/join.hpp>

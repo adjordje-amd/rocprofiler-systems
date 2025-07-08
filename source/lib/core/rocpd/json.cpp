@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include "json.hpp"
+#include <sstream>
 
 namespace rocpd
 {

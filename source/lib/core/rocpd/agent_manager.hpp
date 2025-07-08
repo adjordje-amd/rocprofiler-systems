@@ -23,7 +23,6 @@
 #pragma once
 #include <cstddef>
 #include <memory>
-#include <stdexcept>
 #include <vector>
 
 #include "agent.hpp"

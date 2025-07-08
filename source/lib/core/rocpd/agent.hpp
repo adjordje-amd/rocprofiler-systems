@@ -23,9 +23,6 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
-#include <string>
-
 #include <rocprofiler-sdk/agent.h>
 
 #if ROCPROFSYS_USE_ROCM > 0

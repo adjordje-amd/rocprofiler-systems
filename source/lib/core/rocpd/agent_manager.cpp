@@ -21,7 +21,6 @@
 // SOFTWARE.
 
 #include "agent_manager.hpp"
-#include "core/rocpd/data_processor.hpp"
 #include "debug.hpp"
 #include <iterator>
 
