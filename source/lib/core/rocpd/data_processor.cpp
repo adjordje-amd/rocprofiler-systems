@@ -141,7 +141,7 @@ data_processor::insert_agent(size_t node_id, size_t pid, const char* agent_type,
 
 void
 data_processor::insert_track(const char* track_name, size_t node_id, size_t process_id,
-                             size_t thread_id, const char* extdata)
+                             std::optional<size_t> thread_id, const char* extdata)
 {
     if(_tracks.find(track_name) != _tracks.end())
     {

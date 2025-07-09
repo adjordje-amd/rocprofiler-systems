@@ -122,7 +122,7 @@ public:
                         const char* user_name, const char* extdata = "{}");
 
     void insert_track(const char* track_name, size_t node_id, size_t process_id,
-                      size_t thread_id, const char* extdata = "{}");
+                      std::optional<size_t> thread_id, const char* extdata = "{}");
 
     size_t insert_event(size_t category_id, size_t stack_id, size_t parent_stack_id,
                         size_t correlation_id, const char* call_stack = "{}",

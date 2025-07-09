@@ -52,13 +52,11 @@
 #include <timemory/utility/locking.hpp>
 
 #include <cassert>
-#include <chrono>
-#include <ios>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <sys/resource.h>
-#include <thread>
 
 #define ROCPROFSYS_AMD_SMI_CALL(...)                                                     \
     ::rocprofsys::amd_smi::check_error(__FILE__, __LINE__, __VA_ARGS__)
@@ -85,24 +83,6 @@ get_data_processor()
     return rocpd::data_processor::get_instance();
 }
 
-size_t
-rocpd_initialize_thread_info(uint64_t tid)
-{
-    auto&       data_processor = get_data_processor();
-    auto&       n_info         = node_info::get_instance();
-    const auto& thread_info    = thread_info::get(tid, SequentTID);
-
-    if(!thread_info)
-    {
-        ROCPROFSYS_CI_THROW(!thread_info, "Missing thread info for thread 0");
-        return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
-                                                 JOIN(" ", "Thread", tid).c_str());
-    }
-
-    return data_processor.insert_thread_info(
-        n_info.id, getppid(), getpid(), tid, threading::get_thread_name().c_str(),
-        thread_info->get_start(), thread_info->get_stop(), "{}");
-}
 void
 rocpd_initialize_category()
 {
@@ -115,18 +95,16 @@ rocpd_initialize_smi_tracks()
 {
     auto&      data_processor = get_data_processor();
     auto&      n_info         = node_info::get_instance();
-    const auto thread_id      = gettid();  // Internal thread ID for amd-smi
-
-    auto thread_idx = rocpd_initialize_thread_info(thread_id);
+    const auto thread_id      = std::nullopt;  // Internal thread ID for amd-smi
 
     data_processor.insert_track(trait::name<category::amd_smi_mm_busy>::value, n_info.id,
-                                getpid(), thread_idx);
+                                getpid(), thread_id);
     data_processor.insert_track(trait::name<category::amd_smi_power>::value, n_info.id,
-                                getpid(), thread_idx);
+                                getpid(), thread_id);
     data_processor.insert_track(trait::name<category::amd_smi_temp>::value, n_info.id,
-                                getpid(), thread_idx);
+                                getpid(), thread_id);
     data_processor.insert_track(trait::name<category::amd_smi_memory_usage>::value,
-                                n_info.id, getpid(), thread_idx);
+                                n_info.id, getpid(), thread_id);
 };
 
 void
@@ -142,7 +120,7 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
     const char* EXPRESSION       = "";
     const char* CELSIUS_DEGREES  = "\u00B0C";
     auto        ni               = node_info::get_instance();
-    const auto  TARGET_ARCH      = "GPU";
+    const auto* TARGET_ARCH      = "GPU";
 
     auto& agent_mngr = rocpd::agent_manager::get_instance();
     auto base_id = agent_mngr.get_agent_by_id(gpu_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
@@ -414,6 +392,7 @@ config()
     for(auto itr : data::device_list)
         data::get_initial().at(itr).sample(itr);
 
+    printf("Configure ADM SMI!\n");
     if(get_use_rocpd())
     {
         rocpd_initialize_category();
@@ -836,6 +815,7 @@ shutdown()
     }
 
     is_initialized() = false;
+    printf("Shutting down amd-smi... Finished!\n");
 }
 
 void

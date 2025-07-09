@@ -24,7 +24,9 @@
 
 #include "common/traits.hpp"
 
+#include <optional>
 #include <sstream>
+#include <string>
 #include <type_traits>
 
 namespace rocprofsys
@@ -49,22 +51,46 @@ struct query_value_builder
     {
         auto i = sizeof...(values);
         _ss << "( ";
-        ((_ss << (common::traits::is_string_literal<
-                      std::remove_reference_t<decltype(values)>>::value
-                      ? "\""
-                      : "")
-              << values
-              << (common::traits::is_string_literal<
-                      std::remove_reference_t<decltype(values)>>::value
-                      ? "\""
-                      : "")
-              << (i-- > 1 ? ", " : " ")),
-         ...)
-            << ")";
+        ((process_value(values) << (i-- > 1 ? ", " : " ")), ...);
+        _ss << ")";
         return *this;
     }
 
     std::string get_query_string() { return _ss.str(); }
+
+private:
+    template <typename T>
+    std::enable_if_t<common::traits::is_string_literal_v<T>, std::stringstream&>
+    process_value(T& value)
+    {
+        _ss << "\"" << value << "\"";
+        return _ss;
+    }
+
+    template <typename T>
+    std::enable_if_t<std::__is_optional_v<std::decay_t<T>>, std::stringstream&>
+    process_value(T& value)
+    {
+        if(value.has_value())
+        {
+            _ss << value.value();
+        }
+        else
+        {
+            _ss << "NULL";
+        }
+        return _ss;
+    }
+
+    template <typename T>
+    std::enable_if_t<!common::traits::is_string_literal_v<T> &&
+                         !std::__is_optional_v<std::decay_t<T>>,
+                     std::stringstream&>
+    process_value(T& value)
+    {
+        _ss << value;
+        return _ss;
+    }
 
 private:
     std::stringstream& _ss;
