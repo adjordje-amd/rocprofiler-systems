@@ -60,6 +60,8 @@ storage_parser::load_storage(const std::filesystem::path& path)
     sample_type type;
     size_t      sample_size;
 
+    std::map<sample_type, size_t> m_parsed_count;
+
     while(!ifs.eof())
     {
         ifs.read(reinterpret_cast<char*>(&type), sizeof(type));
@@ -105,6 +107,66 @@ storage_parser::load_storage(const std::filesystem::path& path)
                 if(m_callbacks.count(type) > 0)
                 {
                     m_callbacks.at(type)(_kernel_dispatch_sample);
+                }
+                break;
+            }
+            case sample_type::memory_copy:
+            {
+                memory_copy_sample _memory_copy_sample;
+                parse_data(
+                    sample.data(), _memory_copy_sample.node_id,
+                    _memory_copy_sample.process_id, _memory_copy_sample.thread_id,
+                    _memory_copy_sample.start_timestamp,
+                    _memory_copy_sample.end_timestamp, _memory_copy_sample.kind,
+                    _memory_copy_sample.operation, _memory_copy_sample.dst_agent_id,
+                    _memory_copy_sample.dst_address, _memory_copy_sample.src_agent_id,
+                    _memory_copy_sample.src_address, _memory_copy_sample.bytes,
+                    _memory_copy_sample.queue_handle, _memory_copy_sample.stream_handle,
+                    _memory_copy_sample.stack_id, _memory_copy_sample.parent_stack_id,
+                    _memory_copy_sample.correlation_id);
+                if(m_callbacks.count(type) > 0)
+                {
+                    m_callbacks.at(type)(_memory_copy_sample);
+                }
+                break;
+            }
+            case sample_type::memory_alloc:
+            {
+                memory_allocate_sample _memory_allocate_sample;
+                parse_data(sample.data(), _memory_allocate_sample.node_id,
+                           _memory_allocate_sample.process_id,
+                           _memory_allocate_sample.thread_id,
+                           _memory_allocate_sample.agent_id, _memory_allocate_sample.kind,
+                           _memory_allocate_sample.operation,
+                           _memory_allocate_sample.start_timestamp,
+                           _memory_allocate_sample.end_timestamp,
+                           _memory_allocate_sample.address_value,
+                           _memory_allocate_sample.allocation_size,
+                           _memory_allocate_sample.queue_handle,
+                           _memory_allocate_sample.stream_handle,
+                           _memory_allocate_sample.stack_id,
+                           _memory_allocate_sample.parent_stack_id,
+                           _memory_allocate_sample.correalation_id);
+
+                if(m_callbacks.count(type) > 0)
+                {
+                    m_callbacks.at(type)(_memory_allocate_sample);
+                }
+                break;
+            }
+            case sample_type::region:
+            {
+                region_sample _region_sample;
+                parse_data(sample.data(), _region_sample.thread_id,
+                           _region_sample.start_timestamp, _region_sample.end_timestamp,
+                           _region_sample.kind, _region_sample.operation,
+                           _region_sample.stack_id, _region_sample.parent_stack_id,
+                           _region_sample.correalation_id, _region_sample.call_stack,
+                           _region_sample.args_str);
+
+                if(m_callbacks.count(type) > 0)
+                {
+                    m_callbacks.at(type)(_region_sample);
                 }
                 break;
             }

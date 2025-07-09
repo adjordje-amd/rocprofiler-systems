@@ -37,6 +37,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <rocprofiler-sdk/fwd.h>
 #include <rocprofiler-systems/categories.h>
 #include <stdint.h>
 #include <string.h>
@@ -54,12 +55,12 @@ struct storage_parsed_type_base
 
 struct kernel_dispatch_sample : storage_parsed_type_base
 {
-    uint64_t              kernel_id;
-    uint64_t              dispatch_id;
-    uint64_t              queue_handle;
-    uint64_t              stream_handle;
-    uint64_t              start_timestamp;
-    uint64_t              end_timestamp;
+    size_t                kernel_id;
+    size_t                dispatch_id;
+    size_t                queue_handle;
+    size_t                stream_handle;
+    size_t                start_timestamp;
+    size_t                end_timestamp;
     int64_t               private_segment_size;
     int64_t               group_segment_size;
     int64_t               workgroup_size_x;
@@ -70,16 +71,67 @@ struct kernel_dispatch_sample : storage_parsed_type_base
     int64_t               grid_size_z;
     int64_t               thread_id;
     ROCPROFSYS_CATEGORIES category;
-    uint64_t              event_stack_id;
-    uint64_t              event_parent_stack_id;
-    uint64_t              event_correlation_id;
+    size_t                event_stack_id;
+    size_t                event_parent_stack_id;
+    size_t                event_correlation_id;
     std::string           event_call_stack;
-    uint64_t              node_info_id;
+    size_t                node_info_id;
     size_t                agent_id;
 };
 
 struct memory_copy_sample : storage_parsed_type_base
-{};
+{
+    size_t                              node_id;
+    size_t                              process_id;
+    rocprofiler_thread_id_t             thread_id;
+    rocprofiler_timestamp_t             start_timestamp;
+    rocprofiler_timestamp_t             end_timestamp;
+    rocprofiler_buffer_tracing_kind_t   kind;
+    rocprofiler_memory_copy_operation_t operation;
+    size_t                              dst_agent_id;
+    size_t                              dst_address;
+    size_t                              src_agent_id;
+    size_t                              src_address;
+    size_t                              bytes;
+    size_t                              queue_handle;
+    size_t                              stream_handle;
+    size_t                              stack_id;
+    size_t                              parent_stack_id;
+    size_t                              correlation_id;
+};
+
+struct memory_allocate_sample : storage_parsed_type_base
+{
+    size_t                                    node_id;
+    size_t                                    process_id;
+    rocprofiler_thread_id_t                   thread_id;
+    size_t                                    agent_id;
+    rocprofiler_buffer_tracing_kind_t         kind;
+    rocprofiler_memory_allocation_operation_t operation;
+    rocprofiler_timestamp_t                   start_timestamp;
+    rocprofiler_timestamp_t                   end_timestamp;
+    size_t                                    address_value;
+    size_t                                    allocation_size;
+    size_t                                    queue_handle;
+    size_t                                    stream_handle;
+    size_t                                    stack_id;
+    size_t                                    parent_stack_id;
+    size_t                                    correalation_id;
+};
+
+struct region_sample : storage_parsed_type_base
+{
+    size_t                              thread_id;
+    rocprofiler_timestamp_t             start_timestamp;
+    rocprofiler_timestamp_t             end_timestamp;
+    rocprofiler_callback_tracing_kind_t kind;
+    rocprofiler_tracing_operation_t     operation;
+    size_t                              stack_id;
+    size_t                              parent_stack_id;
+    size_t                              correalation_id;
+    std::string                         call_stack;
+    std::string                         args_str;
+};
 
 class storage_parser
 {
