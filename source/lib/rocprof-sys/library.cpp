@@ -1013,7 +1013,7 @@ rocprofsys_finalize_hidden(void)
             std::cout << "agent global id:" << agent->global_id << "\n";
         }
 
-        cache::storage_parser::get_instance().load_storage();
+        cache::storage_parser::get_instance().consume_storage();
     }
 
     bool _perfetto_output_error = false;

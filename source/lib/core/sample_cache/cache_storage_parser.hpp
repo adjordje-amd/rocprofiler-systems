@@ -142,7 +142,7 @@ public:
         const sample_type&                                                 type,
         const std::function<void(const cache::storage_parsed_type_base&)>& callback);
 
-    void load_storage();
+    void consume_storage();
 
 private:
     storage_parser() = default;

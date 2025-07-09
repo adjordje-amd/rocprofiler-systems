@@ -47,7 +47,7 @@ storage_parser::register_type_callback(
 }
 
 void
-storage_parser::load_storage()
+storage_parser::consume_storage()
 {
     const std::filesystem::path& path = { filename };
     std::ifstream                ifs(path, std::ios::binary);
@@ -175,6 +175,7 @@ storage_parser::load_storage()
     }
 
     ifs.close();
+    std::filesystem::remove(path);
 }
 
 }  // namespace cache
