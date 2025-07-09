@@ -1,9 +1,32 @@
+// MIT License
+//
+// Copyright (c) 2025 Advanced Micro Devices, Inc. All Rights Reserved.
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
 #pragma once
 
 #include <algorithm>
 #include <array>
 #include <bitset>
 #include <chrono>
+#include <cstddef>
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
@@ -37,6 +60,27 @@ struct benchmark_impl
     static void printResults() {}
 };
 
+struct indexed_category
+{
+    size_t category;
+    size_t index;
+
+    friend bool operator==(const indexed_category& lhs, const indexed_category& rhs)
+    {
+        return lhs.category == rhs.category && lhs.index == rhs.index;
+    }
+};
+
+struct hash_indexed_category
+{
+    size_t operator()(const indexed_category& p) const noexcept
+    {
+        std::size_t hash1 = std::hash<size_t>{}(p.category);
+        std::size_t hash2 = std::hash<size_t>{}(p.index);
+        return hash1 ^ (hash2 << 1);
+    }
+};
+
 template <typename CategoryEnum, CategoryEnum... EnabledCategories>
 struct benchmark_impl<true, CategoryEnum, EnabledCategories...>
 {
@@ -55,37 +99,45 @@ public:
     public:
         scope(const scope&) = delete;
         scope& operator=(const scope&) = delete;
-        ~scope() { end<Categories...>(); }
+        ~scope() { end<Categories...>(m_index); }
 
     protected:
-        scope() { start<Categories...>(); }
+        scope()
+        {
+            static size_t index_count = 0;
+            m_index                   = index_count++;
+            start<Categories...>(m_index);
+        }
 
         scope(scope&&) = default;
         scope& operator=(scope&&) = default;
+        size_t m_index;
     };
 
+private:
     template <CategoryEnum... Categories>
-    static void start()
+    static void start(size_t index)
     {
         const auto      now = clock::now();
         std::lock_guard lock(mutex_);
         (..., (if_compiled<Categories>([&] {
              if(runtimeEnabled_.test(to_index(Categories)))
-                 startTimes_[to_index(Categories)] = now;
+                 startTimes_[{ to_index(Categories), index }] = now;
          })));
     }
 
     template <CategoryEnum... Categories>
-    static void end()
+    static void end(size_t index)
     {
         const auto      endTime = clock::now();
         std::lock_guard lock(mutex_);
         (..., (if_compiled<Categories>([&] {
              if(runtimeEnabled_.test(to_index(Categories)))
-                 endCategory(endTime, Categories);
+                 endCategory(endTime, Categories, index);
          })));
     }
 
+public:
     template <CategoryEnum... Categories>
     [[nodiscard]] static scope<Categories...> scoped_trace()
     {
@@ -199,10 +251,10 @@ private:
         return static_cast<size_t>(cat);
     }
 
-    static void endCategory(const time_point& endTime, CategoryEnum cat)
+    static void endCategory(const time_point& endTime, CategoryEnum cat, size_t index)
     {
         const size_t idx = to_index(cat);
-        auto         it  = startTimes_.find(idx);
+        auto         it  = startTimes_.find({ idx, index });
         if(it == startTimes_.end())
         {
             ROCPROFSYS_WARNING(1, "Benchmark error: missing start time for category!\n");
@@ -228,7 +280,8 @@ private:
     static constexpr std::array<CategoryEnum, sizeof...(EnabledCategories)>
         compiledCategories = { EnabledCategories... };
 
-    static inline std::unordered_map<size_t, time_point>  startTimes_;
+    static inline std::unordered_map<indexed_category, time_point, hash_indexed_category>
+                                                          startTimes_;
     static inline std::array<result_data, kMaxCategories> results_{};
     static inline std::bitset<kMaxCategories>             runtimeEnabled_;
     static inline std::mutex                              mutex_;
