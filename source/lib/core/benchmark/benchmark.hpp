@@ -53,14 +53,14 @@ public:
         friend benchmark_impl;
 
     public:
-        scope(const scope&)            = delete;
+        scope(const scope&) = delete;
         scope& operator=(const scope&) = delete;
         ~scope() { end<Categories...>(); }
 
     protected:
         scope() { start<Categories...>(); }
 
-        scope(scope&&)            = default;
+        scope(scope&&) = default;
         scope& operator=(scope&&) = default;
     };
 
@@ -154,7 +154,8 @@ public:
         std::cout << std::left << std::setw(wCategory) << "Category" << std::right
                   << std::setw(wCalls) << "Calls" << std::setw(wTotal) << "Total(ms)"
                   << std::setw(wAvg) << "Avg(us)" << std::setw(wMin) << "Min(us)"
-                  << std::setw(wMax) << "Max(us)" << "\n";
+                  << std::setw(wMax) << "Max(us)"
+                  << "\n";
 
         std::cout << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '-')
                   << "\n";
@@ -172,7 +173,8 @@ public:
         }
 
         std::cout << std::string(wCategory + wCalls + wTotal + wAvg + wMin + wMax, '=')
-                  << "\033[0m" << "\n\n";
+                  << "\033[0m"
+                  << "\n\n";
     }
 
 private:
@@ -239,7 +241,9 @@ using rps_benchmark = benchmark::benchmark_impl<
     benchmark::category::DB_Entry_Memory_Copy,
     benchmark::category::DB_Entry_Memory_Allocate,
     benchmark::category::Perfetto_Kernel_Dispatch,
-    benchmark::category::Sdk_Tool_Buffered_Tracing>;
+    benchmark::category::Sdk_Tool_Buffered_Tracing, benchmark::category::Event,
+    benchmark::category::Event_Cached, benchmark::category::Kernel_Dispatch_Cached,
+    benchmark::category::Memory_Copy_Cached, benchmark::category::Memory_Allocate_Cached>;
 }  // namespace
 
 template <category... Categories>

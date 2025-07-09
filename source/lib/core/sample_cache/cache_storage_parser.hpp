@@ -78,6 +78,9 @@ struct kernel_dispatch_sample : storage_parsed_type_base
     size_t                agent_id;
 };
 
+struct memory_copy_sample : storage_parsed_type_base
+{};
+
 class storage_parser
 {
 public:
