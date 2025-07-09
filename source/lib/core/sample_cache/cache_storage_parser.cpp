@@ -22,7 +22,6 @@
 
 #include "cache_storage_parser.hpp"
 #include <cstdio>
-#include <mutex>
 
 namespace rocprofsys
 {
@@ -48,9 +47,10 @@ storage_parser::register_type_callback(
 }
 
 void
-storage_parser::load_storage(const std::filesystem::path& path)
+storage_parser::load_storage()
 {
-    std::ifstream ifs(path, std::ios::binary);
+    const std::filesystem::path& path = { filename };
+    std::ifstream                ifs(path, std::ios::binary);
     if(!ifs)
     {
         std::cerr << "Error opening file for writing: " << path << "\n";

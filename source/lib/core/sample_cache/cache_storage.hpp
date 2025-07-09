@@ -39,6 +39,7 @@
 #include <string>
 #include <thread>
 #include <type_traits>
+#include <unistd.h>
 #include <vector>
 
 namespace rocprofsys
@@ -49,7 +50,7 @@ constexpr auto MByte           = 1024 * 1024;
 constexpr auto GByte           = 1024 * 1024 * 1024;
 constexpr auto buffer_size     = 10 * MByte;
 constexpr auto flush_treshhold = 5 * MByte;
-constexpr auto filename        = "buffered_storage.bin";
+const auto     filename        = "buffered_storage_" + std::to_string(getpid()) + ".bin";
 
 constexpr auto minimal_fragmented_memory_size = sizeof(sample_type) + sizeof(size_t);
 using buffer_array                            = std::array<uint8_t, buffer_size>;
