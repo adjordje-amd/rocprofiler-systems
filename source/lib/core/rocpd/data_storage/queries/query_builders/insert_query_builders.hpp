@@ -24,7 +24,6 @@
 
 #include "common/traits.hpp"
 
-#include <optional>
 #include <sstream>
 #include <string>
 #include <type_traits>
@@ -37,20 +36,6 @@ namespace data_storage
 {
 namespace queries
 {
-
-namespace
-{
-template <typename T>
-struct is_optional : std::false_type
-{};
-
-template <typename T>
-struct is_optional<std::optional<T>> : std::true_type
-{};
-
-template <typename T>
-inline constexpr bool is_optional_v = is_optional<T>::value;
-}  // namespace
 
 namespace query_builders
 {
@@ -83,8 +68,8 @@ private:
     }
 
     template <typename T>
-    std::enable_if_t<is_optional_v<std::decay_t<T>>, std::stringstream&> process_value(
-        T& value)
+    std::enable_if_t<common::traits::is_optional_v<std::decay_t<T>>, std::stringstream&>
+    process_value(T& value)
     {
         if(value.has_value())
         {
@@ -99,7 +84,7 @@ private:
 
     template <typename T>
     std::enable_if_t<!common::traits::is_string_literal_v<T> &&
-                         !std::__is_optional_v<std::decay_t<T>>,
+                         !common::traits::is_optional_v<std::decay_t<T>>,
                      std::stringstream&>
     process_value(T& value)
     {
