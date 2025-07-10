@@ -267,14 +267,6 @@ setup()
                       category::process_page_fault, category::process_user_mode_time,
                       category::process_kernel_mode_time>{});
     }
-
-    if(get_use_rocpd())
-    {
-        rocpd_initialize_cpu_freq_category();
-        auto thread_idx = rocpd_initialize_thread_info(gettid());
-        rocpd_initialize_cpu_usage_tracks(thread_idx);
-        rocpd_initialize_cpu_freq_tracks(thread_idx);
-    }
 }
 
 void
@@ -362,6 +354,11 @@ post_process()
 
     if(get_use_rocpd())
     {
+        rocpd_initialize_cpu_freq_category();
+        auto thread_idx = rocpd_initialize_thread_info(gettid());
+        rocpd_initialize_cpu_usage_tracks(thread_idx);
+        rocpd_initialize_cpu_freq_tracks(thread_idx);
+
         // `get_enabled_cpus()` returns the number of cores enabled for monitoring but the
         // actuall device_id is 0, since there is a single device avaliable. And the
         // agents seems to be assigned per device basis not per core.
