@@ -392,7 +392,6 @@ config()
     for(auto itr : data::device_list)
         data::get_initial().at(itr).sample(itr);
 
-    printf("Configure ADM SMI!\n");
     if(get_use_rocpd())
     {
         rocpd_initialize_category();
@@ -481,7 +480,10 @@ data::post_process(uint32_t _dev_id)
 
     auto _settings = get_settings(_dev_id);
 
-    if(get_use_rocpd())
+    auto use_perfetto = get_use_perfetto();
+    auto use_rocpd    = get_use_rocpd();
+
+    if(use_rocpd)
     {
         rocpd_initialize_smi_pmc(_dev_id);
     }
@@ -654,13 +656,13 @@ data::post_process(uint32_t _dev_id)
             }
         };
 
-        if(get_use_perfetto())
+        if(use_perfetto)
         {
             setup_perfetto_counter_tracks();
             write_perfetto_metrics();
         }
 
-        if(get_use_rocpd())
+        if(use_rocpd)
         {
             rocpd_process_smi_pmc_events(_dev_id, _settings, _ts, _mmbusy, _temp, _power,
                                          _usage);
@@ -815,7 +817,6 @@ shutdown()
     }
 
     is_initialized() = false;
-    printf("Shutting down amd-smi... Finished!\n");
 }
 
 void
