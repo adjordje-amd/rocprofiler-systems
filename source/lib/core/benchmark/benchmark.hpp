@@ -49,7 +49,7 @@ namespace
 template <bool enabled, typename category_enum, category_enum... enabled_categories>
 struct benchmark_impl
 {
-    template <category_enum... catergories>
+    template <category_enum... categories>
     struct scope
     {
         scope(const scope&)            = delete;
@@ -62,18 +62,18 @@ struct benchmark_impl
         scope& operator=(scope&&) = default;
     };
 
-    template <category_enum... catergories>
+    template <category_enum... categories>
     static void start()
     {}
 
-    template <category_enum... catergories>
+    template <category_enum... categories>
     static void end()
     {}
 
-    template <category_enum... catergories>
-    [[nodiscard]] static scope<catergories...> scoped_trace()
+    template <category_enum... categories>
+    [[nodiscard]] static scope<categories...> scoped_trace()
     {
-        return scope<catergories...>{};
+        return scope<categories...>{};
     }
 
     static void init_from_env(const char* = nullptr) {}
@@ -90,7 +90,7 @@ public:
     using time_point                        = clock::time_point;
     static constexpr size_t _max_categories = static_cast<size_t>(category_enum::count);
 
-    template <category_enum... catergories>
+    template <category_enum... categories>
     struct scope
     {
         friend benchmark_impl;
@@ -98,41 +98,40 @@ public:
     public:
         scope(const scope&)            = delete;
         scope& operator=(const scope&) = delete;
-        ~scope() { end<catergories...>(); }
+        ~scope() { end<categories...>(); }
 
     protected:
-        scope() { start<catergories...>(); }
+        scope() { start<categories...>(); }
 
         scope(scope&&)            = default;
         scope& operator=(scope&&) = default;
     };
 
-    template <category_enum... catergories>
+    template <category_enum... categories>
     static void start()
     {
         const auto      now = clock::now();
         std::lock_guard lock(m_mutex);
-        (..., (if_compiled<catergories>([&] {
-             if(m_enabled.test(to_index(catergories)))
-                 m_started[to_index(catergories)] = now;
+        (..., (if_compiled<categories>([&] {
+             if(m_enabled.test(to_index(categories)))
+                 m_started[to_index(categories)] = now;
          })));
     }
 
-    template <category_enum... catergories>
+    template <category_enum... categories>
     static void end()
     {
         const auto      end_time = clock::now();
         std::lock_guard lock(m_mutex);
-        (..., (if_compiled<catergories>([&] {
-             if(m_enabled.test(to_index(catergories)))
-                 end_category(end_time, catergories);
+        (..., (if_compiled<categories>([&] {
+             if(m_enabled.test(to_index(categories))) end_category(end_time, categories);
          })));
     }
 
-    template <category_enum... catergories>
-    [[nodiscard]] static scope<catergories...> scoped_trace()
+    template <category_enum... categories>
+    [[nodiscard]] static scope<categories...> scoped_trace()
     {
-        return scope<catergories...>{};
+        return scope<categories...>{};
     }
 
     static void init_from_env(const char* envVar = "BENCHMARK_CATEGORIES")
@@ -289,25 +288,25 @@ using _benchmark_impl = benchmark::benchmark_impl<false, benchmark::category>;
 #endif
 }  // namespace
 
-template <category... catergories>
+template <category... categories>
 void
 start()
 {
-    _benchmark_impl::template start<catergories...>();
+    _benchmark_impl::template start<categories...>();
 }
 
-template <category... catergories>
+template <category... categories>
 void
 end()
 {
-    _benchmark_impl::template end<catergories...>();
+    _benchmark_impl::template end<categories...>();
 }
 
-template <category... catergories>
+template <category... categories>
 [[nodiscard]] auto
 scoped_trace()
 {
-    return _benchmark_impl::template scoped_trace<catergories...>();
+    return _benchmark_impl::template scoped_trace<categories...>();
 }
 
 inline void
