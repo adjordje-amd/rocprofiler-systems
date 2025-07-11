@@ -44,7 +44,7 @@
 
 namespace rocprofsys
 {
-namespace cache
+namespace sample_cache
 {
 constexpr auto MByte           = 1024 * 1024;
 constexpr auto GByte           = 1024 * 1024 * 1024;
@@ -52,16 +52,17 @@ constexpr auto buffer_size     = 10 * MByte;
 constexpr auto flush_treshhold = 5 * MByte;
 const auto     filename        = "buffered_storage_" + std::to_string(getpid()) + ".bin";
 
-constexpr auto minimal_fragmented_memory_size = sizeof(sample_type) + sizeof(size_t);
+constexpr auto minimal_fragmented_memory_size = sizeof(entry_type) + sizeof(size_t);
 using buffer_array                            = std::array<uint8_t, buffer_size>;
 
-class storage
+class cache_manager;
+class cache_storage
 {
 public:
-    static storage& get_instance();
+    static cache_storage& get_instance();
 
     template <typename... T>
-    void store(sample_type type, T&&... values)
+    void store(entry_type type, T&&... values)
     {
         auto   arg_size        = get_size(values...);
         size_t total_size      = arg_size + sizeof(type) + sizeof(size_t);
@@ -93,10 +94,10 @@ public:
         (store_value(values), ...);
     }
 
-    void shutdown();
-
 private:
-    storage();
+    friend class cache_manager;
+    cache_storage();
+    void     shutdown();
     void     fragment_memory();
     uint8_t* reserve_memory_space(size_t len);
 
@@ -131,5 +132,5 @@ private:
     std::unique_ptr<buffer_array> m_buffer{ std::make_unique<buffer_array>() };
 };
 
-}  // namespace cache
+}  // namespace sample_cache
 }  // namespace rocprofsys

@@ -638,7 +638,7 @@ cache_region(rocprofiler_callback_tracing_record_t* record,
              size_t stack_id, size_t parent_stack_id, size_t correlation_id,
              const std::string& call_stack, const std::string& args_str)
 {
-    cache::storage::get_instance().store(
+    cache::cache_storage::get_instance().store(
         cache::sample_type::region, record->thread_id, start_ts, end_ts, record->kind,
         record->operation, stack_id, parent_stack_id, correlation_id, call_stack.c_str(),
         args_str.c_str());
@@ -694,7 +694,7 @@ cache_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t* recor
             auto kernel_data = static_cast<const cache::kernel_dispatch_sample&>(data);
         });
 
-    cache::storage::get_instance().store(
+    cache::cache_storage::get_instance().store(
         cache::sample_type::kernel_dispatch, record->dispatch_info.kernel_id,
         record->dispatch_info.dispatch_id, queue_handle, stream_handle,
         record->start_timestamp, record->end_timestamp,
@@ -748,7 +748,7 @@ cache_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record,
             auto memory_copy = static_cast<const cache::memory_copy_sample&>(data);
         });
 
-    cache::storage::get_instance().store(
+    cache::cache_storage::get_instance().store(
         cache::sample_type::memory_copy, n_info.id, getpid(), record->thread_id,
         record->start_timestamp, record->end_timestamp, record->kind, record->operation,
         dst_agent_id, record->dst_address.value, src_agent_id, record->src_address.value,
@@ -804,7 +804,7 @@ cache_memory_allocation(rocprofiler_buffer_tracing_memory_allocation_record_t* r
         });
 
     cache::metadata::storage::get_instance().add_stream(stream_handle);
-    cache::storage::get_instance().store(
+    cache::cache_storage::get_instance().store(
         cache::sample_type::memory_alloc, n_info.id, getpid(), record->thread_id,
         agent_id, record->kind, record->operation, record->start_timestamp,
         record->end_timestamp, record->address.value, record->allocation_size,

@@ -21,22 +21,17 @@
 // SOFTWARE.
 
 #include "cache_storage_parser.hpp"
+#include "sample_cache/sample_type.hpp"
 #include <cstdio>
 
 namespace rocprofsys
 {
-namespace cache
+namespace sample_cache
 {
-storage_parser&
-storage_parser::get_instance()
-{
-    static storage_parser instance;
-    return instance;
-}
 
 void
 storage_parser::register_type_callback(
-    const sample_type&                                          type,
+    const entry_type&                                           type,
     const std::function<void(const storage_parsed_type_base&)>& callback)
 {
     if(m_callbacks.count(type) > 0)
@@ -57,10 +52,10 @@ storage_parser::consume_storage()
         return;
     }
 
-    sample_type type;
-    size_t      sample_size;
+    entry_type type;
+    size_t     sample_size;
 
-    std::map<sample_type, size_t> m_parsed_count;
+    std::map<entry_type, size_t> m_parsed_count;
 
     while(!ifs.eof())
     {
@@ -78,9 +73,13 @@ storage_parser::consume_storage()
 
         switch(type)
         {
-            case sample_type::kernel_dispatch:
+            case entry_type::kernel_dispatch:
             {
                 kernel_dispatch_sample _kernel_dispatch_sample;
+                // TODO: Try this
+                // _kernel_dispatch_sample =
+                // *reinterpret_cast<kernel_dispatch_sample*>(sample.data());
+
                 parse_data(sample.data(), _kernel_dispatch_sample.kernel_id,
                            _kernel_dispatch_sample.dispatch_id,
                            _kernel_dispatch_sample.queue_handle,
@@ -110,7 +109,7 @@ storage_parser::consume_storage()
                 }
                 break;
             }
-            case sample_type::memory_copy:
+            case entry_type::memory_copy:
             {
                 memory_copy_sample _memory_copy_sample;
                 parse_data(
@@ -130,7 +129,7 @@ storage_parser::consume_storage()
                 }
                 break;
             }
-            case sample_type::memory_alloc:
+            case entry_type::memory_alloc:
             {
                 memory_allocate_sample _memory_allocate_sample;
                 parse_data(sample.data(), _memory_allocate_sample.node_id,
@@ -154,7 +153,7 @@ storage_parser::consume_storage()
                 }
                 break;
             }
-            case sample_type::region:
+            case entry_type::region:
             {
                 region_sample _region_sample;
                 parse_data(sample.data(), _region_sample.thread_id,
@@ -178,5 +177,5 @@ storage_parser::consume_storage()
     std::filesystem::remove(path);
 }
 
-}  // namespace cache
+}  // namespace sample_cache
 }  // namespace rocprofsys

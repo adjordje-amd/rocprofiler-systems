@@ -73,6 +73,7 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/state.hpp
     ${CMAKE_CURRENT_LIST_DIR}/timemory.hpp
     ${CMAKE_CURRENT_LIST_DIR}/utility.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_manager.cpp
     ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_storage.cpp
     ${CMAKE_CURRENT_LIST_DIR}/sample_cache/metadata_storage.cpp
     ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_storage_parser.cpp

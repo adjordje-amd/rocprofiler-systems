@@ -26,16 +26,10 @@
 
 namespace rocprofsys
 {
-namespace cache
+namespace sample_cache
 {
-storage&
-storage::get_instance()
-{
-    static storage _instance;
-    return _instance;
-}
 
-storage::storage()
+cache_storage::cache_storage()
 {
     tasking::general::get_task_group().exec([this]() {
         std::filesystem::path path{ filename };
@@ -97,7 +91,7 @@ storage::storage()
 }
 
 void
-storage::shutdown()
+cache_storage::shutdown()
 {
     m_shutdown = true;
     m_shutdown_condition.notify_all();
@@ -107,19 +101,19 @@ storage::shutdown()
 }
 
 void
-storage::fragment_memory()
+cache_storage::fragment_memory()
 {
     auto* data = m_buffer->data();
     memset(data + m_head, 0xFFFF, buffer_size - m_head);
-    *reinterpret_cast<sample_type*>(data + m_head) = sample_type::fragmented_space;
+    *reinterpret_cast<entry_type*>(data + m_head) = entry_type::fragmented_space;
 
     size_t remining_bytes = buffer_size - m_head - minimal_fragmented_memory_size;
-    *reinterpret_cast<size_t*>(data + m_head + sizeof(sample_type)) = remining_bytes;
-    m_head                                                          = 0;
+    *reinterpret_cast<size_t*>(data + m_head + sizeof(entry_type)) = remining_bytes;
+    m_head                                                         = 0;
 }
 
 uint8_t*
-storage::reserve_memory_space(size_t len)
+cache_storage::reserve_memory_space(size_t len)
 {
     size_t size;
     {
@@ -138,5 +132,5 @@ storage::reserve_memory_space(size_t len)
     return result;
 };
 
-}  // namespace cache
+}  // namespace sample_cache
 }  // namespace rocprofsys

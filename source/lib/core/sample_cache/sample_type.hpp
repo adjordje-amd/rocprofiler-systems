@@ -25,11 +25,10 @@
 
 namespace rocprofsys
 {
-namespace cache
+namespace sample_cache
 {
-enum class sample_type : uint32_t
+enum class entry_type : uint32_t
 {
-    pmc_event,  //  Should be cached? It's already cached in amd smi
     sample,
     region,
     kernel_dispatch,
@@ -37,5 +36,5 @@ enum class sample_type : uint32_t
     memory_alloc,
     fragmented_space = 0xFFFF
 };
-}  // namespace cache
+}  // namespace sample_cache
 }  // namespace rocprofsys

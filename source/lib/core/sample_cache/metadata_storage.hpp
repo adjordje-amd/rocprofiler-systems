@@ -47,16 +47,16 @@
 
 namespace rocprofsys
 {
-namespace cache
+namespace sample_cache
 {
-namespace metadata
+namespace info
 {
-struct process_info
+struct process
 {
     int         pid;  // < Unique
     std::string command;
 };
-struct pmc_info
+struct pmc
 {
     size_t      agent_abs_index;
     std::string target_arch;
@@ -75,13 +75,13 @@ struct pmc_info
     uint32_t    is_derived;
     std::string extdata;
 
-    friend bool operator<(const pmc_info& lhs, const pmc_info& rhs)
+    friend bool operator<(const pmc& lhs, const pmc& rhs)
     {
         return lhs.name.compare(rhs.name) < 0;
     }
 };
 
-struct thread_info
+struct thread
 {
     int32_t     parent_process_id;
     int32_t     process_id;
@@ -89,19 +89,19 @@ struct thread_info
     uint32_t    start;
     uint32_t    end;
     std::string extdata;
-    friend bool operator<(const thread_info& lhs, const thread_info& rhs)
+    friend bool operator<(const thread& lhs, const thread& rhs)
     {
         return lhs.thread_id < rhs.thread_id;
     }
 };
 
-struct track_info
+struct track
 {
     std::string_view track_name;  // < Unique
     size_t           thread_id;
     std::string_view extdata;
 
-    friend bool operator<(const track_info& lhs, const track_info& rhs)
+    friend bool operator<(const track& lhs, const track& rhs)
     {
         return lhs.track_name.compare(rhs.track_name) < 0;
     }
@@ -127,14 +127,15 @@ struct kernel_symbol_less
     }
 };
 
-struct storage
-{
-    static storage& get_instance();
+}  // namespace info
 
-    void set_process(const process_info& process);
-    void add_pmc_info(const pmc_info& pmc_info);
-    void add_thread_info(const thread_info& thread_info);
-    void add_track(const track_info& track_info);
+class cache_manager;
+struct metadata
+{
+    void set_process(const info::process& process);
+    void add_pmc_info(const info::pmc& pmc_info);
+    void add_thread_info(const info::thread& thread_info);
+    void add_track(const info::track& track_info);
     void add_code_object(
         const rocprofiler_callback_tracing_code_object_load_data_t& code_object);
     void add_kernel_symbol(
@@ -144,18 +145,18 @@ struct storage
     void add_stream(const uint64_t& stream_handle);
     void add_string(const std::string_view& string_value);
 
-    process_info               get_process_info() const;
-    std::optional<pmc_info>    get_pmc_info(const std::string_view& unique_name) const;
-    std::optional<thread_info> get_thread_info(const uint32_t& thread_id) const;
-    std::optional<track_info>  get_track_info(const std::string_view& track_name) const;
+    info::process               get_process_info() const;
+    std::optional<info::pmc>    get_pmc_info(const std::string_view& unique_name) const;
+    std::optional<info::thread> get_thread_info(const uint32_t& thread_id) const;
+    std::optional<info::track>  get_track_info(const std::string_view& track_name) const;
     std::optional<rocprofiler_callback_tracing_code_object_load_data_t> get_code_object(
         uint64_t code_object_id) const;
     std::optional<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
     get_kernel_symbol(uint64_t kernel_id) const;
 
-    std::vector<pmc_info>    get_pmc_info_list() const;
-    std::vector<thread_info> get_thread_info_list() const;
-    std::vector<track_info>  get_track_info_list() const;
+    std::vector<info::pmc>    get_pmc_info_list() const;
+    std::vector<info::thread> get_thread_info_list() const;
+    std::vector<info::track>  get_track_info_list() const;
     std::vector<rocprofiler_callback_tracing_code_object_load_data_t>
     get_code_object_list() const;
     std::vector<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
@@ -164,18 +165,19 @@ struct storage
     std::vector<uint64_t> get_stream_list() const;
 
 private:
-    storage() = default;
+    friend class cache_manager;
+    metadata() = default;
     // TODO: add syncronized
-    process_info                                m_process;
-    common::synchronized<std::set<pmc_info>>    m_pmc_infos;
-    common::synchronized<std::set<thread_info>> m_threads;
-    common::synchronized<std::set<track_info>>  m_tracks;
-    common::synchronized<
-        std::set<rocprofiler_callback_tracing_code_object_load_data_t, code_object_less>>
+    info::process                                m_process;
+    common::synchronized<std::set<info::pmc>>    m_pmc_infos;
+    common::synchronized<std::set<info::thread>> m_threads;
+    common::synchronized<std::set<info::track>>  m_tracks;
+    common::synchronized<std::set<rocprofiler_callback_tracing_code_object_load_data_t,
+                                  info::code_object_less>>
         m_code_objects;
     common::synchronized<
         std::set<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t,
-                 kernel_symbol_less>>
+                 info::kernel_symbol_less>>
         m_kernel_symbols;
 
     common::synchronized<std::set<uint64_t>>                   m_streams;
@@ -183,6 +185,5 @@ private:
     common::synchronized<std::unordered_set<std::string_view>> m_strings;
 };
 
-}  // namespace metadata
-}  // namespace cache
+}  // namespace sample_cache
 }  // namespace rocprofsys

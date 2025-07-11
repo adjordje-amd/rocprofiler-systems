@@ -41,9 +41,7 @@
 #include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
-#include "core/sample_cache/cache_storage.hpp"
-#include "core/sample_cache/cache_storage_parser.hpp"
-#include "core/sample_cache/metadata_storage.hpp"
+#include "core/sample_cache/cache_manager.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
 #include "library/causal/data.hpp"
@@ -767,13 +765,9 @@ rocprofsys_finalize_hidden(void)
             rocprofiler_sdk::shutdown();
         }
 #endif
-        if(get_use_rocpd())
-        {
-            rocpd::data_processor::get_instance().flush();
-            std::cout << "CACHE CHILD SHUTDOWN\n";
-            cache::storage::get_instance().shutdown();
-            cache::storage_parser::get_instance().consume_storage();
-        }
+        rocprofsys::sample_cache::cache_manager::get_instance().shutdown();
+        rocprofsys::sample_cache::cache_manager::get_instance().post_process();
+
         set_state(State::Finalized);
         std::quick_exit(EXIT_SUCCESS);
         return;
@@ -991,19 +985,8 @@ rocprofsys_finalize_hidden(void)
     }
 
     {
-        std::cout << "CACHE SHUTDOWN\n";
-        cache::storage::get_instance().shutdown();
-
-        std::cout << "CACHE POSTPROCESSING\n";
-
-        std::cout << "NODE: " << node_info::get_instance().node_name << "\n";
-
-        for(const auto& agent : rocpd::agent_manager::get_instance().get_agents())
-        {
-            std::cout << "agent global id:" << agent->global_id << "\n";
-        }
-
-        cache::storage_parser::get_instance().consume_storage();
+        rocprofsys::sample_cache::cache_manager::get_instance().shutdown();
+        rocprofsys::sample_cache::cache_manager::get_instance().post_process();
     }
 
     // shutdown tasking before timemory is finalized

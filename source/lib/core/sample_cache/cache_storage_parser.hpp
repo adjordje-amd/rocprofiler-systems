@@ -48,7 +48,7 @@
 
 namespace rocprofsys
 {
-namespace cache
+namespace sample_cache
 {
 struct storage_parsed_type_base
 {};
@@ -132,19 +132,18 @@ struct region_sample : storage_parsed_type_base
     std::string                         call_stack;
     std::string                         args_str;
 };
-
+using postprocessing_callback = std::function<void(const storage_parsed_type_base&)>;
+class cache_manager;
 class storage_parser
 {
 public:
-    static storage_parser& get_instance();
-
-    void register_type_callback(
-        const sample_type&                                                 type,
-        const std::function<void(const cache::storage_parsed_type_base&)>& callback);
+    void register_type_callback(const entry_type&              type,
+                                const postprocessing_callback& callback);
 
     void consume_storage();
 
 private:
+    friend class cache_manager;
     storage_parser() = default;
     template <typename T>
     static void process_arg(const uint8_t*& data_pos, T& arg)
@@ -168,9 +167,8 @@ private:
     }
 
 private:
-    std::map<sample_type, std::function<void(const cache::storage_parsed_type_base&)>>
-        m_callbacks;
+    std::map<entry_type, postprocessing_callback> m_callbacks;
 };
 
-}  // namespace cache
+}  // namespace sample_cache
 }  // namespace rocprofsys
