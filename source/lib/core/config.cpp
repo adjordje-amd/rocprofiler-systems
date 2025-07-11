@@ -2360,12 +2360,25 @@ get_tmpdir()
 std::string
 get_database_absolute_path(std::string_view database_name)
 {
-    auto _dir = std::string{};
-    auto _ext = std::string{ "db" };
+    const auto* _existing_path = std::getenv("ROCPROFSYS_DATABASE_DIR");
+    auto        _dir = _existing_path ? std::string{ _existing_path } : std::string{};
+    auto        _ext = std::string{ "db" };
+
     auto _cfg = settings::compose_filename_config{ settings::use_output_suffix(),
                                                    settings::default_process_suffix(),
                                                    false, _dir };
+
+    const auto get_path = [](const std::string& path) {
+        size_t last_slash = path.find_last_of("/\\");
+        return (last_slash != std::string::npos) ? path.substr(0, last_slash + 1)
+                                                 : std::string{};
+    };
+
     auto _val = settings::compose_output_filename(std::string(database_name), _ext, _cfg);
+    _dir      = get_path(_val);
+
+    setenv("ROCPROFSYS_DATABASE_DIR", _dir.c_str(), 1);
+
     if(!_val.empty() && _val.at(0) != '/')
         return settings::format(JOIN('/', "%env{PWD}%", _val), get_config()->get_tag());
     return _val;
