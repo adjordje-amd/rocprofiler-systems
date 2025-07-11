@@ -1141,25 +1141,24 @@ tool_code_object_callback(rocprofiler_callback_tracing_record_t record,
                     rocpd_insert_code_object_info(&data_v);
                     cache::metadata::storage::get_instance().add_code_object(data_v);
                 }
-                else if(record.operation ==
-                        ROCPROFILER_CODE_OBJECT_DEVICE_KERNEL_SYMBOL_REGISTER)
-                {
-                    auto data_v = *static_cast<kernel_symbol_data_t*>(record.payload);
-                    tool_data->kernel_symbol_records.wlock([ts, &record,
-                                                            &data_v](auto& _data) {
+            }
+            else if(record.operation ==
+                    ROCPROFILER_CODE_OBJECT_DEVICE_KERNEL_SYMBOL_REGISTER)
+            {
+                auto data_v = *static_cast<kernel_symbol_data_t*>(record.payload);
+                tool_data->kernel_symbol_records.wlock(
+                    [ts, &record, &data_v](auto& _data) {
                         _data.emplace_back(
                             new kernel_symbol_callback_record_t{ ts, record, data_v });
                     });
-                    if(get_use_rocpd())
-                    {
-                        rocpd_insert_kernel_symbol_info(&data_v);
-                        cache::metadata::storage::get_instance().add_kernel_symbol(
-                            data_v);
-                    }
+                if(get_use_rocpd())
+                {
+                    rocpd_insert_kernel_symbol_info(&data_v);
+                    cache::metadata::storage::get_instance().add_kernel_symbol(data_v);
                 }
             }
-            return;
         }
+        return;
     }
 }
 
@@ -1215,7 +1214,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                                             user_data, ts);
                 break;
             }
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API:
             {
                 tool_tracing_callback_start(category::rocm_rocdecode_api{}, record,
@@ -1223,7 +1222,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                 break;
             }
 #endif
-#if (ROCPROFILER_VERSION >= 700)
+#if(ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API:
             {
                 tool_tracing_callback_start(category::rocm_rocjpeg_api{}, record,
@@ -1245,11 +1244,11 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_SCRATCH_MEMORY:
             case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
 #endif
-#if (ROCPROFILER_VERSION >= 700)
+#if(ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_HIP_STREAM:
 #endif
             {
@@ -1316,7 +1315,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                                            ts, _bt_data);
                 break;
             }
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API:
             {
                 tool_tracing_callback_stop(category::rocm_rocdecode_api{}, record,
@@ -1324,7 +1323,7 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                 break;
             }
 #endif
-#if (ROCPROFILER_VERSION >= 700)
+#if(ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API:
             {
                 tool_tracing_callback_stop(category::rocm_rocjpeg_api{}, record,
@@ -1347,11 +1346,11 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
             case ROCPROFILER_CALLBACK_TRACING_SCRATCH_MEMORY:
             case ROCPROFILER_CALLBACK_TRACING_KERNEL_DISPATCH:
             case ROCPROFILER_CALLBACK_TRACING_MEMORY_COPY:
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             case ROCPROFILER_CALLBACK_TRACING_OMPT:
             case ROCPROFILER_CALLBACK_TRACING_RUNTIME_INITIALIZATION:
 #endif
-#if (ROCPROFILER_VERSION >= 700)
+#if(ROCPROFILER_VERSION >= 700)
             case ROCPROFILER_CALLBACK_TRACING_HIP_STREAM:
 #endif
             {
@@ -1972,10 +1971,10 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
             ROCPROFILER_CALLBACK_TRACING_HIP_COMPILER_API,
             ROCPROFILER_CALLBACK_TRACING_MARKER_CORE_API,
             ROCPROFILER_CALLBACK_TRACING_RCCL_API,
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
             ROCPROFILER_CALLBACK_TRACING_ROCDECODE_API,
 #endif
-#if (ROCPROFILER_VERSION >= 700)
+#if(ROCPROFILER_VERSION >= 700)
             ROCPROFILER_CALLBACK_TRACING_ROCJPEG_API,
 #endif
         })

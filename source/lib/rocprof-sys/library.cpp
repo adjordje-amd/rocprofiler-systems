@@ -770,6 +770,9 @@ rocprofsys_finalize_hidden(void)
         if(get_use_rocpd())
         {
             rocpd::data_processor::get_instance().flush();
+            std::cout << "CACHE CHILD SHUTDOWN\n";
+            cache::storage::get_instance().shutdown();
+            cache::storage_parser::get_instance().consume_storage();
         }
         set_state(State::Finalized);
         std::quick_exit(EXIT_SUCCESS);
