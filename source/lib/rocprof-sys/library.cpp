@@ -990,18 +990,6 @@ rocprofsys_finalize_hidden(void)
         process_sampler::post_process();
     }
 
-    // shutdown tasking before timemory is finalized
-    ROCPROFSYS_VERBOSE_F(1, "Shutting down thread-pools...\n");
-    tasking::shutdown();
-
-    if(get_use_code_coverage())
-    {
-        ROCPROFSYS_VERBOSE_F(1, "Post-processing the code coverage...\n");
-        coverage::post_process();
-    }
-
-    tracing::copy_timemory_hash_ids();
-
     {
         std::cout << "CACHE SHUTDOWN\n";
         cache::storage::get_instance().shutdown();
@@ -1017,6 +1005,18 @@ rocprofsys_finalize_hidden(void)
 
         cache::storage_parser::get_instance().consume_storage();
     }
+
+    // shutdown tasking before timemory is finalized
+    ROCPROFSYS_VERBOSE_F(1, "Shutting down thread-pools...\n");
+    tasking::shutdown();
+
+    if(get_use_code_coverage())
+    {
+        ROCPROFSYS_VERBOSE_F(1, "Post-processing the code coverage...\n");
+        coverage::post_process();
+    }
+
+    tracing::copy_timemory_hash_ids();
 
     bool _perfetto_output_error = false;
     if(get_use_perfetto())

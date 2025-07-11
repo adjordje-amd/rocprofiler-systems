@@ -122,6 +122,7 @@ private:
 
 private:
     std::mutex                    m_mutex;
+    std::condition_variable       m_exit_condition;
     bool                          m_shutdown{ false };
     std::condition_variable       m_shutdown_condition;
     std::thread                   m_flushing_thread;

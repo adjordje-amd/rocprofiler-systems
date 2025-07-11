@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include "cache_storage.hpp"
+#include "library/ptl.hpp"
 #include <mutex>
 
 namespace rocprofsys
@@ -35,70 +36,74 @@ storage::get_instance()
 }
 
 storage::storage()
-: m_flushing_thread(std::thread([this]() {
-    std::filesystem::path path{ filename };
-    std::ofstream         ofs(path, std::ios::binary | std::ios::out);
+{
+    tasking::general::get_task_group().exec([this]() {
+        std::filesystem::path path{ filename };
+        std::ofstream         ofs(path, std::ios::binary | std::ios::out);
 
-    if(!ofs)
-    {
-        std::cerr << "Error opening file for writing: " << path << "\n";
-        return;
-    }
-
-    auto execute_flush = [&](std::ofstream& ofs, bool force = false) {
-        size_t head, tail;
+        if(!ofs)
         {
-            std::lock_guard guard{ m_mutex };
-            head = m_head;
-            tail = m_tail;
+            std::cerr << "Error opening file for writing: " << path << "\n";
+            return;
+        }
 
-            if(head == tail)
+        auto execute_flush = [&](std::ofstream& ofs, bool force = false) {
+            size_t head, tail;
             {
-                return;
+                std::lock_guard guard{ m_mutex };
+                head = m_head;
+                tail = m_tail;
+
+                if(head == tail)
+                {
+                    return;
+                }
+
+                auto used_space =
+                    m_head > m_tail ? (m_head - m_tail) : (buffer_size - m_tail + m_head);
+                if(!force && used_space < flush_treshhold)
+                {
+                    return;
+                }
+                m_tail = m_head;
             }
 
-            auto used_space =
-                m_head > m_tail ? (m_head - m_tail) : (buffer_size - m_tail + m_head);
-            if(!force && used_space < flush_treshhold)
+            if(head > tail)
             {
-                return;
+                ofs.write(reinterpret_cast<const char*>(m_buffer->data() + tail),
+                          head - tail);
             }
-            m_tail = m_head;
-        }
+            else
+            {
+                ofs.write(reinterpret_cast<const char*>(m_buffer->data() + tail),
+                          buffer_size - tail);
+                ofs.write(reinterpret_cast<const char*>(m_buffer->data()), head);
+            }
+        };
 
-        if(head > tail)
+        std::mutex shutdown_condition_mutex;
+        while(!m_shutdown)
         {
-            ofs.write(reinterpret_cast<const char*>(m_buffer->data() + tail),
-                      head - tail);
+            execute_flush(ofs);
+            std::unique_lock lock{ shutdown_condition_mutex };
+            m_shutdown_condition.wait_for(lock, std::chrono::milliseconds(30),
+                                          [&]() { return m_shutdown; });
         }
-        else
-        {
-            ofs.write(reinterpret_cast<const char*>(m_buffer->data() + tail),
-                      buffer_size - tail);
-            ofs.write(reinterpret_cast<const char*>(m_buffer->data()), head);
-        }
-    };
 
-    std::mutex shutdown_condition_mutex;
-    while(!m_shutdown)
-    {
-        execute_flush(ofs);
-        std::unique_lock lock{ shutdown_condition_mutex };
-        m_shutdown_condition.wait_for(lock, std::chrono::milliseconds(30),
-                                      [&]() { return m_shutdown; });
-    }
-
-    execute_flush(ofs, true);
-    ofs.close();
-}))
-{}
+        execute_flush(ofs, true);
+        ofs.close();
+        m_exit_condition.notify_one();
+    });
+}
 
 void
 storage::shutdown()
 {
     m_shutdown = true;
     m_shutdown_condition.notify_all();
-    m_flushing_thread.join();
+    std::mutex       exit_mutex;
+    std::unique_lock exit_lock{ exit_mutex };
+    m_exit_condition.wait(exit_lock);
 }
 
 void
