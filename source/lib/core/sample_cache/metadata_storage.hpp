@@ -168,7 +168,9 @@ struct metadata
     std::vector<uint64_t>    get_stream_list() const;
     std::vector<std::string> get_string_list() const;
 
-    rocprofiler::sdk::buffer_name_info_t<std::string_view> get_buffer_name_info() const;
+    rocprofiler::sdk::buffer_name_info_t<std::string_view>   get_buffer_name_info() const;
+    rocprofiler::sdk::callback_name_info_t<std::string_view> get_callback_tracing_info()
+        const;
 
 private:
     friend class cache_manager;
@@ -190,6 +192,9 @@ private:
     common::synchronized<std::unordered_set<std::string_view>> m_strings;
     rocprofiler::sdk::buffer_name_info_t<std::string_view>     m_buffered_tracing_info{
         rocprofiler::sdk::get_buffer_tracing_names()
+    };
+    rocprofiler::sdk::callback_name_info_t<std::string_view> m_callback_tracing_info{
+        rocprofiler::sdk::get_callback_tracing_names()
     };
 };
 

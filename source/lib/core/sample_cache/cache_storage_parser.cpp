@@ -136,7 +136,7 @@ storage_parser::consume_storage()
                            _memory_allocate_sample.stream_handle,
                            _memory_allocate_sample.stack_id,
                            _memory_allocate_sample.parent_stack_id,
-                           _memory_allocate_sample.correalation_id);
+                           _memory_allocate_sample.correlation_id);
 
                 invoke_callbacks(type, _memory_allocate_sample);
                 break;
@@ -148,7 +148,7 @@ storage_parser::consume_storage()
                            _region_sample.start_timestamp, _region_sample.end_timestamp,
                            _region_sample.kind, _region_sample.operation,
                            _region_sample.stack_id, _region_sample.parent_stack_id,
-                           _region_sample.correalation_id, _region_sample.call_stack,
+                           _region_sample.correlation_id, _region_sample.call_stack,
                            _region_sample.args_str);
 
                 invoke_callbacks(type, _region_sample);

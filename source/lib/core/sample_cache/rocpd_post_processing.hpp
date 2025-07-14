@@ -21,7 +21,6 @@
 // SOFTWARE.
 
 #pragma once
-#include "rocpd/data_processor.hpp"
 #include "rocpd/node_info.hpp"
 #include "sample_cache/cache_post_processing.hpp"
 #include "sample_cache/cache_storage_parser.hpp"
@@ -43,6 +42,8 @@ public:
     void post_process_metadata() override;
 
 private:
+    using primary_key = size_t;
+
     void rocpd_insert_string(const std::string& str);
     void rocpd_insert_thread_id(info::thread& t_info, const node_info& n_info,
                                 const info::process& process_info);
@@ -52,9 +53,9 @@ private:
     postprocessing_callback get_memory_allocate_callback() const;
     postprocessing_callback get_region_callback() const;
 
-    metadata&                               m_metadata;
-    std::map<size_t, size_t>                m_rocpd_thread_mapping;
-    std::unordered_map<std::string, size_t> m_rocpd_string_mapping;
+    metadata&                                    m_metadata;
+    std::map<size_t, primary_key>                m_rocpd_thread_mapping;
+    std::unordered_map<std::string, primary_key> m_rocpd_string_mapping;
 };
 
 }  // namespace sample_cache

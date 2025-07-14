@@ -326,5 +326,11 @@ metadata::get_buffer_name_info() const
     return m_buffered_tracing_info;
 }
 
+rocprofiler::sdk::callback_name_info_t<std::string_view>
+metadata::get_callback_tracing_info() const
+{
+    return m_callback_tracing_info;
+}
+
 }  // namespace sample_cache
 }  // namespace rocprofsys

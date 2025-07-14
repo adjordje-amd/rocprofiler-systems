@@ -24,25 +24,16 @@
 
 #include "cache_storage.hpp"
 #include "sample_type.hpp"
-#include <array>
 #include <cassert>
-#include <chrono>
-#include <condition_variable>
 #include <cstdlib>
 #include <cstring>
-#include <filesystem>
-#include <fstream>
 #include <functional>
-#include <iostream>
 #include <map>
-#include <memory>
-#include <mutex>
 #include <rocprofiler-sdk/fwd.h>
 #include <rocprofiler-systems/categories.h>
 #include <stdint.h>
 #include <string.h>
 #include <string>
-#include <thread>
 #include <type_traits>
 #include <vector>
 
@@ -116,7 +107,7 @@ struct memory_allocate_sample : storage_parsed_type_base
     size_t                                    stream_handle;
     size_t                                    stack_id;
     size_t                                    parent_stack_id;
-    size_t                                    correalation_id;
+    size_t                                    correlation_id;
 };
 
 struct region_sample : storage_parsed_type_base
@@ -128,7 +119,7 @@ struct region_sample : storage_parsed_type_base
     rocprofiler_tracing_operation_t     operation;
     size_t                              stack_id;
     size_t                              parent_stack_id;
-    size_t                              correalation_id;
+    size_t                              correlation_id;
     std::string                         call_stack;
     std::string                         args_str;
 };
