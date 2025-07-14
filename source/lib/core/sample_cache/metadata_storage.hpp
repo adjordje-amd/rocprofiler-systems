@@ -38,10 +38,12 @@
 #include <mutex>
 #include <optional>
 #include <rocprofiler-sdk/callback_tracing.h>
+#include <rocprofiler-sdk/cxx/name_info.hpp>
 #include <set>
 #include <stdint.h>
 #include <string.h>
 #include <string>
+#include <sys/types.h>
 #include <type_traits>
 #include <unordered_set>
 
@@ -53,7 +55,8 @@ namespace info
 {
 struct process
 {
-    int         pid;  // < Unique
+    pid_t       pid;  // < Unique
+    pid_t       ppid;
     std::string command;
 };
 struct pmc
@@ -97,9 +100,9 @@ struct thread
 
 struct track
 {
-    std::string_view track_name;  // < Unique
-    size_t           thread_id;
-    std::string_view extdata;
+    std::string track_name;  // < Unique
+    size_t      thread_id;
+    std::string extdata;
 
     friend bool operator<(const track& lhs, const track& rhs)
     {
@@ -160,15 +163,17 @@ struct metadata
     std::vector<rocprofiler_callback_tracing_code_object_load_data_t>
     get_code_object_list() const;
     std::vector<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
-                          get_kernel_symbol_list() const;
-    std::vector<uint64_t> get_queue_list() const;
-    std::vector<uint64_t> get_stream_list() const;
+                             get_kernel_symbol_list() const;
+    std::vector<uint64_t>    get_queue_list() const;
+    std::vector<uint64_t>    get_stream_list() const;
+    std::vector<std::string> get_string_list() const;
+
+    rocprofiler::sdk::buffer_name_info_t<std::string_view> get_buffer_name_info() const;
 
 private:
     friend class cache_manager;
     metadata() = default;
-    // TODO: add syncronized
-    info::process                                m_process;
+    common::synchronized<info::process>          m_process;
     common::synchronized<std::set<info::pmc>>    m_pmc_infos;
     common::synchronized<std::set<info::thread>> m_threads;
     common::synchronized<std::set<info::track>>  m_tracks;
@@ -183,6 +188,9 @@ private:
     common::synchronized<std::set<uint64_t>>                   m_streams;
     common::synchronized<std::set<uint64_t>>                   m_queues;
     common::synchronized<std::unordered_set<std::string_view>> m_strings;
+    rocprofiler::sdk::buffer_name_info_t<std::string_view>     m_buffered_tracing_info{
+        rocprofiler::sdk::get_buffer_tracing_names()
+    };
 };
 
 }  // namespace sample_cache

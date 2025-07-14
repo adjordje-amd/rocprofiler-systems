@@ -75,7 +75,7 @@ struct kernel_dispatch_sample : storage_parsed_type_base
     size_t                event_parent_stack_id;
     size_t                event_correlation_id;
     std::string           event_call_stack;
-    size_t                node_info_id;
+    size_t                node_info_id;  // not used
     size_t                agent_id;
 };
 
@@ -167,7 +167,8 @@ private:
     }
 
 private:
-    std::map<entry_type, postprocessing_callback> m_callbacks;
+    void invoke_callbacks(entry_type type, const storage_parsed_type_base& parsed);
+    std::map<entry_type, std::vector<postprocessing_callback>> m_callbacks;
 };
 
 }  // namespace sample_cache

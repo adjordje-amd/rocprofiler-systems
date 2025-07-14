@@ -47,6 +47,7 @@ struct agent_manager
     const agent& get_agent_by_handle(size_t                   device_id,
                                      rocprofiler_agent_type_t type) const;
     const agent& get_agent_by_handle(size_t device_handle) const;
+    const agent& get_agent_by_global_id(size_t global_id) const;
 
     std::vector<std::shared_ptr<agent>> get_agents_by_type(
         rocprofiler_agent_type_t type) const;

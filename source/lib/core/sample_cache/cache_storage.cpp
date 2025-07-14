@@ -132,5 +132,11 @@ cache_storage::reserve_memory_space(size_t len)
     return result;
 };
 
+bool
+cache_storage::is_shutdown() const
+{
+    return m_shutdown;
+}
+
 }  // namespace sample_cache
 }  // namespace rocprofsys

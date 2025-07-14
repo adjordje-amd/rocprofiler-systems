@@ -109,6 +109,23 @@ agent_manager::get_agent_by_handle(size_t device_handle) const
     return **_agent;
 }
 
+const agent&
+agent_manager::get_agent_by_global_id(size_t global_id) const
+{
+    ROCPROFSYS_VERBOSE(3, "Getting agent for global id: %ld\n", global_id);
+    auto _agent =
+        std::find_if(_agents.begin(), _agents.end(), [&](const auto& agent_ptr) {
+            return agent_ptr->global_id == global_id;
+        });
+    if(_agent == _agents.end())
+    {
+        std::ostringstream oss;
+        oss << "Agent not found for global id: " << global_id;
+        throw std::out_of_range(oss.str());
+    }
+    return **_agent;
+}
+
 std::vector<std::shared_ptr<agent>>
 agent_manager::get_agents_by_type(rocprofiler_agent_type_t type) const
 {

@@ -20,61 +20,42 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "cache_manager.hpp"
-#include "debug.hpp"
+#pragma once
+#include "rocpd/data_processor.hpp"
+#include "rocpd/node_info.hpp"
+#include "sample_cache/cache_post_processing.hpp"
 #include "sample_cache/cache_storage_parser.hpp"
-#include "sample_cache/rocpd_post_processing.hpp"
-#include <memory>
+#include "sample_cache/metadata_storage.hpp"
+#include <unordered_map>
 
 namespace rocprofsys
 {
 namespace sample_cache
 {
 
-cache_manager&
-cache_manager::get_instance()
+class rocpd_post_processing : public post_processing
 {
-    static cache_manager instance;
-    return instance;
-}
+public:
+    rocpd_post_processing(metadata& metadata);
 
-cache_manager::cache_manager()
-: m_postprocessing({ std::make_unique<rocpd_post_processing>() })
-{
-    for(auto& pp : m_postprocessing)
-    {
-        pp->register_parser_callback(m_parser);
-    }
-}
+    void register_parser_callback(storage_parser& parser) override;
+    void post_process_cache() override;
+    void post_process_metadata() override;
 
-void
-cache_manager::post_process()
-{
-    if(!m_storage.is_shutdown())
-    {
-        ROCPROFSYS_WARNING(2, "Postprocessing called without previously shutting down "
-                              "cache storage. Calling shutdown explicitly..");
-        shutdown();
-    }
+private:
+    void rocpd_insert_string(const std::string& str);
+    void rocpd_insert_thread_id(info::thread& t_info, const node_info& n_info,
+                                const info::process& process_info);
 
-    post_process_metadata();
-    m_parser.consume_storage();
-}
+    postprocessing_callback get_kernel_dispatch_callback() const;
+    postprocessing_callback get_memory_copy_callback() const;
+    postprocessing_callback get_memory_allocate_callback() const;
+    postprocessing_callback get_region_callback() const;
 
-void
-cache_manager::post_process_metadata()
-{
-    for(auto& pp : m_postprocessing)
-    {
-        pp->post_process_metadata(m_metadata);
-    }
-}
-
-void
-cache_manager::shutdown()
-{
-    m_storage.shutdown();
-}
+    metadata&                               m_metadata;
+    std::map<size_t, size_t>                m_rocpd_thread_mapping;
+    std::unordered_map<std::string, size_t> m_rocpd_string_mapping;
+};
 
 }  // namespace sample_cache
 }  // namespace rocprofsys

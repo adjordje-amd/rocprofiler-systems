@@ -245,19 +245,20 @@ data_processor::insert_event(size_t category_id, size_t stack_id, size_t parent_
                              const char* line_info, const char* extdata)
 {
     std::lock_guard<std::mutex> lock(_data_mutex);
-    auto                        it = _category_map.find(category_id);
-    if(it == _category_map.end())
-    {
-        std::ostringstream oss;
-        oss << "Insert event failed! Error: Unknown category id: " << category_id
-            << " for UPID: " << _upid;
-        throw std::runtime_error(oss.str());
-    }
+    // auto                        it = _category_map.find(category_id);
+    // if(it == _category_map.end())
+    // {
+    //     std::ostringstream oss;
+    //     oss << "Insert event failed! Error: Unknown category id: " << category_id
+    //         << " for UPID: " << _upid;
+    //     throw std::runtime_error(oss.str());
+    // }
 
-    ROCPROFSYS_VERBOSE(3, "Insert event category id: %ld, string id: %ld\n", category_id,
-                       it->second);
+    // ROCPROFSYS_VERBOSE(3, "Insert event category id: %ld, string id: %ld\n",
+    // category_id,
+    //                    it->second);
 
-    _insert_event_statement(_upid.c_str(), it->second, stack_id, parent_stack_id,
+    _insert_event_statement(_upid.c_str(), category_id, stack_id, parent_stack_id,
                             correlation_id, call_stack, line_info, extdata);
     return data_storage::database::get_instance().get_last_insert_id();
 }

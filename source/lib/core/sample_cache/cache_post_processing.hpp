@@ -20,61 +20,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "cache_manager.hpp"
-#include "debug.hpp"
+#pragma once
 #include "sample_cache/cache_storage_parser.hpp"
-#include "sample_cache/rocpd_post_processing.hpp"
-#include <memory>
+#include "sample_cache/metadata_storage.hpp"
 
 namespace rocprofsys
 {
 namespace sample_cache
 {
-
-cache_manager&
-cache_manager::get_instance()
+class post_processing
 {
-    static cache_manager instance;
-    return instance;
-}
-
-cache_manager::cache_manager()
-: m_postprocessing({ std::make_unique<rocpd_post_processing>() })
-{
-    for(auto& pp : m_postprocessing)
-    {
-        pp->register_parser_callback(m_parser);
-    }
-}
-
-void
-cache_manager::post_process()
-{
-    if(!m_storage.is_shutdown())
-    {
-        ROCPROFSYS_WARNING(2, "Postprocessing called without previously shutting down "
-                              "cache storage. Calling shutdown explicitly..");
-        shutdown();
-    }
-
-    post_process_metadata();
-    m_parser.consume_storage();
-}
-
-void
-cache_manager::post_process_metadata()
-{
-    for(auto& pp : m_postprocessing)
-    {
-        pp->post_process_metadata(m_metadata);
-    }
-}
-
-void
-cache_manager::shutdown()
-{
-    m_storage.shutdown();
-}
-
+public:
+    virtual void register_parser_callback(storage_parser& parser) = 0;
+    virtual void post_process_cache()                             = 0;
+    virtual void post_process_metadata()                          = 0;
+};
 }  // namespace sample_cache
-}  // namespace rocprofsys
+};  // namespace rocprofsys

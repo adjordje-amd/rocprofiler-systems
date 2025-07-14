@@ -21,19 +21,32 @@
 // SOFTWARE.
 
 #include "metadata_storage.hpp"
+#include "sample_cache/cache_storage.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <rocprofiler-sdk/callback_tracing.h>
+#include <utility>
 
 namespace rocprofsys
 {
 namespace sample_cache
 {
 
+namespace
+{
+
+template <typename T>
+auto
+assign_set_to_vector(T& result)
+{
+    return [&result](auto _data) { result.assign(_data.begin(), _data.end()); };
+}
+}  // namespace
+
 void
 metadata::set_process(const info::process& process)
 {
-    m_process = process;
+    m_process.wlock([&process](auto& _process) { _process = process; });
 }
 
 void
@@ -137,7 +150,9 @@ metadata::add_string(const std::string_view& string_value)
 info::process
 metadata::get_process_info() const
 {
-    return m_process;
+    info::process result;
+    m_process.rlock([&result](const auto& _process) { result = _process; });
+    return result;
 }
 
 std::optional<info::pmc>
@@ -244,8 +259,7 @@ std::vector<info::pmc>
 metadata::get_pmc_info_list() const
 {
     std::vector<info::pmc> result;
-    m_pmc_infos.rlock(
-        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    m_pmc_infos.rlock(assign_set_to_vector(result));
     return result;
 }
 
@@ -253,8 +267,7 @@ std::vector<info::thread>
 metadata::get_thread_info_list() const
 {
     std::vector<info::thread> result;
-    m_threads.rlock(
-        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    m_threads.rlock(assign_set_to_vector(result));
     return result;
 }
 
@@ -262,7 +275,7 @@ std::vector<info::track>
 metadata::get_track_info_list() const
 {
     std::vector<info::track> result;
-    m_tracks.rlock([&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    m_tracks.rlock(assign_set_to_vector(result));
     return result;
 }
 
@@ -270,8 +283,7 @@ std::vector<rocprofiler_callback_tracing_code_object_load_data_t>
 metadata::get_code_object_list() const
 {
     std::vector<rocprofiler_callback_tracing_code_object_load_data_t> result;
-    m_code_objects.rlock(
-        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    m_code_objects.rlock(assign_set_to_vector(result));
     return result;
 }
 
@@ -280,8 +292,7 @@ metadata::get_kernel_symbol_list() const
 {
     std::vector<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
         result;
-    m_kernel_symbols.rlock(
-        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    m_kernel_symbols.rlock(assign_set_to_vector(result));
     return result;
 }
 
@@ -289,7 +300,7 @@ std::vector<uint64_t>
 metadata::get_queue_list() const
 {
     std::vector<uint64_t> result;
-    m_queues.rlock([&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    m_queues.rlock(assign_set_to_vector(result));
     return result;
 }
 
@@ -297,9 +308,22 @@ std::vector<uint64_t>
 metadata::get_stream_list() const
 {
     std::vector<uint64_t> result;
-    m_streams.rlock(
-        [&result](auto& _data) { result.assign(_data.begin(), _data.end()); });
+    m_streams.rlock(assign_set_to_vector(result));
     return result;
+}
+
+std::vector<std::string>
+metadata::get_string_list() const
+{
+    std::vector<std::string> result;
+    m_strings.rlock(assign_set_to_vector(result));
+    return result;
+}
+
+rocprofiler::sdk::buffer_name_info_t<std::string_view>
+metadata::get_buffer_name_info() const
+{
+    return m_buffered_tracing_info;
 }
 
 }  // namespace sample_cache

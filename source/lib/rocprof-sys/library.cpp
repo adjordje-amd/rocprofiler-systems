@@ -338,14 +338,20 @@ rocprofsys_preinit_rocpd()
         cmd_line.emplace_back("rocprofiler-systems");
     }
 
+    // TODO: Remove
     data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
                                     n_info.system_name.c_str(), n_info.node_name.c_str(),
                                     n_info.release.c_str(), n_info.version.c_str(),
                                     n_info.machine.c_str(), n_info.domain_name.c_str());
+
+    // TODO: Remove
     data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
                                        cmd_line[0].c_str(), "{}");
 
-    cache::metadata::storage::get_instance().set_process({ getpid(), cmd_line.at(0) });
+    sample_cache::get_cache_metadata().set_process(
+        { getpid(), getppid(), cmd_line.at(0) });
+
+    // TODO: Remove
     const auto& agents = agent_mngr.get_agents();
     for(const auto& rocpd_agent : agents)
     {

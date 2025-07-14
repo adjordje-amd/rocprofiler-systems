@@ -98,6 +98,7 @@ private:
     friend class cache_manager;
     cache_storage();
     void     shutdown();
+    bool     is_shutdown() const;
     void     fragment_memory();
     uint8_t* reserve_memory_space(size_t len);
 

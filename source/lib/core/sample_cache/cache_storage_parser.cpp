@@ -23,6 +23,7 @@
 #include "cache_storage_parser.hpp"
 #include "sample_cache/sample_type.hpp"
 #include <cstdio>
+#include <utility>
 
 namespace rocprofsys
 {
@@ -34,11 +35,7 @@ storage_parser::register_type_callback(
     const entry_type&                                           type,
     const std::function<void(const storage_parsed_type_base&)>& callback)
 {
-    if(m_callbacks.count(type) > 0)
-    {
-        return;
-    }
-    m_callbacks.emplace(type, callback);
+    m_callbacks[type].emplace_back(callback);
 }
 
 void
@@ -103,10 +100,7 @@ storage_parser::consume_storage()
                            _kernel_dispatch_sample.node_info_id,
                            _kernel_dispatch_sample.agent_id);
 
-                if(m_callbacks.count(type) > 0)
-                {
-                    m_callbacks.at(type)(_kernel_dispatch_sample);
-                }
+                invoke_callbacks(type, _kernel_dispatch_sample);
                 break;
             }
             case entry_type::memory_copy:
@@ -123,10 +117,7 @@ storage_parser::consume_storage()
                     _memory_copy_sample.queue_handle, _memory_copy_sample.stream_handle,
                     _memory_copy_sample.stack_id, _memory_copy_sample.parent_stack_id,
                     _memory_copy_sample.correlation_id);
-                if(m_callbacks.count(type) > 0)
-                {
-                    m_callbacks.at(type)(_memory_copy_sample);
-                }
+                invoke_callbacks(type, _memory_copy_sample);
                 break;
             }
             case entry_type::memory_alloc:
@@ -147,10 +138,7 @@ storage_parser::consume_storage()
                            _memory_allocate_sample.parent_stack_id,
                            _memory_allocate_sample.correalation_id);
 
-                if(m_callbacks.count(type) > 0)
-                {
-                    m_callbacks.at(type)(_memory_allocate_sample);
-                }
+                invoke_callbacks(type, _memory_allocate_sample);
                 break;
             }
             case entry_type::region:
@@ -163,10 +151,7 @@ storage_parser::consume_storage()
                            _region_sample.correalation_id, _region_sample.call_stack,
                            _region_sample.args_str);
 
-                if(m_callbacks.count(type) > 0)
-                {
-                    m_callbacks.at(type)(_region_sample);
-                }
+                invoke_callbacks(type, _region_sample);
                 break;
             }
             default: break;
@@ -177,5 +162,17 @@ storage_parser::consume_storage()
     std::filesystem::remove(path);
 }
 
+void
+storage_parser::invoke_callbacks(entry_type type, const storage_parsed_type_base& parsed)
+{
+    if(m_callbacks.count(type) > 0)
+    {
+        auto _callbacks = m_callbacks.at(type);
+        for(auto& cb : _callbacks)
+        {
+            cb(parsed);
+        }
+    }
+}
 }  // namespace sample_cache
 }  // namespace rocprofsys
