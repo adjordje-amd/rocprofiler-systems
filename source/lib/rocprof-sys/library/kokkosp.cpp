@@ -308,8 +308,8 @@ extern "C"
 
             if(rocprofsys::get_use_rocpd())
             {
-                rocpd_initialize_kokkos_category();
-                rocpd_initialize_kokos_track();
+                // rocpd_initialize_kokkos_category();
+                // rocpd_initialize_kokos_track();
             }
         }
 
@@ -619,9 +619,9 @@ extern "C"
 
         if(rocprofsys::config::get_use_rocpd())
         {
-            rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
-                                      "[dual_view_sync]", (is_device) ? "device" : "host",
-                                      timestamp);
+            // rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
+            //                           "[dual_view_sync]", (is_device) ? "device" :
+            //                           "host", timestamp);
         }
     }
 
@@ -648,9 +648,9 @@ extern "C"
 
         if(rocprofsys::config::get_use_rocpd())
         {
-            rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
-                                      "[dual_view_modify]",
-                                      (is_device) ? "device" : "host", timestamp);
+            // rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
+            //                           "[dual_view_modify]",
+            //                           (is_device) ? "device" : "host", timestamp);
         }
     }
 

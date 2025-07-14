@@ -30,6 +30,7 @@
 #include "sample_cache/cache_storage_parser.hpp"
 #include "sample_cache/metadata_storage.hpp"
 #include <stdexcept>
+#include <string>
 #include <timemory/utility/demangle.hpp>
 
 namespace rocprofsys
@@ -226,7 +227,9 @@ rocpd_post_processing::get_region_callback() const
 
         for(auto it = tokens.begin(); it != tokens.end(); it += 4)
         {
-            args.emplace_back(std::stoi(*it), *(it + 1), *(it + 2), *(it + 3));
+            rocprofiler_sdk::argument_info arg = { static_cast<uint32_t>(std::stoi(*it)),
+                                                   *(it + 1), *(it + 2), *(it + 3) };
+            args.push_back(arg);
         }
 
         return args;
@@ -243,6 +246,7 @@ rocpd_post_processing::get_region_callback() const
         auto _name = std::string{ callback_tracing_info.at(_rs.kind, _rs.operation) };
         auto name_primary_key = m_rocpd_string_mapping.at(_name);
 
+        // TODO: fix category
         auto event_primary_key =
             data_processor.insert_event(0, _rs.stack_id, _rs.parent_stack_id,
                                         _rs.correlation_id, _rs.call_stack.c_str());
@@ -258,6 +262,7 @@ rocpd_post_processing::get_region_callback() const
         data_processor.insert_region(n_info.id, process.pid, thread_primary_key,
                                      _rs.start_timestamp, _rs.end_timestamp,
                                      name_primary_key, event_primary_key);
+        std::cout << "callback region\n";
     };
 }
 
@@ -296,9 +301,9 @@ rocpd_post_processing::post_process_metadata()
     for(const auto& rocpd_agent : agents)
     {
         auto _base_id = rocpd::data_processor::get_instance().insert_agent(
-            n_info.id, getpid(),
+            n_info.id, process_info.pid,
             ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
-            rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
+            rocpd_agent->global_id, rocpd_agent->agent->logical_node_id,
             rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
             rocpd_agent->agent->name, rocpd_agent->agent->model_name,
             rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");

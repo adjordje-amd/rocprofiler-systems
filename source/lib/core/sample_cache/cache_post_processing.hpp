@@ -21,8 +21,7 @@
 // SOFTWARE.
 
 #pragma once
-#include "sample_cache/cache_storage_parser.hpp"
-#include "sample_cache/metadata_storage.hpp"
+#include "core/sample_cache/cache_storage_parser.hpp"
 
 namespace rocprofsys
 {
@@ -36,4 +35,4 @@ public:
     virtual void post_process_metadata()                          = 0;
 };
 }  // namespace sample_cache
-};  // namespace rocprofsys
+}  // namespace rocprofsys

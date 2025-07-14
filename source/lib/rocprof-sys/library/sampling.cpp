@@ -1126,7 +1126,7 @@ post_process()
 
             if(get_use_perfetto()) post_process_perfetto(i, _timer_data, _overflow_data);
             if(get_use_timemory()) post_process_timemory(i, _timer_data, _overflow_data);
-            if(get_use_rocpd()) post_process_rocpd(i, _timer_data, _overflow_data);
+            // if(get_use_rocpd()) post_process_rocpd(i, _timer_data, _overflow_data);
         }
         else
         {
@@ -1857,9 +1857,9 @@ void
 post_process_rocpd(int64_t _tid, const std::vector<timer_sampling_data>& _timer_data,
                    const std::vector<overflow_sampling_data>& _overflow_data)
 {
-    rocpd_initialize_sampling_category();
-    rocpd_post_process_overflow_data(_tid, _overflow_data);
-    rocpd_post_process_timer_data(_tid, _timer_data);
+    // rocpd_initialize_sampling_category();
+    // rocpd_post_process_overflow_data(_tid, _overflow_data);
+    // rocpd_post_process_timer_data(_tid, _timer_data);
 }
 
 struct sampling_initialization

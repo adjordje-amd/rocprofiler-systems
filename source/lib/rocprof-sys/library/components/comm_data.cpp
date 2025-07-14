@@ -188,8 +188,8 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, int bytes)
 void
 comm_data::start()
 {
-    rocpd_initialize_comm_data_categories();
-    rocpd_initialize_comm_data_pmc();
+    // rocpd_initialize_comm_data_categories();
+    // rocpd_initialize_comm_data_pmc();
 }
 
 void
@@ -204,8 +204,8 @@ comm_data::global_finalize()
     configure();
     if(get_use_rocpd())
     {
-        rocpd_initialize_comm_data_categories();
-        rocpd_initialize_comm_data_pmc();
+        // rocpd_initialize_comm_data_categories();
+        // rocpd_initialize_comm_data_pmc();
     }
 }
 
@@ -241,8 +241,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int cou
 
     if(get_use_rocpd())
     {
-        rocpd_initialize_track<mpi_send>();
-        rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+        // rocpd_initialize_track<mpi_send>();
+        // rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -269,8 +269,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, void*, int count,
 
     if(get_use_rocpd())
     {
-        rocpd_initialize_track<mpi_recv>();
-        rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
+        // rocpd_initialize_track<mpi_recv>();
+        // rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -297,8 +297,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int cou
 
     if(get_use_rocpd())
     {
-        rocpd_initialize_track<mpi_send>();
-        rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+        // rocpd_initialize_track<mpi_send>();
+        // rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -325,8 +325,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, void*, int count,
 
     if(get_use_rocpd())
     {
-        rocpd_initialize_track<mpi_recv>();
-        rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
+        // rocpd_initialize_track<mpi_recv>();
+        // rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -353,8 +353,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, void*, int count,
 
     if(get_use_rocpd())
     {
-        rocpd_initialize_track<mpi_send>();
-        rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+        // rocpd_initialize_track<mpi_send>();
+        // rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -382,10 +382,10 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, void*, 
 
     if(get_use_rocpd())
     {
-        rocpd_initialize_track<mpi_send>();
-        rocpd_initialize_track<mpi_recv>();
-        rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
-        rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+        // rocpd_initialize_track<mpi_send>();
+        // rocpd_initialize_track<mpi_recv>();
+        // rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
+        // rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory()) add(_data, count * _size);
@@ -409,8 +409,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int sen
 
     if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
-        rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
+        // rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
+        // rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -460,8 +460,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int sen
 
     if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
-        rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
+        // rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
+        // rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -494,8 +494,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int sen
 
     if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
-        rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _recv_size);
+        // rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
+        // rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _recv_size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -523,7 +523,7 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, const v
 
     if(get_use_perfetto()) write_perfetto_counter_track<rccl_recv>(count * _size);
 
-    if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count * _size);
+    // if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count * _size);
 
     if(rocprofsys::get_use_timemory())
     {
@@ -551,12 +551,14 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, size_t 
     if(_send_types.count(_data.tool_id) > 0)
     {
         if(get_use_perfetto()) write_perfetto_counter_track<rccl_send>(count * _size);
-        if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_send>(0, count * _size);
+        // if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_send>(0, count *
+        // _size);
     }
     else if(_recv_types.count(_data.tool_id) > 0)
     {
         if(get_use_perfetto()) write_perfetto_counter_track<rccl_recv>(count * _size);
-        if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count * _size);
+        // if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count *
+        // _size);
     }
     else
     {
@@ -564,7 +566,7 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, size_t 
     }
 
     if(get_use_perfetto()) write_perfetto_counter_track<rccl_recv>(count * _size);
-    if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count * _size);
+    // if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count * _size);
 
     if(rocprofsys::get_use_timemory())
     {
@@ -587,7 +589,7 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, const v
     if(_size <= 0) return;
 
     if(get_use_perfetto()) write_perfetto_counter_track<rccl_send>(count * _size);
-    if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_send>(0, count * _size);
+    // if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_send>(0, count * _size);
 
     if(rocprofsys::get_use_timemory())
     {
@@ -614,12 +616,14 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, const v
     if(_send_types.count(_data.tool_id) > 0)
     {
         if(get_use_perfetto()) write_perfetto_counter_track<rccl_send>(count * _size);
-        if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_send>(0, count * _size);
+        // if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_send>(0, count *
+        // _size);
     }
     else if(_recv_types.count(_data.tool_id) > 0)
     {
         if(get_use_perfetto()) write_perfetto_counter_track<rccl_recv>(count * _size);
-        if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count * _size);
+        // if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count *
+        // _size);
     }
     else
     {
@@ -639,7 +643,7 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, const v
     if(_size <= 0) return;
 
     if(get_use_perfetto()) write_perfetto_counter_track<rccl_recv>(count * _size);
-    if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count * _size);
+    // if(get_use_rocpd()) rocpd_process_cpu_usage_events<rccl_recv>(0, count * _size);
     if(rocprofsys::get_use_timemory()) add(_data, count * _size);
 }
 #endif

@@ -122,6 +122,7 @@ struct region_sample : storage_parsed_type_base
     size_t                              correlation_id;
     std::string                         call_stack;
     std::string                         args_str;
+    std::string                         category;
 };
 using postprocessing_callback = std::function<void(const storage_parsed_type_base&)>;
 class cache_manager;

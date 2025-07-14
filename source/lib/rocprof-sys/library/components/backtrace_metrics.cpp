@@ -480,83 +480,88 @@ rocpd_process_backtrace_metrics_events(const uint32_t device_id, uint64_t timest
 void
 backtrace_metrics::init_rocpd(int64_t _tid, valid_array_t _valid)
 {
-    rocpd_init_categories();
-    if(get_valid(category::thread_cpu_time{}, _valid))
-    {
-        rocpd_init_tracks<category::thread_cpu_time>(_tid);
-        rocpd_initialize_backtrace_metrics_pmc<category::thread_cpu_time>(0, "sec", _tid);
-    }
-    if(get_valid(category::thread_peak_memory{}, _valid))
-    {
-        rocpd_init_tracks<category::thread_peak_memory>(_tid);
-        rocpd_initialize_backtrace_metrics_pmc<category::thread_peak_memory>(0, "MB",
-                                                                             _tid);
-    }
-    if(get_valid(category::thread_context_switch{}, _valid))
-    {
-        rocpd_init_tracks<category::thread_context_switch>(_tid);
-        rocpd_initialize_backtrace_metrics_pmc<category::thread_context_switch>(0, "",
-                                                                                _tid);
-    }
-    if(get_valid(category::thread_page_fault{}, _valid))
-    {
-        rocpd_init_tracks<category::thread_page_fault>(_tid);
-        rocpd_initialize_backtrace_metrics_pmc<category::thread_page_fault>(0, "", _tid);
-    }
-    if(get_valid(type_list<hw_counters>{}, _valid) &&
-       get_valid(category::thread_hardware_counter{}, _valid))
-    {
-        rocpd_init_tracks<category::thread_hardware_counter>(_tid);
-        rocpd_initialize_backtrace_metrics_pmc<category::thread_hardware_counter>(0, "",
-                                                                                  _tid);
-    }
+    // rocpd_init_categories();
+    // if(get_valid(category::thread_cpu_time{}, _valid))
+    // {
+    //     rocpd_init_tracks<category::thread_cpu_time>(_tid);
+    //     rocpd_initialize_backtrace_metrics_pmc<category::thread_cpu_time>(0, "sec",
+    //     _tid);
+    // }
+    // if(get_valid(category::thread_peak_memory{}, _valid))
+    // {
+    //     rocpd_init_tracks<category::thread_peak_memory>(_tid);
+    //     rocpd_initialize_backtrace_metrics_pmc<category::thread_peak_memory>(0, "MB",
+    //                                                                          _tid);
+    // }
+    // if(get_valid(category::thread_context_switch{}, _valid))
+    // {
+    //     rocpd_init_tracks<category::thread_context_switch>(_tid);
+    //     rocpd_initialize_backtrace_metrics_pmc<category::thread_context_switch>(0, "",
+    //                                                                             _tid);
+    // }
+    // if(get_valid(category::thread_page_fault{}, _valid))
+    // {
+    //     rocpd_init_tracks<category::thread_page_fault>(_tid);
+    //     rocpd_initialize_backtrace_metrics_pmc<category::thread_page_fault>(0, "",
+    //     _tid);
+    // }
+    // if(get_valid(type_list<hw_counters>{}, _valid) &&
+    //    get_valid(category::thread_hardware_counter{}, _valid))
+    // {
+    //     rocpd_init_tracks<category::thread_hardware_counter>(_tid);
+    //     rocpd_initialize_backtrace_metrics_pmc<category::thread_hardware_counter>(0,
+    //     "",
+    //                                                                               _tid);
+    // }
 }
 
 void
 backtrace_metrics::fini_rocpd(int64_t _tid, valid_array_t _valid)
 {
-    const auto& _thread_info = thread_info::get(_tid, SequentTID);
+    // const auto& _thread_info = thread_info::get(_tid, SequentTID);
 
-    ROCPROFSYS_CI_THROW(!_thread_info, "Error! missing thread info for tid=%li\n", _tid);
-    if(!_thread_info) return;
+    // ROCPROFSYS_CI_THROW(!_thread_info, "Error! missing thread info for tid=%li\n",
+    // _tid); if(!_thread_info) return;
 
-    uint64_t _ts = _thread_info->get_stop();
+    // uint64_t _ts = _thread_info->get_stop();
 
-    if(get_valid(category::thread_cpu_time{}, _valid))
-    {
-        rocpd_process_backtrace_metrics_events<category::thread_cpu_time, double>(
-            0, _ts, 0, _tid);
-    }
+    // if(get_valid(category::thread_cpu_time{}, _valid))
+    // {
+    //     rocpd_process_backtrace_metrics_events<category::thread_cpu_time, double>(
+    //         0, _ts, 0, _tid);
+    // }
 
-    if(get_valid(category::thread_peak_memory{}, _valid))
-    {
-        rocpd_process_backtrace_metrics_events<category::thread_peak_memory, double>(
-            0, _ts, 0, _tid);
-    }
+    // if(get_valid(category::thread_peak_memory{}, _valid))
+    // {
+    //     rocpd_process_backtrace_metrics_events<category::thread_peak_memory, double>(
+    //         0, _ts, 0, _tid);
+    // }
 
-    if(get_valid(category::thread_context_switch{}, _valid))
-    {
-        rocpd_process_backtrace_metrics_events<category::thread_context_switch, int64_t>(
-            0, _ts, 0, _tid);
-    }
+    // if(get_valid(category::thread_context_switch{}, _valid))
+    // {
+    //     rocpd_process_backtrace_metrics_events<category::thread_context_switch,
+    //     int64_t>(
+    //         0, _ts, 0, _tid);
+    // }
 
-    if(get_valid(category::thread_page_fault{}, _valid))
-    {
-        rocpd_process_backtrace_metrics_events<category::thread_page_fault, int64_t>(
-            0, _ts, 0, _tid);
-    }
+    // if(get_valid(category::thread_page_fault{}, _valid))
+    // {
+    //     rocpd_process_backtrace_metrics_events<category::thread_page_fault, int64_t>(
+    //         0, _ts, 0, _tid);
+    // }
 
-    if(get_valid(type_list<hw_counters>{}, _valid) &&
-       get_valid(category::thread_hardware_counter{}, _valid))
-    {
-        auto              _hw_cnt_labels = *get_papi_labels(_tid);
-        hw_counter_data_t zero_counters{};
-        zero_counters.fill(0.0);
+    // if(get_valid(type_list<hw_counters>{}, _valid) &&
+    //    get_valid(category::thread_hardware_counter{}, _valid))
+    // {
+    //     auto              _hw_cnt_labels = *get_papi_labels(_tid);
+    //     hw_counter_data_t zero_counters{};
+    //     zero_counters.fill(0.0);
 
-        rocpd_process_backtrace_metrics_events<category::thread_hardware_counter,
-                                               hw_counter_data_t>(0, _ts, zero_counters,
-                                                                  _tid);
-    }
+    //     rocpd_process_backtrace_metrics_events<category::thread_hardware_counter,
+    //                                            hw_counter_data_t>(0, _ts,
+    //                                            zero_counters,
+    //                                                               _tid);
+    // }
 }
 
 backtrace_metrics&
@@ -643,35 +648,36 @@ backtrace_metrics::post_process_perfetto(int64_t _tid, uint64_t _ts) const
 void
 backtrace_metrics::post_process_rocpd(int64_t _tid, uint64_t _ts) const
 {
-    if((*this)(category::thread_cpu_time{}))
-    {
-        rocpd_process_backtrace_metrics_events<category::thread_cpu_time, double>(
-            0, _ts, m_cpu / units::sec, _tid);
-    }
+    // if((*this)(category::thread_cpu_time{}))
+    // {
+    //     rocpd_process_backtrace_metrics_events<category::thread_cpu_time, double>(
+    //         0, _ts, m_cpu / units::sec, _tid);
+    // }
 
-    if((*this)(category::thread_peak_memory{}))
-    {
-        rocpd_process_backtrace_metrics_events<category::thread_peak_memory, double>(
-            0, _ts, m_mem_peak / units::megabyte, _tid);
-    }
+    // if((*this)(category::thread_peak_memory{}))
+    // {
+    //     rocpd_process_backtrace_metrics_events<category::thread_peak_memory, double>(
+    //         0, _ts, m_mem_peak / units::megabyte, _tid);
+    // }
 
-    if((*this)(category::thread_context_switch{}))
-    {
-        rocpd_process_backtrace_metrics_events<category::thread_peak_memory, int64_t>(
-            0, _ts, m_ctx_swch, _tid);
-    }
+    // if((*this)(category::thread_context_switch{}))
+    // {
+    //     rocpd_process_backtrace_metrics_events<category::thread_peak_memory, int64_t>(
+    //         0, _ts, m_ctx_swch, _tid);
+    // }
 
-    if((*this)(category::thread_page_fault{}))
-    {
-        rocpd_process_backtrace_metrics_events<category::thread_peak_memory, int64_t>(
-            0, _ts, m_page_flt, _tid);
-    }
-    if((*this)(type_list<hw_counters>{}) && (*this)(category::thread_hardware_counter{}))
-    {
-        rocpd_process_backtrace_metrics_events<category::thread_hardware_counter,
-                                               hw_counter_data_t>(0, _ts, m_hw_counter,
-                                                                  _tid);
-    }
+    // if((*this)(category::thread_page_fault{}))
+    // {
+    //     rocpd_process_backtrace_metrics_events<category::thread_peak_memory, int64_t>(
+    //         0, _ts, m_page_flt, _tid);
+    // }
+    // if((*this)(type_list<hw_counters>{}) &&
+    // (*this)(category::thread_hardware_counter{}))
+    // {
+    //     rocpd_process_backtrace_metrics_events<category::thread_hardware_counter,
+    //                                            hw_counter_data_t>(0, _ts, m_hw_counter,
+    //                                                               _tid);
+    // }
 }
 }  // namespace component
 }  // namespace rocprofsys

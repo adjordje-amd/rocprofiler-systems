@@ -275,10 +275,10 @@ setup()
 
     if(get_use_rocpd())
     {
-        rocpd_initialize_cpu_freq_category();
-        auto thread_idx = rocpd_initialize_thread_info(gettid());
-        rocpd_initialize_cpu_usage_tracks(thread_idx);
-        rocpd_initialize_cpu_freq_tracks(thread_idx);
+        // rocpd_initialize_cpu_freq_category();
+        // auto thread_idx = rocpd_initialize_thread_info(gettid());
+        // rocpd_initialize_cpu_usage_tracks(thread_idx);
+        // rocpd_initialize_cpu_freq_tracks(thread_idx);
     }
 }
 
@@ -372,12 +372,12 @@ post_process()
         // agents seems to be assigned per device basis not per core.
         // TODO: `get_enabled_cpus()` should be fixed in the future to align with GPU
         // implementation.
-        auto cpu_agents = rocpd::agent_manager::get_instance().get_agents_by_type(
-            ROCPROFILER_AGENT_TYPE_CPU);
-        for(auto& agent : cpu_agents)
-        {
-            rocpd_initialize_cpu_freq_pmc(agent->device_id);
-        }
+        // auto cpu_agents = rocpd::agent_manager::get_instance().get_agents_by_type(
+        //     ROCPROFILER_AGENT_TYPE_CPU);
+        // for(auto& agent : cpu_agents)
+        // {
+        //     rocpd_initialize_cpu_freq_pmc(agent->device_id);
+        // }
     }
 
     auto _process_frequencies = [](size_t _idx, size_t _offset) {
@@ -451,9 +451,9 @@ post_process()
             }
             if(get_use_rocpd())
             {
-                const auto& freq_data = std::get<8>(itr);
-                rocpd_process_cpu_usage_events(0, _ts, freq_data, _page, _virt, _peak,
-                                               _cntx, _flts, _user, _kern);
+                // const auto& freq_data = std::get<8>(itr);
+                // rocpd_process_cpu_usage_events(0, _ts, freq_data, _page, _virt, _peak,
+                //                                _cntx, _flts, _user, _kern);
             }
         }
 

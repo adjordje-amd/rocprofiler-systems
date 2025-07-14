@@ -35,7 +35,7 @@ storage_parser::register_type_callback(
     const entry_type&                                           type,
     const std::function<void(const storage_parsed_type_base&)>& callback)
 {
-    m_callbacks[type].emplace_back(callback);
+    m_callbacks[type].push_back(callback);
 }
 
 void
@@ -159,7 +159,7 @@ storage_parser::consume_storage()
     }
 
     ifs.close();
-    std::filesystem::remove(path);
+    // std::filesystem::remove(path);
 }
 
 void

@@ -39,8 +39,9 @@ cache_manager::get_instance()
 }
 
 cache_manager::cache_manager()
-: m_postprocessing({ std::make_unique<rocpd_post_processing>() })
 {
+    std::cout << "cache manager init\n";
+    m_postprocessing.push_back(std::make_unique<rocpd_post_processing>(m_metadata));
     for(auto& pp : m_postprocessing)
     {
         pp->register_parser_callback(m_parser);
@@ -57,7 +58,9 @@ cache_manager::post_process()
         shutdown();
     }
 
+    std::cout << "Post process metadata\n";
     post_process_metadata();
+    std::cout << "post process storage\n";
     m_parser.consume_storage();
 }
 
@@ -66,7 +69,7 @@ cache_manager::post_process_metadata()
 {
     for(auto& pp : m_postprocessing)
     {
-        pp->post_process_metadata(m_metadata);
+        pp->post_process_metadata();
     }
 }
 

@@ -49,6 +49,11 @@ set(core_sources
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/json.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_manager.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_storage.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/metadata_storage.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_storage_parser.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/rocpd_post_processing.cpp
 )
 
 set(core_headers
@@ -73,12 +78,6 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/state.hpp
     ${CMAKE_CURRENT_LIST_DIR}/timemory.hpp
     ${CMAKE_CURRENT_LIST_DIR}/utility.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_manager.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_storage.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/metadata_storage.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_storage_parser.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_post_processing.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/rocpd_post_processing.cpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_processor.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/node_info.hpp
@@ -86,6 +85,7 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/table_insert_query.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/query_builders/insert_query_builders.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_post_processing.hpp
 )
 
 add_library(rocprofiler-systems-core-library STATIC)

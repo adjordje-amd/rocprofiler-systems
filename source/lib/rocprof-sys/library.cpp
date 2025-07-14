@@ -328,42 +328,15 @@ read_command_line(pid_t _pid)
 void
 rocprofsys_preinit_rocpd()
 {
-    auto&       data_processor = rocpd::data_processor::get_instance();
-    const auto& n_info         = node_info::get_instance();
-    auto        cmd_line       = read_command_line(getpid());
-    auto&       agent_mngr     = rocpd::agent_manager::get_instance();
+    auto cmd_line = read_command_line(getpid());
 
     if(cmd_line.empty())
     {
         cmd_line.emplace_back("rocprofiler-systems");
     }
 
-    // TODO: Remove
-    data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
-                                    n_info.system_name.c_str(), n_info.node_name.c_str(),
-                                    n_info.release.c_str(), n_info.version.c_str(),
-                                    n_info.machine.c_str(), n_info.domain_name.c_str());
-
-    // TODO: Remove
-    data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
-                                       cmd_line[0].c_str(), "{}");
-
     sample_cache::get_cache_metadata().set_process(
         { getpid(), getppid(), cmd_line.at(0) });
-
-    // TODO: Remove
-    const auto& agents = agent_mngr.get_agents();
-    for(const auto& rocpd_agent : agents)
-    {
-        auto _base_id = rocpd::data_processor::get_instance().insert_agent(
-            n_info.id, getpid(),
-            ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
-            rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
-            rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
-            rocpd_agent->agent->name, rocpd_agent->agent->model_name,
-            rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
-        rocpd_agent->base_id = _base_id;
-    }
 }
 
 void
@@ -874,6 +847,11 @@ rocprofsys_finalize_hidden(void)
     }
 #endif
 
+    {
+        rocprofsys::sample_cache::cache_manager::get_instance().shutdown();
+        rocprofsys::sample_cache::cache_manager::get_instance().post_process();
+    }
+
     ROCPROFSYS_DEBUG_F("Stopping and destroying instrumentation bundles...\n");
     for(size_t i = 0; i < thread_info::get_peak_num_threads(); ++i)
     {
@@ -988,11 +966,6 @@ rocprofsys_finalize_hidden(void)
     {
         ROCPROFSYS_VERBOSE_F(1, "Post-processing the system-level samples...\n");
         process_sampler::post_process();
-    }
-
-    {
-        rocprofsys::sample_cache::cache_manager::get_instance().shutdown();
-        rocprofsys::sample_cache::cache_manager::get_instance().post_process();
     }
 
     // shutdown tasking before timemory is finalized

@@ -52,13 +52,13 @@ private:
     std::vector<std::unique_ptr<post_processing>> m_postprocessing;
 };
 
-metadata&
+inline metadata&
 get_cache_metadata()
 {
     return cache_manager::get_instance().get_metadata();
 }
 
-cache_storage&
+inline cache_storage&
 get_cache_storage()
 {
     return cache_manager::get_instance().get_cache();
