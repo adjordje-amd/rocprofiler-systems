@@ -44,6 +44,12 @@
 #include "library/thread_info.hpp"
 #include "library/tracing.hpp"
 
+#if ROCPROFILER_VERSION >= 1000
+#    include "library/rocprofiler-sdk/rocpd_sdk_support.hpp"
+#else
+#    include "library/rocprofiler-sdk/legacy_support.hpp"
+#endif
+
 #include <timemory/components/timing/wall_clock.hpp>
 #include <timemory/hash/types.hpp>
 #include <timemory/unwind/processed_entry.hpp>
@@ -256,9 +262,7 @@ get_data_processor()
 auto&
 get_stream_stack()
 {
-    static thread_local std::vector<rocprofiler_stream_id_t> _v{ rocprofiler_stream_id_t{
-        .handle = 0 } };
-    return _v;
+    return get_stream_stack_impl();
 }
 
 const kernel_symbol_data_t*
@@ -328,30 +332,11 @@ void
 consume_args(Tp&&...)
 {}
 
-// Stores stream ids and kernel region ids for kernel-rename service and hip stream
-// display service
-struct kernel_rename_and_stream_data
-{
-    uint64_t                region_id = 0;  // roctx region correlation id
-    rocprofiler_stream_id_t stream_id = { .handle = 0 };
-};
-
 template <typename Tp>
 rocprofiler_stream_id_t
 get_stream_id(Tp* _record)
 {
-    auto _stream_id = rocprofiler_stream_id_t{ .handle = 0 };
-    if(_record->correlation_id.external.ptr != nullptr)
-    {
-        // Extract the stream id
-        auto* _ecid_data = static_cast<kernel_rename_and_stream_data*>(
-            _record->correlation_id.external.ptr);
-        _stream_id                             = _ecid_data->stream_id;
-        auto _region_id                        = _ecid_data->region_id;
-        _record->correlation_id.external.value = _region_id;
-        delete _ecid_data;
-    }
-    return _stream_id;
+    return get_stream_id_impl(_record);
 }
 
 auto
@@ -385,14 +370,7 @@ template <typename CorrelationIdType>
 uint64_t
 get_parent_stack_id(const CorrelationIdType& correlation_id)
 {
-    if constexpr(std::is_same_v<rocprofiler_correlation_id_t, CorrelationIdType>)
-    {
-        return correlation_id.ancestor;
-    }
-    else
-    {
-        return 0;
-    }
+    return get_parent_stack_id_impl(correlation_id);
 }
 
 auto
@@ -523,13 +501,7 @@ rocpd_init_track(const char* track_name, int64_t tid)
 void
 rocpd_insert_stream_info(const rocprofiler_stream_id_t& stream_id)
 {
-    auto& data_processor = get_data_processor();
-    auto& n_info         = node_info::get_instance();
-    auto  stream_name    = stream_id.handle == 0
-                               ? "Default Stream"
-                               : ("Stream " + std::to_string(stream_id.handle));
-    data_processor.insert_stream_info(stream_id.handle, n_info.id, getpid(),
-                                      stream_name.c_str(), "{}");
+    rocpd_insert_stream_info_impl(stream_id);
 }
 
 void
@@ -628,22 +600,8 @@ rocpd_insert_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record
                          size_t name_id, size_t event_id, size_t region_id,
                          size_t thread_id, const char* extdata = "{}")
 {
-    auto& data_processor = get_data_processor();
-    auto& n_info         = node_info::get_instance();
-    auto& agent_mngr     = rocpd::agent_manager::get_instance();
-    auto  stream_id      = get_stream_id(record);
-    auto  dst_agent_id =
-        agent_mngr.get_agent_by_handle(record->dst_agent_id.handle).base_id;
-    auto src_agent_id =
-        agent_mngr.get_agent_by_handle(record->dst_agent_id.handle).base_id;
-
-    rocpd_insert_stream_info(stream_id);
-
-    data_processor.insert_memory_copy(
-        n_info.id, getpid(), thread_id, record->start_timestamp, record->end_timestamp,
-        name_id, dst_agent_id, record->dst_address.value, src_agent_id,
-        record->src_address.value, record->bytes, 0, stream_id.handle, region_id,
-        event_id, extdata);
+    rocpd_insert_memory_copy_impl(record, name_id, event_id, region_id, thread_id,
+                                  extdata);
 }
 
 void
@@ -666,7 +624,7 @@ rocpd_insert_memory_allocation(
 
     data_processor.insert_memory_alloc(
         n_info.id, getpid(), thread_id, agent_id, type, level, record->start_timestamp,
-        record->end_timestamp, record->address.value, record->allocation_size, 0,
+        record->end_timestamp, record->address.handle, record->allocation_size, 0,
         stream_id.handle, event_id, extdata);
 }
 
@@ -674,47 +632,7 @@ void
 tool_hip_stream_callback(rocprofiler_callback_tracing_record_t record,
                          rocprofiler_user_data_t* user_data, void* data)
 {
-    if(record.kind != ROCPROFILER_CALLBACK_TRACING_HIP_STREAM) return;
-    // Extract stream ID from record
-    auto* stream_handle_data =
-        static_cast<rocprofiler_callback_tracing_hip_stream_data_t*>(record.payload);
-    auto stream_id = stream_handle_data->stream_id;
-    // STREAM_HANDLE_CREATE and DESTROY are no-ops
-    if(record.operation == ROCPROFILER_HIP_STREAM_CREATE)
-    {
-        ROCPROFSYS_VERBOSE_F(2, "Entered hip_streams_callback function for "
-                                "ROCPROFILER_HIP_STREAM_CREATE");
-    }
-    else if(record.operation == ROCPROFILER_HIP_STREAM_DESTROY)
-    {
-        ROCPROFSYS_VERBOSE_F(2, "Entered hip_streams_callback function for "
-                                "ROCPROFILER_HIP_STREAM_DESTROY");
-    }
-    else if(record.operation == ROCPROFILER_HIP_STREAM_SET)
-    {
-        // Push the stream ID onto the stream stack when before underlying HIP
-        // function is called
-        if(record.phase == ROCPROFILER_CALLBACK_PHASE_ENTER)
-        {
-            ROCPROFSYS_VERBOSE_F(2, "Entered hip_streams_callback function for "
-                                    "ROCPROFILER_HIP_STREAM_SET "
-                                    "with ROCPROFILER_CALLBACK_PHASE_ENTER");
-            get_stream_stack().emplace_back(stream_id);
-        }
-        // Pop stream ID off of stream stack after underlying HIP function is
-        // completed
-        else if(record.phase == ROCPROFILER_CALLBACK_PHASE_EXIT)
-        {
-            ROCPROFSYS_VERBOSE_F(
-                2, "Entered hip_stream_callback function for ROCPROFILER_HIP_STREAM_SET "
-                   "with ROCPROFILER_CALLBACK_PHASE_EXIT");
-            get_stream_stack().pop_back();
-        }
-    }
-    else
-    {
-        ROCPROFSYS_FAIL_F("Unknown operation for hip_stream_callback!");
-    }
+    hip_stream_callback_impl(record, user_data, data);
 }
 
 template <typename CategoryT>
@@ -1730,9 +1648,11 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
         external_corr_id_request_kinds.size(),
         set_kernel_rename_and_stream_correlation_id, nullptr));
 
+#if ROCPROFILER_VERSION >= 700
     ROCPROFILER_CALL(rocprofiler_configure_callback_tracing_service(
         _data->primary_ctx, ROCPROFILER_CALLBACK_TRACING_HIP_STREAM, nullptr, 0,
         tool_hip_stream_callback, nullptr));
+#endif
 
     // Insert the default stream and queue info to ensure that the default entry is
     // created

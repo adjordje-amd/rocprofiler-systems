@@ -93,6 +93,24 @@ struct tool_agent
     const rocprofiler_agent_v0_t* agent     = nullptr;
 };
 
+struct rocprofiler_stream_id_t
+{
+    uint64_t handle;
+};
+
+struct rocprofiler_callback_tracing_hip_stream_data_t
+{
+    uint64_t                size;          ///< size of this struct
+    rocprofiler_stream_id_t stream_id;     ///< HIP stream ID
+    rocprofiler_address_t   stream_value;  ///< HIP stream value
+};
+
+struct kernel_rename_and_stream_data
+{
+    uint64_t                region_id = 0;  // roctx region correlation id
+    rocprofiler_stream_id_t stream_id = { .handle = 0 };
+};
+
 struct timing_interval
 {
     rocprofiler_timestamp_t start = 0;

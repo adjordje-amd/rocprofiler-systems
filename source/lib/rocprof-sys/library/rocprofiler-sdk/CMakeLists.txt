@@ -9,6 +9,8 @@ set(rocprofiler_sdk_headers
     ${CMAKE_CURRENT_LIST_DIR}/counters.hpp
     ${CMAKE_CURRENT_LIST_DIR}/fwd.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rccl.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/legacy_sdk_support.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/rocpd_sdk_support.hpp
 )
 
 target_sources(
