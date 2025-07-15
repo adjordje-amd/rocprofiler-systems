@@ -48,3 +48,22 @@ rocprofiler_systems_add_validation_test(
     DEPENDS transpose-rocpd
     LABELS "rocprofiler"
 )
+
+
+
+rocprofiler_systems_add_validation_test(
+    NAME validate-cpu-metrics
+    ROCPD_FILE "rocpd.db"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/transpose/cpu_metrics_rules.json"
+    DEPENDS transpose-rocpd
+    LABELS "rocprofiler" "cpu" "metrics" "validation"
+)
+
+rocprofiler_systems_add_validation_test(
+    NAME validate-timer-sampling
+    ROCPD_FILE "rocpd.db"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/transpose/timer_sampling.json"
+    DEPENDS transpose-rocpd
+    LABELS "rocprofiler" "timer-sampling" "hitGetLastError"
+)
+

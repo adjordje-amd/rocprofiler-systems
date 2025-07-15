@@ -1,0 +1,42 @@
+{
+  "required_tables": [
+    {
+      "name": "pmc_info",
+      "required_columns": [
+        "id", "guid", "nid", "pid", "agent_abs_index",
+        "is_constant", "is_derived", "name",
+        "description", "block", "expression"
+      ],
+      "validation_queries": [
+        {
+          "description": "Check for missing PMC names",
+          "query": "SELECT COUNT(*) FROM rocpd_info_pmc WHERE name IS NULL OR name = ''",
+          "expected_result": 0,
+          "comparison": "equals",
+          "error_message": "PMC entries are missing a name"
+        },
+        {
+          "description": "Validate agent absolute index is non-negative",
+          "query": "SELECT COUNT(*) FROM rocpd_info_agent WHERE absolute_index < 0",
+          "expected_result": 0,
+          "comparison": "equals",
+          "error_message": "Negative absolute_index found in agent metadata"
+        },
+        {
+          "description": "Check derived PMCs have expressions",
+          "query": "SELECT COUNT(*) FROM rocpd_info_pmc WHERE is_derived = 1 AND (expression IS NULL OR expression = '')",
+          "expected_result": 0,
+          "comparison": "equals",
+          "error_message": "Derived PMC missing valid expression"
+        },
+        {
+          "description": "Validate description presence",
+          "query": "SELECT COUNT(*) FROM rocpd_info_pmc WHERE description IS NULL OR description = ''",
+          "expected_result": 0,
+          "comparison": "equals",
+          "error_message": "PMC entries missing description field"
+        }
+      ]
+    }
+  ]
+}

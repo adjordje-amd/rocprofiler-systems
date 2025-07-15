@@ -1,0 +1,51 @@
+{
+  "required_tables": [
+    {
+      "name": "rocpd_string",
+      "required_columns": ["id", "guid", "string"],
+      "validation_queries": [
+        {
+          "description": "Check if 'timer sampling' exists in string entries",
+          "query": "SELECT COUNT(*) FROM rocpd_string WHERE string LIKE '%timer_sampling%';",
+          "expected_result": 0,
+          "comparison": "greater_than",
+          "error_message": "'timer sampling' string not found in rocpd_string"
+        },
+        {
+          "description": "Verify no empty string values",
+          "query": "SELECT COUNT(*) FROM rocpd_string WHERE string IS NULL OR TRIM(string) = '';",
+          "expected_result": 0,
+          "comparison": "equals",
+          "error_message": "Empty or NULL string entries found in view_rocpd_string"
+        }
+      ]
+    },
+    {
+      "name": "rocpd_region",
+      "required_columns": ["id", "guid", "nid", "pid", "tid", "start", "end", "name_id", "event_id", "extdata"],
+      "validation_queries": [
+        {
+          "description": "Check count of rows with name_id = 15 exceeds 1000",
+          "query": "SELECT COUNT(*) FROM rocpd_region WHERE name_id = 15;",
+          "expected_result": 1000,
+          "comparison": "equals",
+          "error_message": "Insufficient rows with name_id = 15 in rocpd_region"
+        },
+        {
+          "description": "Validate no negative timestamps",
+          "query": "SELECT COUNT(*) FROM rocpd_region WHERE start < 0 OR end < 0;",
+          "expected_result": 0,
+          "comparison": "equals",
+          "error_message": "Negative values found in start or end timestamps"
+        },
+        {
+          "description": "Check duration consistency (start should be < end)",
+          "query": "SELECT COUNT(*) FROM rocpd_region WHERE end < start;",
+          "expected_result": 0,
+          "comparison": "equals",
+          "error_message": "Region duration invalid: end time before start time"
+        }
+      ]
+    }
+  ]
+}
