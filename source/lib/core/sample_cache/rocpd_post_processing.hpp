@@ -38,7 +38,6 @@ public:
     rocpd_post_processing(metadata& metadata);
 
     void register_parser_callback(storage_parser& parser) override;
-    void post_process_cache() override;
     void post_process_metadata() override;
 
 private:

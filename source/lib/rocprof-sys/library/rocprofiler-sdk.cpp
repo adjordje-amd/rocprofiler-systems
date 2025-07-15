@@ -518,27 +518,24 @@ cache_add_track(const char* track_name, uint64_t tid)
         { .track_name = track_name, .thread_id = tid, .extdata = "{}" });
 }
 
-template <typename Category>
 void
 cache_region(rocprofiler_callback_tracing_record_t* record,
-             rocprofiler_timestamp_t start_ts, rocprofiler_timestamp_t end_ts,
-             size_t stack_id, size_t parent_stack_id, size_t correlation_id,
-             const std::string& call_stack, const std::string& args_str)
+             rocprofiler_timestamp_t                start_timestamp,
+             rocprofiler_timestamp_t end_timestamp, std::string call_stack,
+             std::string args_str, std::string category)
+
 {
     sample_cache::get_cache_storage().store(
-        sample_cache::entry_type::region, record->thread_id, start_ts, end_ts,
-        record->kind, record->operation, stack_id, parent_stack_id, correlation_id,
-        call_stack.c_str(), args_str.c_str(), trait::name<Category>::value);
+        sample_cache::entry_type::region, *record, start_timestamp, end_timestamp,
+        call_stack.c_str(), args_str.c_str(), category.c_str());
 }
 
 void
-cache_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t* record,
-                      uint32_t thread_id, size_t stack_id, size_t parent_stack_id,
-                      size_t correlation_id)
+cache_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t* record)
 {
-    auto agent_id = rocpd::agent_manager::get_instance()
-                        .get_agent_by_handle(record->dispatch_info.agent_id.handle)
-                        .global_id;
+    // auto agent_id = rocpd::agent_manager::get_instance()
+    //                     .get_agent_by_handle(record->dispatch_info.agent_id.handle)
+    //                     .global_id;
 
     auto stream_handle = get_stream_id(record).handle;
     auto queue_handle  = record->dispatch_info.queue_id.handle;
@@ -546,61 +543,27 @@ cache_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t* recor
     sample_cache::get_cache_metadata().add_queue(queue_handle);
     sample_cache::get_cache_metadata().add_stream(stream_handle);
 
-    sample_cache::get_cache_storage().store(
-        sample_cache::entry_type::kernel_dispatch, record->dispatch_info.kernel_id,
-        record->dispatch_info.dispatch_id, queue_handle, stream_handle,
-        record->start_timestamp, record->end_timestamp,
-        record->dispatch_info.private_segment_size,
-        record->dispatch_info.group_segment_size, record->dispatch_info.workgroup_size.x,
-        record->dispatch_info.workgroup_size.y, record->dispatch_info.workgroup_size.z,
-        record->dispatch_info.grid_size.x, record->dispatch_info.grid_size.y,
-        record->dispatch_info.grid_size.z, thread_id, stack_id, parent_stack_id,
-        correlation_id, agent_id);
+    sample_cache::get_cache_storage().store(sample_cache::entry_type::kernel_dispatch,
+                                            *record, stream_handle);
 }
 
 void
-cache_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record,
-                  size_t stack_id, size_t parent_stack_id, size_t correlation_id)
+cache_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record)
 {
-    auto&  n_info        = node_info::get_instance();
-    auto&  agent_mngr    = rocpd::agent_manager::get_instance();
-    auto   stream_handle = get_stream_id(record).handle;
-    size_t queue_handle  = 0;
-    auto   dst_agent_id =
-        agent_mngr.get_agent_by_handle(record->dst_agent_id.handle).global_id;
-    auto src_agent_id =
-        agent_mngr.get_agent_by_handle(record->dst_agent_id.handle).global_id;
+    auto stream_handle = get_stream_id(record).handle;
 
-    sample_cache::get_cache_storage().store(
-        sample_cache::entry_type::memory_copy, n_info.id, getpid(), record->thread_id,
-        record->start_timestamp, record->end_timestamp, record->kind, record->operation,
-        dst_agent_id, record->dst_address.value, src_agent_id, record->src_address.value,
-        record->bytes, queue_handle, stream_handle, stack_id, parent_stack_id,
-        correlation_id);
+    sample_cache::get_cache_storage().store(sample_cache::entry_type::memory_copy,
+                                            *record, stream_handle);
 }
 
 void
-cache_memory_allocation(rocprofiler_buffer_tracing_memory_allocation_record_t* record,
-                        size_t _stack_id, size_t _parent_stack_id, size_t _correlation_id)
+cache_memory_allocation(rocprofiler_buffer_tracing_memory_allocation_record_t* record)
 {
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto& n_info     = node_info::get_instance();
-
-    auto   stream_handle = get_stream_id(record).handle;
-    size_t queue_handle  = 0;
-
-    size_t agent_id = 0;
-    if(record->agent_id.handle != static_cast<uint64_t>(-1))
-    {
-        agent_id = agent_mngr.get_agent_by_handle(record->agent_id.handle).global_id;
-    }
+    auto stream_handle = get_stream_id(record).handle;
 
     sample_cache::get_cache_metadata().add_stream(stream_handle);
-    sample_cache::get_cache_storage().store(
-        sample_cache::entry_type::memory_alloc, n_info.id, getpid(), record->thread_id,
-        agent_id, record->kind, record->operation, record->start_timestamp,
-        record->end_timestamp, record->address.value, record->allocation_size,
-        queue_handle, stream_handle, _stack_id, _parent_stack_id, _correlation_id);
+    sample_cache::get_cache_storage().store(sample_cache::entry_type::memory_alloc,
+                                            *record, stream_handle);
 }
 
 void
@@ -839,10 +802,9 @@ tool_tracing_callback_stop(
         rocprofiler_iterate_callback_tracing_kind_operation_args(
             record, iterate_args_callback, 2, &args);
 
-        auto call_stack      = get_backtrace(_bt_data);
-        auto stack_id        = record.correlation_id.internal;
-        auto parent_stack_id = get_parent_stack_id(record.correlation_id);
-        auto correlation_id  = 0;
+        auto     call_stack = get_backtrace(_bt_data);
+        uint64_t _beg_ts    = user_data->value;
+        uint64_t _end_ts    = ts;
 
         {
             auto _ = rocprofiler::benchmark::scoped_trace<
@@ -860,9 +822,8 @@ tool_tracing_callback_stop(
                     args_str.append(ss.str());
                 });
 
-            cache_region<CategoryT>(&record, user_data->value, ts, stack_id,
-                                    parent_stack_id, correlation_id,
-                                    call_stack->to_string(), args_str);
+            cache_region(&record, _beg_ts, _end_ts, call_stack->to_string(), args_str,
+                         trait::name<CategoryT>::value);
         }
     }
 }
@@ -1214,8 +1175,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                                          "] Queue ", _queue_id.handle)
                                         .c_str(),
                                     record->thread_id);
-                    cache_kernel_dispatch(record, record->thread_id, _corr_id,
-                                          _parent_stack_id, 0);
+                    cache_kernel_dispatch(record);
                 }
 
                 if(get_use_timemory())
@@ -1300,14 +1260,13 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     static_cast<rocprofiler_buffer_tracing_memory_copy_record_t*>(
                         header->payload);
 
-                auto _corr_id          = record->correlation_id.internal;
-                auto _parent_stack_id  = get_parent_stack_id(record->correlation_id);
-                auto _beg_ns           = record->start_timestamp;
-                auto _end_ns           = record->end_timestamp;
-                auto _dst_agent_id     = record->dst_agent_id;
-                auto _src_agent_id     = record->src_agent_id;
-                const auto* _dst_agent = tool_data->get_agent(_dst_agent_id);
-                const auto* _src_agent = tool_data->get_agent(_src_agent_id);
+                auto        _corr_id      = record->correlation_id.internal;
+                auto        _beg_ns       = record->start_timestamp;
+                auto        _end_ns       = record->end_timestamp;
+                auto        _dst_agent_id = record->dst_agent_id;
+                auto        _src_agent_id = record->src_agent_id;
+                const auto* _dst_agent    = tool_data->get_agent(_dst_agent_id);
+                const auto* _src_agent    = tool_data->get_agent(_src_agent_id);
                 auto        _name =
                     tool_data->buffered_tracing_info.at(record->kind, record->operation);
 
@@ -1326,7 +1285,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     cache_category<category::rocm_memory_copy>();
                     cache_add_track(track_name.c_str(), record->thread_id);
 
-                    cache_memory_copy(record, _corr_id, _parent_stack_id, 0);
+                    cache_memory_copy(record);
                 }
 
                 if(get_use_timemory())
@@ -1384,14 +1343,6 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     static_cast<rocprofiler_buffer_tracing_memory_allocation_record_t*>(
                         header->payload);
 
-                auto _corr_id         = record->correlation_id.internal;
-                auto _parent_stack_id = get_parent_stack_id(record->correlation_id);
-                auto _beg_ns          = record->start_timestamp;
-                auto _end_ns          = record->end_timestamp;
-                auto _correlation_id  = 0;
-                auto _name =
-                    tool_data->buffered_tracing_info.at(record->kind, record->operation);
-
                 if(get_use_rocpd())
                 {
                     auto _ = rocprofiler::benchmark::scoped_trace<
@@ -1399,8 +1350,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                     cache_category<category::rocm_memory_allocate>();
                     cache_add_thread_info(record->thread_id);
-                    cache_memory_allocation(record, _corr_id, _parent_stack_id,
-                                            _correlation_id);
+                    cache_memory_allocation(record);
                 }
             }
             else if(header->kind == ROCPROFILER_BUFFER_TRACING_HSA_CORE_API ||

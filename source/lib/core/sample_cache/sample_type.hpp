@@ -21,12 +21,60 @@
 // SOFTWARE.
 
 #pragma once
+#include <rocprofiler-sdk/buffer_tracing.h>
+#include <rocprofiler-sdk/fwd.h>
 #include <stdint.h>
-
+#include <string>
+#include <unistd.h>
+#include <utility>
 namespace rocprofsys
 {
 namespace sample_cache
 {
+
+struct storage_parsed_type_base
+{};
+
+struct kernel_dispatch_sample : storage_parsed_type_base
+{
+    rocprofiler_buffer_tracing_kernel_dispatch_record_t record;
+    size_t                                              stream_handle;
+};
+
+struct memory_copy_sample : storage_parsed_type_base
+{
+    rocprofiler_buffer_tracing_memory_copy_record_t record;
+    size_t                                          stream_handle;
+};
+
+struct memory_allocate_sample : storage_parsed_type_base
+{
+    rocprofiler_buffer_tracing_memory_allocation_record_t record;
+    size_t                                                stream_handle;
+};
+
+struct region_sample : storage_parsed_type_base
+{
+    region_sample() = default;
+    region_sample(rocprofiler_callback_tracing_record_t _record,
+                  rocprofiler_timestamp_t               _start_timestamp,
+                  rocprofiler_timestamp_t _end_timestamp, std::string _call_stack,
+                  std::string _args_str, std::string _category)
+    : record(_record)
+    , start_timestamp(_start_timestamp)
+    , end_timestamp(_end_timestamp)
+    , call_stack(std::move(_call_stack))
+    , args_str(std::move(_args_str))
+    , category(std::move(_category))
+    {}
+    rocprofiler_callback_tracing_record_t record;
+    rocprofiler_timestamp_t               start_timestamp;
+    rocprofiler_timestamp_t               end_timestamp;
+    std::string                           call_stack;
+    std::string                           args_str;
+    std::string                           category;
+};
+
 enum class entry_type : uint32_t
 {
     sample,

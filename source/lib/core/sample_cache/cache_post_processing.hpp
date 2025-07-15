@@ -31,7 +31,6 @@ class post_processing
 {
 public:
     virtual void register_parser_callback(storage_parser& parser) = 0;
-    virtual void post_process_cache()                             = 0;
     virtual void post_process_metadata()                          = 0;
 };
 }  // namespace sample_cache

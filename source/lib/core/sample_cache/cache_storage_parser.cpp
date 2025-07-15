@@ -71,33 +71,8 @@ storage_parser::consume_storage()
             case entry_type::kernel_dispatch:
             {
                 kernel_dispatch_sample _kernel_dispatch_sample;
-
-                // TODO: Try this
-                // _kernel_dispatch_sample =
-                //     *reinterpret_cast<kernel_dispatch_sample*>(sample.data());
-
-                // std::cout << "parsed agent id " << _kernel_dispatch_sample.agent_id
-                //           << std::endl;
-
-                parse_data(sample.data(), _kernel_dispatch_sample.kernel_id,
-                           _kernel_dispatch_sample.dispatch_id,
-                           _kernel_dispatch_sample.queue_handle,
-                           _kernel_dispatch_sample.stream_handle,
-                           _kernel_dispatch_sample.start_timestamp,
-                           _kernel_dispatch_sample.end_timestamp,
-                           _kernel_dispatch_sample.private_segment_size,
-                           _kernel_dispatch_sample.group_segment_size,
-                           _kernel_dispatch_sample.workgroup_size_x,
-                           _kernel_dispatch_sample.workgroup_size_y,
-                           _kernel_dispatch_sample.workgroup_size_z,
-                           _kernel_dispatch_sample.grid_size_x,
-                           _kernel_dispatch_sample.grid_size_y,
-                           _kernel_dispatch_sample.grid_size_z,
-                           _kernel_dispatch_sample.thread_id,
-                           _kernel_dispatch_sample.event_stack_id,
-                           _kernel_dispatch_sample.event_parent_stack_id,
-                           _kernel_dispatch_sample.event_correlation_id,
-                           _kernel_dispatch_sample.agent_id);
+                parse_data(sample.data(), _kernel_dispatch_sample.record,
+                           _kernel_dispatch_sample.stream_handle);
 
                 invoke_callbacks(type, _kernel_dispatch_sample);
                 break;
@@ -105,37 +80,16 @@ storage_parser::consume_storage()
             case entry_type::memory_copy:
             {
                 memory_copy_sample _memory_copy_sample;
-                parse_data(
-                    sample.data(), _memory_copy_sample.node_id,
-                    _memory_copy_sample.process_id, _memory_copy_sample.thread_id,
-                    _memory_copy_sample.start_timestamp,
-                    _memory_copy_sample.end_timestamp, _memory_copy_sample.kind,
-                    _memory_copy_sample.operation, _memory_copy_sample.dst_agent_id,
-                    _memory_copy_sample.dst_address, _memory_copy_sample.src_agent_id,
-                    _memory_copy_sample.src_address, _memory_copy_sample.bytes,
-                    _memory_copy_sample.queue_handle, _memory_copy_sample.stream_handle,
-                    _memory_copy_sample.stack_id, _memory_copy_sample.parent_stack_id,
-                    _memory_copy_sample.correlation_id);
+                parse_data(sample.data(), _memory_copy_sample.record,
+                           _memory_copy_sample.stream_handle);
                 invoke_callbacks(type, _memory_copy_sample);
                 break;
             }
             case entry_type::memory_alloc:
             {
                 memory_allocate_sample _memory_allocate_sample;
-                parse_data(sample.data(), _memory_allocate_sample.node_id,
-                           _memory_allocate_sample.process_id,
-                           _memory_allocate_sample.thread_id,
-                           _memory_allocate_sample.agent_id, _memory_allocate_sample.kind,
-                           _memory_allocate_sample.operation,
-                           _memory_allocate_sample.start_timestamp,
-                           _memory_allocate_sample.end_timestamp,
-                           _memory_allocate_sample.address_value,
-                           _memory_allocate_sample.allocation_size,
-                           _memory_allocate_sample.queue_handle,
-                           _memory_allocate_sample.stream_handle,
-                           _memory_allocate_sample.stack_id,
-                           _memory_allocate_sample.parent_stack_id,
-                           _memory_allocate_sample.correlation_id);
+                parse_data(sample.data(), _memory_allocate_sample.record,
+                           _memory_allocate_sample.stream_handle);
 
                 invoke_callbacks(type, _memory_allocate_sample);
                 break;
@@ -143,12 +97,10 @@ storage_parser::consume_storage()
             case entry_type::region:
             {
                 region_sample _region_sample;
-                parse_data(sample.data(), _region_sample.thread_id,
+                parse_data(sample.data(), _region_sample.record,
                            _region_sample.start_timestamp, _region_sample.end_timestamp,
-                           _region_sample.kind, _region_sample.operation,
-                           _region_sample.stack_id, _region_sample.parent_stack_id,
-                           _region_sample.correlation_id, _region_sample.call_stack,
-                           _region_sample.args_str, _region_sample.category);
+                           _region_sample.call_stack, _region_sample.args_str,
+                           _region_sample.category);
 
                 invoke_callbacks(type, _region_sample);
                 break;
