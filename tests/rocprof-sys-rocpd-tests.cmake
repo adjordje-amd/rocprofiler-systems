@@ -48,3 +48,20 @@ rocprofiler_systems_add_validation_test(
     DEPENDS transpose-rocpd
     LABELS "rocprofiler"
 )
+
+rocprofiler_systems_add_validation_test(
+    NAME transpose-rocpd-memory
+    ROCPD_FILE "rocpd.db"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/transpose/mem_rules.json"
+    DEPENDS transpose-rocpd
+    LABELS "rocprofiler"
+
+)
+
+rocprofiler_systems_add_validation_test(
+    NAME transpose-rocpd-memory
+    ROCPD_FILE "rocpd.db"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/transpose/mem_rules.json"
+    DEPENDS transpose-rocpd
+    LABELS "rocprofiler"
+)

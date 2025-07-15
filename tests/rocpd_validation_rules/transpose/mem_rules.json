@@ -1,0 +1,88 @@
+{
+    "required_tables": [
+        {
+            "name": "rocpd_memory_copy",
+            "required_columns": [
+                "id",
+                "start",
+                "end",
+                "size",
+                "queue_id",
+                "stream_id",
+                "src_agent_id",
+                "dst_agent_id",
+                "src_address",
+                "dst_address"
+            ],
+            "validation_queries": [
+                {
+                    "description": "Check that we have memory copy entries",
+                    "query": "SELECT COUNT(*) as count FROM rocpd_memory_copy",
+                    "expected_result": 0,
+                    "comparison": "greater_than",
+                    "error_message": "No memory copy entries found"
+                },
+                {
+                    "description": "Check for memory copy events with no active time",
+                    "query": "SELECT COUNT(*) as count FROM rocpd_memory_copy WHERE (end - start) = 0",
+                    "expected_result": 0,
+                    "comparison": "equals",
+                    "error_message": "Memory copy events with no active execution times found"
+                }
+            ]
+        },
+        {
+            "name": "rocpd_memory_allocate",
+            "required_columns": [
+                "id",
+                "agent_id",
+                "type",
+                "level",
+                "start",
+                "end",
+                "address",
+                "size",
+                "queue_id",
+                "stream_id",
+                "event_id"
+            ],
+            "validation_queries": [
+                {
+                    "description": "Check that we have memory allocation entries",
+                    "query": "SELECT COUNT(*) as count FROM rocpd_memory_allocate",
+                    "expected_result": 0,
+                    "comparison": "greater_than",
+                    "error_message": "No memory allocation entries found"
+                },
+                {
+                    "description": "Check for memory allocation events with valid size",
+                    "query": "SELECT COUNT(*) as count FROM rocpd_memory_allocate WHERE size <= 0 AND type != 'FREE'",
+                    "expected_result": 0,
+                    "comparison": "equals",
+                    "error_message": "Memory allocation events with non-positive size found"
+                },
+                {
+                    "description": "Check for valid timestamps in memory allocation events",
+                    "query": "SELECT COUNT(*) as count FROM rocpd_memory_allocate WHERE start IS NULL OR end IS NULL",
+                    "expected_result": 0,
+                    "comparison": "equals",
+                    "error_message": "Memory allocation events with null timestamps found"
+                },
+                {
+                    "description": "Check for valid memory addresses",
+                    "query": "SELECT COUNT(*) as count FROM rocpd_memory_allocate WHERE address IS NULL",
+                    "expected_result": 0,
+                    "comparison": "equals",
+                    "error_message": "Memory allocation events with null addresses found"
+                },
+                {
+                    "description": "Check that size is zero for FREE type allocations",
+                    "query": "SELECT COUNT(*) as count FROM rocpd_memory_allocate WHERE type = 'FREE' AND size != 0",
+                    "expected_result": 0,
+                    "comparison": "equals",
+                    "error_message": "Memory allocation events with type 'FREE' have non-zero size"
+                }
+            ]
+        }
+    ]
+}
