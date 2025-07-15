@@ -21,10 +21,9 @@
 // SOFTWARE.
 
 #pragma once
-#include "rocpd/node_info.hpp"
-#include "sample_cache/cache_post_processing.hpp"
-#include "sample_cache/cache_storage_parser.hpp"
-#include "sample_cache/metadata_storage.hpp"
+#include "core/rocpd/node_info.hpp"
+#include "core/sample_cache/cache_storage_parser.hpp"
+#include "core/sample_cache/metadata_storage.hpp"
 #include <unordered_map>
 
 namespace rocprofsys
@@ -32,13 +31,13 @@ namespace rocprofsys
 namespace sample_cache
 {
 
-class rocpd_post_processing : public post_processing
+class rocpd_post_processing
 {
 public:
     rocpd_post_processing(metadata& metadata);
 
-    void register_parser_callback(storage_parser& parser) override;
-    void post_process_metadata() override;
+    void register_parser_callback(storage_parser& parser);
+    void post_process_metadata();
 
 private:
     using primary_key = size_t;

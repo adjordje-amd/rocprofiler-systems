@@ -21,10 +21,9 @@
 // SOFTWARE.
 
 #include "cache_manager.hpp"
+#include "core/sample_cache/cache_storage_parser.hpp"
 #include "debug.hpp"
-#include "sample_cache/cache_storage_parser.hpp"
 #include "sample_cache/rocpd_post_processing.hpp"
-#include <memory>
 
 namespace rocprofsys
 {
@@ -39,13 +38,9 @@ cache_manager::get_instance()
 }
 
 cache_manager::cache_manager()
+: m_postprocessing{ m_metadata }
 {
-    std::cout << "cache manager init\n";
-    m_postprocessing.push_back(std::make_unique<rocpd_post_processing>(m_metadata));
-    for(auto& pp : m_postprocessing)
-    {
-        pp->register_parser_callback(m_parser);
-    }
+    m_postprocessing.register_parser_callback(m_parser);
 }
 
 void
@@ -58,19 +53,14 @@ cache_manager::post_process()
         shutdown();
     }
 
-    std::cout << "Post process metadata\n";
     post_process_metadata();
-    std::cout << "post process storage\n";
     m_parser.consume_storage();
 }
 
 void
 cache_manager::post_process_metadata()
 {
-    for(auto& pp : m_postprocessing)
-    {
-        pp->post_process_metadata();
-    }
+    m_postprocessing.post_process_metadata();
 }
 
 void

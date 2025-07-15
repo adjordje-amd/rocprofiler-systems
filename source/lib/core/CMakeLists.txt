@@ -85,7 +85,6 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/table_insert_query.hpp
     ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/query_builders/insert_query_builders.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/sample_cache/cache_post_processing.hpp
 )
 
 add_library(rocprofiler-systems-core-library STATIC)
