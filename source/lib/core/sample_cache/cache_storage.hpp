@@ -65,7 +65,7 @@ public:
     void store(entry_type type, T&&... values)
     {
         auto   arg_size        = get_size(values...);
-        size_t total_size      = arg_size + sizeof(type) + sizeof(size_t);
+        auto   total_size      = arg_size + sizeof(type) + sizeof(size_t);
         auto*  reserved_memory = reserve_memory_space(total_size);
         size_t position        = 0;
 
@@ -103,7 +103,7 @@ private:
     uint8_t* reserve_memory_space(size_t len);
 
     template <typename... T>
-    size_t get_size(T&... val)
+    constexpr size_t get_size(T&... val)
     {
         auto get_size_impl = [&](auto val) {
             using Type = decltype(val);

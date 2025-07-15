@@ -39,7 +39,7 @@ template <typename T>
 auto
 assign_set_to_vector(T& result)
 {
-    return [&result](auto _data) { result.assign(_data.begin(), _data.end()); };
+    return [&result](const auto& _data) { result.assign(_data.cbegin(), _data.cend()); };
 }
 }  // namespace
 

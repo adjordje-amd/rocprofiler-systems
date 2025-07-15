@@ -23,19 +23,10 @@
 #pragma once
 
 #include "common/synchronized.hpp"
-#include <array>
 #include <cassert>
-#include <chrono>
-#include <condition_variable>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <memory>
-#include <mutex>
 #include <optional>
 #include <rocprofiler-sdk/callback_tracing.h>
 #include <rocprofiler-sdk/cxx/name_info.hpp>
@@ -44,7 +35,6 @@
 #include <string.h>
 #include <string>
 #include <sys/types.h>
-#include <type_traits>
 #include <unordered_set>
 
 namespace rocprofsys
@@ -61,7 +51,7 @@ struct process
 };
 struct pmc
 {
-    size_t      agent_abs_index;
+    size_t      agent_handle;
     std::string target_arch;
     size_t      event_code;
     size_t      instance_id;

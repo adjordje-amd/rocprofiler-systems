@@ -23,6 +23,7 @@
 #include "cache_storage.hpp"
 #include "library/ptl.hpp"
 #include <mutex>
+#include <stdexcept>
 
 namespace rocprofsys
 {
@@ -37,8 +38,9 @@ cache_storage::cache_storage()
 
         if(!ofs)
         {
-            std::cerr << "Error opening file for writing: " << path << "\n";
-            return;
+            std::stringstream ss;
+            ss << "Error opening file for writing: " << path;
+            throw std::runtime_error(ss.str());
         }
 
         auto execute_flush = [&](std::ofstream& ofs, bool force = false) {

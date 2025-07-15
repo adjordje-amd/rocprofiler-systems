@@ -519,10 +519,10 @@ cache_add_track(const char* track_name, uint64_t tid)
 }
 
 void
-cache_region(rocprofiler_callback_tracing_record_t* record,
-             rocprofiler_timestamp_t                start_timestamp,
-             rocprofiler_timestamp_t end_timestamp, std::string call_stack,
-             std::string args_str, std::string category)
+cache_region(const rocprofiler_callback_tracing_record_t* record,
+             const rocprofiler_timestamp_t                start_timestamp,
+             const rocprofiler_timestamp_t end_timestamp, const std::string& call_stack,
+             const std::string& args_str, const std::string& category)
 
 {
     sample_cache::get_cache_storage().store(
@@ -533,10 +533,6 @@ cache_region(rocprofiler_callback_tracing_record_t* record,
 void
 cache_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t* record)
 {
-    // auto agent_id = rocpd::agent_manager::get_instance()
-    //                     .get_agent_by_handle(record->dispatch_info.agent_id.handle)
-    //                     .global_id;
-
     auto stream_handle = get_stream_id(record).handle;
     auto queue_handle  = record->dispatch_info.queue_id.handle;
 
@@ -568,7 +564,7 @@ cache_memory_allocation(rocprofiler_buffer_tracing_memory_allocation_record_t* r
 
 void
 tool_hip_stream_callback(rocprofiler_callback_tracing_record_t record,
-                         rocprofiler_user_data_t* user_data, void* data)
+                         rocprofiler_user_data_t*, void*)
 {
     if(record.kind != ROCPROFILER_CALLBACK_TRACING_HIP_STREAM) return;
     // Extract stream ID from record
@@ -1155,13 +1151,12 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 const auto* _kern_sym_data =
                     get_kernel_symbol_info(record->dispatch_info.kernel_id);
 
-                auto _name            = tim::demangle(_kern_sym_data->kernel_name);
-                auto _corr_id         = record->correlation_id.internal;
-                auto _parent_stack_id = get_parent_stack_id(record->correlation_id);
-                auto _beg_ns          = record->start_timestamp;
-                auto _end_ns          = record->end_timestamp;
-                auto _agent_id        = record->dispatch_info.agent_id;
-                auto _queue_id        = record->dispatch_info.queue_id;
+                auto        _name     = tim::demangle(_kern_sym_data->kernel_name);
+                auto        _corr_id  = record->correlation_id.internal;
+                auto        _beg_ns   = record->start_timestamp;
+                auto        _end_ns   = record->end_timestamp;
+                auto        _agent_id = record->dispatch_info.agent_id;
+                auto        _queue_id = record->dispatch_info.queue_id;
                 const auto* _agent    = tool_data->get_gpu_tool_agent(_agent_id);
 
                 if(get_use_rocpd())

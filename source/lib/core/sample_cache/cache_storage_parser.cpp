@@ -23,6 +23,7 @@
 #include "cache_storage_parser.hpp"
 #include "sample_cache/sample_type.hpp"
 #include <cstdio>
+#include <stdexcept>
 #include <utility>
 
 namespace rocprofsys
@@ -45,28 +46,38 @@ storage_parser::consume_storage()
     std::ifstream                ifs(path, std::ios::binary);
     if(!ifs)
     {
-        std::cerr << "Error opening file for writing: " << path << "\n";
-        return;
+        std::stringstream ss;
+        ss << "Error opening file for writing: " << path << "\n";
+        throw std::runtime_error(ss.str());
     }
 
-    entry_type type;
-    size_t     sample_size;
+    struct sample_header
+    {
+        entry_type type;
+        size_t     sample_size;
+    };
+
+    sample_header header;
 
     while(!ifs.eof())
     {
-        ifs.read(reinterpret_cast<char*>(&type), sizeof(type));
-        ifs.read(reinterpret_cast<char*>(&sample_size), sizeof(sample_size));
+        ifs.read(reinterpret_cast<char*>(&header), sizeof(header));
 
-        if(sample_size == 0 || ifs.eof())
+        if(header.sample_size == 0 || ifs.eof())
         {
             continue;
         }
 
         std::vector<uint8_t> sample;
-        sample.reserve(sample_size);
-        ifs.read(reinterpret_cast<char*>(sample.data()), sample_size);
+        sample.reserve(header.sample_size);
+        ifs.read(reinterpret_cast<char*>(sample.data()), header.sample_size);
 
-        switch(type)
+        if(ifs.bad())
+        {
+            continue;
+        }
+
+        switch(header.type)
         {
             case entry_type::kernel_dispatch:
             {
@@ -74,7 +85,7 @@ storage_parser::consume_storage()
                 parse_data(sample.data(), _kernel_dispatch_sample.record,
                            _kernel_dispatch_sample.stream_handle);
 
-                invoke_callbacks(type, _kernel_dispatch_sample);
+                invoke_callbacks(header.type, _kernel_dispatch_sample);
                 break;
             }
             case entry_type::memory_copy:
@@ -82,7 +93,7 @@ storage_parser::consume_storage()
                 memory_copy_sample _memory_copy_sample;
                 parse_data(sample.data(), _memory_copy_sample.record,
                            _memory_copy_sample.stream_handle);
-                invoke_callbacks(type, _memory_copy_sample);
+                invoke_callbacks(header.type, _memory_copy_sample);
                 break;
             }
             case entry_type::memory_alloc:
@@ -91,7 +102,7 @@ storage_parser::consume_storage()
                 parse_data(sample.data(), _memory_allocate_sample.record,
                            _memory_allocate_sample.stream_handle);
 
-                invoke_callbacks(type, _memory_allocate_sample);
+                invoke_callbacks(header.type, _memory_allocate_sample);
                 break;
             }
             case entry_type::region:
@@ -102,7 +113,7 @@ storage_parser::consume_storage()
                            _region_sample.call_stack, _region_sample.args_str,
                            _region_sample.category);
 
-                invoke_callbacks(type, _region_sample);
+                invoke_callbacks(header.type, _region_sample);
                 break;
             }
             default: break;
