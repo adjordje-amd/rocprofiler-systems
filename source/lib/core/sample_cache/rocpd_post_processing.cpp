@@ -27,6 +27,7 @@
 #include "rocpd/agent_manager.hpp"
 #include "rocpd/data_processor.hpp"
 #include "rocpd/node_info.hpp"
+#include "rocprofiler-systems/categories.h"
 #include "sample_cache/cache_storage_parser.hpp"
 #include "sample_cache/metadata_storage.hpp"
 #include <stdexcept>
@@ -44,7 +45,6 @@ get_data_processor()
 {
     return rocpd::data_processor::get_instance();
 }
-
 }  // namespace
 
 postprocessing_callback
@@ -76,9 +76,9 @@ rocpd_post_processing::get_kernel_dispatch_callback() const
         auto region_name_primary_key =
             m_rocpd_string_mapping.at(tim::demangle(kernel_symbol->kernel_name));
 
-        auto event_id = data_processor.insert_event(
-            category_id, _kds.event_stack_id, _kds.event_parent_stack_id,
-            _kds.event_correlation_id, _kds.event_call_stack.c_str());
+        auto event_id = data_processor.insert_event(category_id, _kds.event_stack_id,
+                                                    _kds.event_parent_stack_id,
+                                                    _kds.event_correlation_id);
 
         data_processor.insert_kernel_dispatch(
             n_info.id, process.pid, thread_primary_key, agent_primary_key, _kds.kernel_id,
@@ -213,7 +213,6 @@ rocpd_post_processing::get_region_callback() const
                 end   = str.find(delimiter, start);
             }
 
-            tokens.push_back(str.substr(start));
             return tokens;
         };
 
@@ -246,10 +245,11 @@ rocpd_post_processing::get_region_callback() const
         auto _name = std::string{ callback_tracing_info.at(_rs.kind, _rs.operation) };
         auto name_primary_key = m_rocpd_string_mapping.at(_name);
 
-        // TODO: fix category
-        auto event_primary_key =
-            data_processor.insert_event(0, _rs.stack_id, _rs.parent_stack_id,
-                                        _rs.correlation_id, _rs.call_stack.c_str());
+        auto category_primary_key = m_rocpd_string_mapping.at(_rs.category);
+
+        auto event_primary_key = data_processor.insert_event(
+            category_primary_key, _rs.stack_id, _rs.parent_stack_id, _rs.correlation_id,
+            _rs.call_stack.c_str());
 
         auto args = parse_args(_rs.args_str);
         for(const auto& arg : args)
@@ -262,7 +262,6 @@ rocpd_post_processing::get_region_callback() const
         data_processor.insert_region(n_info.id, process.pid, thread_primary_key,
                                      _rs.start_timestamp, _rs.end_timestamp,
                                      name_primary_key, event_primary_key);
-        std::cout << "callback region\n";
     };
 }
 
@@ -379,6 +378,24 @@ rocpd_post_processing::post_process_metadata()
                                           ss.str().c_str());
     }
 
+    auto buffer_info_list = m_metadata.get_buffer_name_info();
+    for(const auto& buffer_info : buffer_info_list)
+    {
+        for(const auto& item : buffer_info.items())
+        {
+            rocpd_insert_string(std::string{ *item.second });
+        }
+    }
+
+    auto callback_info_list = m_metadata.get_callback_tracing_info();
+    for(const auto& cb_info : callback_info_list)
+    {
+        for(const auto& item : cb_info.items())
+        {
+            rocpd_insert_string(std::string{ *item.second });
+        }
+    }
+
     // TODO:
     // auto pmc_info = m_metadata.get_pmc_info_list();
 };
@@ -386,6 +403,10 @@ rocpd_post_processing::post_process_metadata()
 void
 rocpd_post_processing::rocpd_insert_string(const std::string& str)
 {
+    if(m_rocpd_string_mapping.count(str) > 0)
+    {
+        return;
+    }
     auto primary_key = get_data_processor().insert_string(str.c_str());
     m_rocpd_string_mapping.emplace(str, primary_key);
 }
@@ -395,6 +416,10 @@ rocpd_post_processing::rocpd_insert_thread_id(info::thread&        t_info,
                                               const node_info&     n_info,
                                               const info::process& process_info)
 {
+    if(m_rocpd_thread_mapping.count(t_info.thread_id) > 0)
+    {
+        return;
+    }
     const auto& extended_info = thread_info::get(t_info.thread_id, SequentTID);
     if(extended_info.has_value())
     {

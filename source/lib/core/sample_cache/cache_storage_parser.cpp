@@ -52,8 +52,6 @@ storage_parser::consume_storage()
     entry_type type;
     size_t     sample_size;
 
-    std::map<entry_type, size_t> m_parsed_count;
-
     while(!ifs.eof())
     {
         ifs.read(reinterpret_cast<char*>(&type), sizeof(type));
@@ -73,9 +71,13 @@ storage_parser::consume_storage()
             case entry_type::kernel_dispatch:
             {
                 kernel_dispatch_sample _kernel_dispatch_sample;
+
                 // TODO: Try this
                 // _kernel_dispatch_sample =
-                // *reinterpret_cast<kernel_dispatch_sample*>(sample.data());
+                //     *reinterpret_cast<kernel_dispatch_sample*>(sample.data());
+
+                // std::cout << "parsed agent id " << _kernel_dispatch_sample.agent_id
+                //           << std::endl;
 
                 parse_data(sample.data(), _kernel_dispatch_sample.kernel_id,
                            _kernel_dispatch_sample.dispatch_id,
@@ -92,12 +94,9 @@ storage_parser::consume_storage()
                            _kernel_dispatch_sample.grid_size_y,
                            _kernel_dispatch_sample.grid_size_z,
                            _kernel_dispatch_sample.thread_id,
-                           _kernel_dispatch_sample.category,
                            _kernel_dispatch_sample.event_stack_id,
                            _kernel_dispatch_sample.event_parent_stack_id,
                            _kernel_dispatch_sample.event_correlation_id,
-                           _kernel_dispatch_sample.event_call_stack,
-                           _kernel_dispatch_sample.node_info_id,
                            _kernel_dispatch_sample.agent_id);
 
                 invoke_callbacks(type, _kernel_dispatch_sample);
@@ -149,7 +148,7 @@ storage_parser::consume_storage()
                            _region_sample.kind, _region_sample.operation,
                            _region_sample.stack_id, _region_sample.parent_stack_id,
                            _region_sample.correlation_id, _region_sample.call_stack,
-                           _region_sample.args_str);
+                           _region_sample.args_str, _region_sample.category);
 
                 invoke_callbacks(type, _region_sample);
                 break;
@@ -159,7 +158,7 @@ storage_parser::consume_storage()
     }
 
     ifs.close();
-    // std::filesystem::remove(path);
+    std::filesystem::remove(path);
 }
 
 void

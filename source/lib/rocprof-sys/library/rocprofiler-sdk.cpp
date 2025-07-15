@@ -533,12 +533,9 @@ cache_region(rocprofiler_callback_tracing_record_t* record,
 
 void
 cache_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t* record,
-                      uint32_t thread_id, ROCPROFSYS_CATEGORIES category_enum,
-                      size_t stack_id, size_t parent_stack_id, size_t correlation_id,
-                      const char* call_stack)
+                      uint32_t thread_id, size_t stack_id, size_t parent_stack_id,
+                      size_t correlation_id)
 {
-    auto& n_info = node_info::get_instance();
-
     auto agent_id = rocpd::agent_manager::get_instance()
                         .get_agent_by_handle(record->dispatch_info.agent_id.handle)
                         .global_id;
@@ -557,19 +554,19 @@ cache_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t* recor
         record->dispatch_info.group_segment_size, record->dispatch_info.workgroup_size.x,
         record->dispatch_info.workgroup_size.y, record->dispatch_info.workgroup_size.z,
         record->dispatch_info.grid_size.x, record->dispatch_info.grid_size.y,
-        record->dispatch_info.grid_size.z, thread_id, category_enum, stack_id,
-        parent_stack_id, correlation_id, call_stack, n_info.id, agent_id);
+        record->dispatch_info.grid_size.z, thread_id, stack_id, parent_stack_id,
+        correlation_id, agent_id);
 }
 
 void
 cache_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record,
                   size_t stack_id, size_t parent_stack_id, size_t correlation_id)
 {
-    auto& n_info        = node_info::get_instance();
-    auto& agent_mngr    = rocpd::agent_manager::get_instance();
-    auto  stream_handle = get_stream_id(record).handle;
-    auto  queue_handle  = 0;
-    auto  dst_agent_id =
+    auto&  n_info        = node_info::get_instance();
+    auto&  agent_mngr    = rocpd::agent_manager::get_instance();
+    auto   stream_handle = get_stream_id(record).handle;
+    size_t queue_handle  = 0;
+    auto   dst_agent_id =
         agent_mngr.get_agent_by_handle(record->dst_agent_id.handle).global_id;
     auto src_agent_id =
         agent_mngr.get_agent_by_handle(record->dst_agent_id.handle).global_id;
@@ -589,10 +586,10 @@ cache_memory_allocation(rocprofiler_buffer_tracing_memory_allocation_record_t* r
     auto& agent_mngr = rocpd::agent_manager::get_instance();
     auto& n_info     = node_info::get_instance();
 
-    auto stream_handle = get_stream_id(record).handle;
-    auto queue_handle  = 0;
+    auto   stream_handle = get_stream_id(record).handle;
+    size_t queue_handle  = 0;
 
-    auto agent_id = std::optional<uint64_t>{};
+    size_t agent_id = 0;
     if(record->agent_id.handle != static_cast<uint64_t>(-1))
     {
         agent_id = agent_mngr.get_agent_by_handle(record->agent_id.handle).global_id;
@@ -1217,10 +1214,8 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                                          "] Queue ", _queue_id.handle)
                                         .c_str(),
                                     record->thread_id);
-                    cache_kernel_dispatch(
-                        record, record->thread_id,
-                        category_enum_id<category::rocm_kernel_dispatch>::value, _corr_id,
-                        _parent_stack_id, 0, "{}");
+                    cache_kernel_dispatch(record, record->thread_id, _corr_id,
+                                          _parent_stack_id, 0);
                 }
 
                 if(get_use_timemory())

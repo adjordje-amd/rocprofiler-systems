@@ -46,34 +46,31 @@ struct storage_parsed_type_base
 
 struct kernel_dispatch_sample : storage_parsed_type_base
 {
-    size_t                kernel_id;
-    size_t                dispatch_id;
-    size_t                queue_handle;
-    size_t                stream_handle;
-    size_t                start_timestamp;
-    size_t                end_timestamp;
-    int64_t               private_segment_size;
-    int64_t               group_segment_size;
-    int64_t               workgroup_size_x;
-    int64_t               workgroup_size_y;
-    int64_t               workgroup_size_z;
-    int64_t               grid_size_x;
-    int64_t               grid_size_y;
-    int64_t               grid_size_z;
-    int64_t               thread_id;
-    ROCPROFSYS_CATEGORIES category;
-    size_t                event_stack_id;
-    size_t                event_parent_stack_id;
-    size_t                event_correlation_id;
-    std::string           event_call_stack;
-    size_t                node_info_id;  // not used
-    size_t                agent_id;
+    size_t   kernel_id;
+    size_t   dispatch_id;
+    size_t   queue_handle;
+    size_t   stream_handle;
+    size_t   start_timestamp;
+    size_t   end_timestamp;
+    uint32_t private_segment_size;
+    uint32_t group_segment_size;
+    uint32_t workgroup_size_x;
+    uint32_t workgroup_size_y;
+    uint32_t workgroup_size_z;
+    uint32_t grid_size_x;
+    uint32_t grid_size_y;
+    uint32_t grid_size_z;
+    uint32_t thread_id;
+    size_t   event_stack_id;
+    size_t   event_parent_stack_id;
+    size_t   event_correlation_id;
+    size_t   agent_id;
 };
 
 struct memory_copy_sample : storage_parsed_type_base
 {
     size_t                              node_id;
-    size_t                              process_id;
+    int32_t                             process_id;
     rocprofiler_thread_id_t             thread_id;
     rocprofiler_timestamp_t             start_timestamp;
     rocprofiler_timestamp_t             end_timestamp;
@@ -94,7 +91,7 @@ struct memory_copy_sample : storage_parsed_type_base
 struct memory_allocate_sample : storage_parsed_type_base
 {
     size_t                                    node_id;
-    size_t                                    process_id;
+    int32_t                                   process_id;
     rocprofiler_thread_id_t                   thread_id;
     size_t                                    agent_id;
     rocprofiler_buffer_tracing_kind_t         kind;
@@ -124,6 +121,7 @@ struct region_sample : storage_parsed_type_base
     std::string                         args_str;
     std::string                         category;
 };
+
 using postprocessing_callback = std::function<void(const storage_parsed_type_base&)>;
 class cache_manager;
 class storage_parser
