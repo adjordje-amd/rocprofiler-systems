@@ -120,6 +120,15 @@ rocpd_initialize_smi_tracks()
         static_cast<size_t>(gettid());  // Internal thread ID for amd-smi
 
     // auto thread_idx = rocpd_initialize_thread_info(thread_id);
+    const auto& thread_info = thread_info::get(thread_id, SequentTID);
+
+    sample_cache::get_cache_metadata().add_thread_info(
+        { .parent_process_id = getppid(),
+          .process_id        = getpid(),
+          .thread_id         = thread_id,
+          .start             = static_cast<uint32_t>(thread_info->get_start()),
+          .end               = static_cast<uint32_t>(thread_info->get_stop()),
+          .extdata           = "{}" });
 
     // data_processor.insert_track(trait::name<category::amd_smi_mm_busy>::value,
     // n_info.id,
@@ -732,8 +741,9 @@ data::post_process(uint32_t _dev_id)
 
         if(get_use_rocpd())
         {
-            rocpd_process_smi_pmc_events(_dev_id, _settings, _ts, _mmbusy, _temp, _power,
-                                         _usage);
+            // rocpd_process_smi_pmc_events(_dev_id, _settings, _ts, _mmbusy, _temp,
+            // _power,
+            //  _usage);
         }
     }
 }

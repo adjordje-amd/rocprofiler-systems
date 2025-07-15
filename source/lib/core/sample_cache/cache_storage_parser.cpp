@@ -51,7 +51,7 @@ storage_parser::consume_storage()
         throw std::runtime_error(ss.str());
     }
 
-    struct sample_header
+    struct __attribute__((packed)) sample_header
     {
         entry_type type;
         size_t     sample_size;
