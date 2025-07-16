@@ -159,7 +159,8 @@ void
 rocpd_process_cpu_usage_events(const uint32_t device_id, int bytes)
 {
     auto& data_processor = get_data_processor();
-    auto  event_id       = data_processor.insert_event(
+    // move to cache
+    auto event_id = data_processor.insert_event(
         category_enum_id<category::comm_data>::value, 0, 0, 0);
 
     auto& agents = rocpd::agent_manager::get_instance();

@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include "core/sample_cache/sample_type.hpp"
 #define TIMEMORY_KOKKOSP_POSTFIX ROCPROFSYS_PUBLIC_API
 
 #include "api.hpp"
@@ -182,18 +183,23 @@ void
 rocpd_process_kokos_event(const char* name, const char* event_type, const char* target,
                           uint64_t timestamp_ns)
 {
-    auto& data_processor = get_data_processor();
-    auto  event_metadata = rocpd::json::create();
+    auto event_metadata = rocpd::json::create();
 
     event_metadata->set("name", name);
     event_metadata->set("event_type", event_type);
     event_metadata->set("target", target);
 
-    auto event_id = data_processor.insert_event(
-        rocprofsys::category_enum_id<category::kokkos>::value, 0, 0, 0, "{}", "{}",
-        event_metadata->to_string().c_str());
-    data_processor.insert_sample(rocprofsys::trait::name<category::kokkos>::value,
-                                 timestamp_ns, event_id, "{}");
+    const size_t stack_id        = 0;
+    const size_t parent_stack_id = 0;
+    const size_t correlation_id  = 0;
+    const char*  call_stack      = "{}";
+    const char*  line_info       = "{}";
+
+    rocprofsys::sample_cache::get_cache_storage().store(
+        rocprofsys::sample_cache::entry_type::in_time_sample,
+        rocprofsys::trait::name<category::kokkos>::value, timestamp_ns,
+        event_metadata->to_string().c_str(), stack_id, parent_stack_id, correlation_id,
+        call_stack, line_info);
 }
 
 }  // namespace
@@ -617,10 +623,9 @@ extern "C"
 
         if(rocprofsys::config::get_use_rocpd())
         {
-            // TODO: move to cache
-            // rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
-            //                           "[dual_view_sync]", (is_device) ? "device" :
-            //                           "host", timestamp);
+            rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
+                                      "[dual_view_sync]", (is_device) ? "device" : "host",
+                                      timestamp);
         }
     }
 
@@ -647,10 +652,9 @@ extern "C"
 
         if(rocprofsys::config::get_use_rocpd())
         {
-            // TODO: move to cache
-            // rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
-            //                           "[dual_view_modify]",
-            //                           (is_device) ? "device" : "host", timestamp);
+            rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
+                                      "[dual_view_modify]",
+                                      (is_device) ? "device" : "host", timestamp);
         }
     }
 

@@ -30,6 +30,7 @@
 #include "rocprofiler-systems/categories.h"
 #include "sample_cache/cache_storage_parser.hpp"
 #include "sample_cache/metadata_storage.hpp"
+#include "sample_cache/sample_type.hpp"
 #include <stdexcept>
 #include <string>
 #include <timemory/utility/demangle.hpp>
@@ -310,6 +311,21 @@ rocpd_post_processing::get_region_callback() const
                                      name_primary_key, event_primary_key);
     };
 }
+postprocessing_callback
+rocpd_post_processing::get_in_time_sample_callback() const
+{
+    return [&](const storage_parsed_type_base& parsed) {
+        auto  _its              = static_cast<const struct in_time_sample&>(parsed);
+        auto& data_processor    = get_data_processor();
+        auto  track_primary_key = data_processor.insert_string(_its.track_name.c_str());
+
+        auto event_id = data_processor.insert_event(
+            track_primary_key, _its.stack_id, _its.parent_stack_id, _its.correlation_id,
+            _its.call_stack.c_str(), _its.line_info.c_str(), _its.event_metadata.c_str());
+        data_processor.insert_sample(_its.track_name.c_str(), _its.timestamp_ns, event_id,
+                                     "{}");
+    };
+}
 
 rocpd_post_processing::rocpd_post_processing(metadata& md)
 : m_metadata(md)
@@ -324,6 +340,8 @@ rocpd_post_processing::register_parser_callback(storage_parser& parser)
     parser.register_type_callback(entry_type::memory_copy, get_memory_copy_callback());
     parser.register_type_callback(entry_type::memory_alloc,
                                   get_memory_allocate_callback());
+    parser.register_type_callback(entry_type::in_time_sample,
+                                  get_in_time_sample_callback());
 };
 
 void

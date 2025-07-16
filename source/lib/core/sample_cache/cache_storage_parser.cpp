@@ -116,6 +116,16 @@ storage_parser::consume_storage()
                 invoke_callbacks(header.type, _region_sample);
                 break;
             }
+            case entry_type::in_time_sample:
+            {
+                in_time_sample _in_time_sample;
+                parse_data(sample.data(), _in_time_sample.track_name,
+                           _in_time_sample.timestamp_ns, _in_time_sample.event_metadata,
+                           _in_time_sample.stack_id, _in_time_sample.parent_stack_id,
+                           _in_time_sample.correlation_id, _in_time_sample.call_stack,
+                           _in_time_sample.line_info);
+                invoke_callbacks(header.type, _in_time_sample);
+            }
             default: break;
         }
     }

@@ -75,9 +75,21 @@ struct region_sample : storage_parsed_type_base
     std::string                           category;
 };
 
+struct in_time_sample : storage_parsed_type_base
+{
+    std::string track_name;
+    size_t      timestamp_ns;
+    std::string event_metadata;
+    size_t      stack_id;
+    size_t      parent_stack_id;
+    size_t      correlation_id;
+    std::string call_stack;
+    std::string line_info;
+};
+
 enum class entry_type : uint32_t
 {
-    sample,
+    in_time_sample,
     region,
     kernel_dispatch,
     memory_copy,
