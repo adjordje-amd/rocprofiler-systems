@@ -124,9 +124,10 @@ public:
     void insert_track(const char* track_name, size_t node_id, size_t process_id,
                       size_t thread_id, const char* extdata = "{}");
 
-    size_t insert_event(size_t category_id, size_t stack_id, size_t parent_stack_id,
-                        size_t correlation_id, const char* call_stack = "{}",
-                        const char* line_info = "{}", const char* extdata = "{}");
+    size_t insert_event(size_t string_primary_key, size_t stack_id,
+                        size_t parent_stack_id, size_t correlation_id,
+                        const char* call_stack = "{}", const char* line_info = "{}",
+                        const char* extdata = "{}");
 
     void insert_pmc_event(size_t event_id, size_t agent_id, const char* pmc_descriptor,
                           double value, const char* extdata = "{}");

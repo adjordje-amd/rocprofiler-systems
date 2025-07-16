@@ -241,9 +241,10 @@ data_processor::insert_sample(const char* track, uint64_t timestamp, size_t even
 }
 
 size_t
-data_processor::insert_event(size_t category_id, size_t stack_id, size_t parent_stack_id,
-                             size_t correlation_id, const char* call_stack,
-                             const char* line_info, const char* extdata)
+data_processor::insert_event(size_t string_primary_key, size_t stack_id,
+                             size_t parent_stack_id, size_t correlation_id,
+                             const char* call_stack, const char* line_info,
+                             const char* extdata)
 {
     std::lock_guard<std::mutex> lock(_data_mutex);
     // auto                        it = _category_map.find(category_id);
@@ -259,7 +260,7 @@ data_processor::insert_event(size_t category_id, size_t stack_id, size_t parent_
     // category_id,
     //                    it->second);
 
-    _insert_event_statement(_upid.c_str(), category_id, stack_id, parent_stack_id,
+    _insert_event_statement(_upid.c_str(), string_primary_key, stack_id, parent_stack_id,
                             correlation_id, call_stack, line_info, extdata);
     return data_storage::database::get_instance().get_last_insert_id();
 }
