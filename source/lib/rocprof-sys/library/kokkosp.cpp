@@ -32,6 +32,7 @@
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
 #include "core/rocpd/node_info.hpp"
+#include "core/sample_cache/cache_manager.hpp"
 #include "library/components/category_region.hpp"
 #include "library/runtime.hpp"
 
@@ -165,19 +166,16 @@ get_data_processor()
 void
 rocpd_initialize_kokkos_category()
 {
-    get_data_processor().insert_category(
-        rocprofsys::category_enum_id<category::kokkos>::value,
+    rocprofsys::sample_cache::get_cache_metadata().add_string(
         rocprofsys::trait::name<category::kokkos>::value);
 }
 
 void
 rocpd_initialize_kokos_track()
 {
-    auto& data_processor = get_data_processor();
-    auto& n_info         = rocprofsys::node_info::get_instance();
-
-    data_processor.insert_track(rocprofsys::trait::name<category::kokkos>::value,
-                                n_info.id, getpid(), gettid());
+    size_t thread_id = gettid();
+    rocprofsys::sample_cache::get_cache_metadata().add_track(
+        { rocprofsys::trait::name<category::kokkos>::value, thread_id, "{}" });
 }
 
 void
@@ -308,8 +306,8 @@ extern "C"
 
             if(rocprofsys::get_use_rocpd())
             {
-                // rocpd_initialize_kokkos_category();
-                // rocpd_initialize_kokos_track();
+                rocpd_initialize_kokkos_category();
+                rocpd_initialize_kokos_track();
             }
         }
 
@@ -619,6 +617,7 @@ extern "C"
 
         if(rocprofsys::config::get_use_rocpd())
         {
+            // TODO: move to cache
             // rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
             //                           "[dual_view_sync]", (is_device) ? "device" :
             //                           "host", timestamp);
@@ -648,6 +647,7 @@ extern "C"
 
         if(rocprofsys::config::get_use_rocpd())
         {
+            // TODO: move to cache
             // rocpd_process_kokos_event(JOIN(" ", _kp_prefix, label).c_str(),
             //                           "[dual_view_modify]",
             //                           (is_device) ? "device" : "host", timestamp);
