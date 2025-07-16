@@ -24,6 +24,7 @@
 #include "core/rocpd/data_storage/database.hpp"
 #include "core/rocpd/data_storage/queries/table_insert_query.hpp"
 #include "debug.hpp"
+#include <stdexcept>
 
 namespace rocprofsys
 {
@@ -659,6 +660,18 @@ data_processor::insert_thread_info(size_t node_id, size_t parent_process_id,
     auto thread_idx = data_storage::database::get_instance().get_last_insert_id();
     _thread_id_map.emplace(thread_id, thread_idx);
     return thread_idx;
+}
+
+size_t
+data_processor::map_thread_id_to_primary_key(size_t thread_id)
+{
+    auto it = _thread_id_map.find(thread_id);
+
+    if(it == _thread_id_map.end())
+    {
+        throw std::invalid_argument("Given thread id don't exist");
+    }
+    return _thread_id_map.at(thread_id);
 }
 
 void

@@ -42,18 +42,15 @@ public:
 private:
     using primary_key = size_t;
 
-    void rocpd_insert_string(const std::string& str);
-    void rocpd_insert_thread_id(info::thread& t_info, const node_info& n_info,
-                                const info::process& process_info);
+    inline void rocpd_insert_thread_id(info::thread& t_info, const node_info& n_info,
+                                       const info::process& process_info) const;
 
     postprocessing_callback get_kernel_dispatch_callback() const;
     postprocessing_callback get_memory_copy_callback() const;
     postprocessing_callback get_memory_allocate_callback() const;
     postprocessing_callback get_region_callback() const;
 
-    metadata&                                    m_metadata;
-    std::map<size_t, primary_key>                m_rocpd_thread_mapping;
-    std::unordered_map<std::string, primary_key> m_rocpd_string_mapping;
+    metadata& m_metadata;
 };
 
 }  // namespace sample_cache

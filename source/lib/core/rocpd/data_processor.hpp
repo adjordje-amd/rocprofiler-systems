@@ -199,6 +199,8 @@ public:
                              size_t stream_id, size_t event_id,
                              const char* extdata = "{}");
 
+    size_t map_thread_id_to_primary_key(size_t thread_id);
+
     void flush();
 
 private:

@@ -74,10 +74,11 @@ rocpd_post_processing::get_kernel_dispatch_callback() const
             agent_manager.get_agent_by_handle(_kds.record.dispatch_info.agent_id.handle)
                 .base_id;
 
-        auto thread_primary_key = m_rocpd_thread_mapping.at(_kds.record.thread_id);
+        auto thread_primary_key =
+            data_processor.map_thread_id_to_primary_key(_kds.record.thread_id);
 
-        auto category_id =
-            m_rocpd_string_mapping.at(trait::name<category::rocm_kernel_dispatch>::value);
+        auto category_id = data_processor.insert_string(
+            trait::name<category::rocm_kernel_dispatch>::value);
 
         auto kernel_symbol =
             m_metadata.get_kernel_symbol(_kds.record.dispatch_info.kernel_id);
@@ -88,8 +89,8 @@ rocpd_post_processing::get_kernel_dispatch_callback() const
             return;
         }
 
-        auto region_name_primary_key =
-            m_rocpd_string_mapping.at(tim::demangle(kernel_symbol->kernel_name));
+        auto region_name_primary_key = data_processor.insert_string(
+            tim::demangle(kernel_symbol->kernel_name).c_str());
 
         auto stack_id        = _kds.record.correlation_id.internal;
         auto parent_stack_id = get_parent_stack_id(_kds.record.correlation_id);
@@ -126,12 +127,13 @@ rocpd_post_processing::get_memory_copy_callback() const
 
         auto _name            = std::string{ m_metadata.get_buffer_name_info().at(
             _mcs.record.kind, _mcs.record.operation) };
-        auto name_primary_key = m_rocpd_string_mapping.at(_name);
+        auto name_primary_key = data_processor.insert_string(_name.c_str());
 
         auto category_primary_key =
-            m_rocpd_string_mapping.at(trait::name<category::rocm_memory_copy>::value);
+            data_processor.insert_string(trait::name<category::rocm_memory_copy>::value);
 
-        auto thread_primary_key = m_rocpd_thread_mapping.at(_mcs.record.thread_id);
+        auto thread_primary_key =
+            data_processor.map_thread_id_to_primary_key(_mcs.record.thread_id);
 
         auto dst_agent_primary_key =
             agent_manager.get_agent_by_handle(_mcs.record.dst_agent_id.handle).base_id;
@@ -204,10 +206,11 @@ rocpd_post_processing::get_memory_allocate_callback() const
         auto& agent_manager  = rocpd::agent_manager::get_instance();
         auto& n_info         = node_info::get_instance();
         auto  process        = m_metadata.get_process_info();
-        auto  thread_primary_key = m_rocpd_thread_mapping.at(_mas.record.thread_id);
-        auto  agent_primary_key =
+        auto  thread_primary_key =
+            data_processor.map_thread_id_to_primary_key(_mas.record.thread_id);
+        auto agent_primary_key =
             agent_manager.get_agent_by_handle(_mas.record.agent_id.handle).base_id;
-        auto _name =
+        const auto* _name =
             m_metadata.get_buffer_name_info().at(_mas.record.kind, _mas.record.operation);
 
         auto [type, level] = memtype_to_db(_name);
@@ -217,8 +220,8 @@ rocpd_post_processing::get_memory_allocate_callback() const
         auto correlation_id  = 0;
         auto queue_id        = 0;
 
-        auto category_primary_key =
-            m_rocpd_string_mapping.at(trait::name<category::rocm_memory_allocate>::value);
+        auto category_primary_key = data_processor.insert_string(
+            trait::name<category::rocm_memory_allocate>::value);
 
         auto event_primary_key = data_processor.insert_event(
             category_primary_key, stack_id, parent_stack_id, correlation_id);
@@ -272,18 +275,19 @@ rocpd_post_processing::get_region_callback() const
     };
 
     return [&](const storage_parsed_type_base& parsed) {
-        auto  _rs                = static_cast<const struct region_sample&>(parsed);
-        auto& data_processor     = get_data_processor();
-        auto& n_info             = node_info::get_instance();
-        auto  process            = m_metadata.get_process_info();
-        auto  thread_primary_key = m_rocpd_thread_mapping.at(_rs.record.thread_id);
+        auto  _rs            = static_cast<const struct region_sample&>(parsed);
+        auto& data_processor = get_data_processor();
+        auto& n_info         = node_info::get_instance();
+        auto  process        = m_metadata.get_process_info();
+        auto  thread_primary_key =
+            data_processor.map_thread_id_to_primary_key(_rs.record.thread_id);
 
         auto callback_tracing_info = m_metadata.get_callback_tracing_info();
         auto _name            = std::string{ callback_tracing_info.at(_rs.record.kind,
                                                                       _rs.record.operation) };
-        auto name_primary_key = m_rocpd_string_mapping.at(_name);
+        auto name_primary_key = data_processor.insert_string(_name.c_str());
 
-        auto category_primary_key = m_rocpd_string_mapping.at(_rs.category);
+        auto category_primary_key = data_processor.insert_string(_rs.category.c_str());
 
         size_t stack_id        = _rs.record.correlation_id.internal;
         size_t parent_stack_id = get_parent_stack_id(_rs.record.correlation_id);
@@ -353,7 +357,7 @@ rocpd_post_processing::post_process_metadata()
     auto _string_list = m_metadata.get_string_list();
     for(auto& _string : _string_list)
     {
-        rocpd_insert_string(_string);
+        data_processor.insert_string(_string.c_str());
     }
 
     auto _thread_info_list = m_metadata.get_thread_info_list();
@@ -365,8 +369,9 @@ rocpd_post_processing::post_process_metadata()
     auto _track_info_list = m_metadata.get_track_info_list();
     for(auto& track : _track_info_list)
     {
-        data_processor.insert_track(track.track_name.c_str(), n_info.id, process_info.pid,
-                                    m_rocpd_thread_mapping.at(track.thread_id));
+        data_processor.insert_track(
+            track.track_name.c_str(), n_info.id, process_info.pid,
+            data_processor.map_thread_id_to_primary_key(track.thread_id));
     }
 
     auto _code_object_list = m_metadata.get_code_object_list();
@@ -399,7 +404,7 @@ rocpd_post_processing::post_process_metadata()
             kernel_symbol.private_segment_size, kernel_symbol.sgpr_count,
             kernel_symbol.arch_vgpr_count, kernel_symbol.accum_vgpr_count);
 
-        rocpd_insert_string(kernel_name);
+        data_processor.insert_string(kernel_name.c_str());
     }
 
     auto _queue_list = m_metadata.get_queue_list();
@@ -425,7 +430,7 @@ rocpd_post_processing::post_process_metadata()
     {
         for(const auto& item : buffer_info.items())
         {
-            rocpd_insert_string(std::string{ *item.second });
+            data_processor.insert_string(*item.second);
         }
     }
 
@@ -434,34 +439,31 @@ rocpd_post_processing::post_process_metadata()
     {
         for(const auto& item : cb_info.items())
         {
-            rocpd_insert_string(std::string{ *item.second });
+            data_processor.insert_string(*item.second);
         }
     }
 
-    // TODO:
-    // auto pmc_info = m_metadata.get_pmc_info_list();
+    auto pmc_info_list = m_metadata.get_pmc_info_list();
+    for(const auto& pmc_info : pmc_info_list)
+    {
+        const auto agent_primary_key =
+            agent_mngr.get_agent_by_handle(pmc_info.agent_handle).base_id;
+
+        data_processor.insert_pmc_description(
+            n_info.id, process_info.pid, agent_primary_key, pmc_info.target_arch.c_str(),
+            pmc_info.event_code, pmc_info.instance_id, pmc_info.name.c_str(),
+            pmc_info.symbol.c_str(), pmc_info.description.c_str(),
+            pmc_info.long_description.c_str(), pmc_info.component.c_str(),
+            pmc_info.units.c_str(), pmc_info.value_type.c_str(), pmc_info.block.c_str(),
+            pmc_info.expression.c_str(), pmc_info.is_constant, pmc_info.is_derived);
+    }
 };
 
-void
-rocpd_post_processing::rocpd_insert_string(const std::string& str)
-{
-    if(m_rocpd_string_mapping.count(str) > 0)
-    {
-        return;
-    }
-    auto primary_key = get_data_processor().insert_string(str.c_str());
-    m_rocpd_string_mapping.emplace(str, primary_key);
-}
-
-void
+inline void
 rocpd_post_processing::rocpd_insert_thread_id(info::thread&        t_info,
                                               const node_info&     n_info,
-                                              const info::process& process_info)
+                                              const info::process& process_info) const
 {
-    if(m_rocpd_thread_mapping.count(t_info.thread_id) > 0)
-    {
-        return;
-    }
     const auto& extended_info = thread_info::get(t_info.thread_id, SequentTID);
     if(extended_info.has_value())
     {
@@ -471,11 +473,9 @@ rocpd_post_processing::rocpd_insert_thread_id(info::thread&        t_info,
 
     std::stringstream ss;
     ss << "Thread " << t_info.thread_id;
-    auto primary_key = get_data_processor().insert_thread_info(
-        n_info.id, process_info.ppid, process_info.pid, t_info.thread_id,
-        ss.str().c_str(), t_info.start, t_info.end);
-
-    m_rocpd_thread_mapping.emplace(t_info.thread_id, primary_key);
+    get_data_processor().insert_thread_info(n_info.id, process_info.ppid,
+                                            process_info.pid, t_info.thread_id,
+                                            ss.str().c_str(), t_info.start, t_info.end);
 }
 
 }  // namespace sample_cache
