@@ -107,13 +107,13 @@ rocpd_initialize_thread_info(uint64_t tid)
 }
 
 void
-rocpd_initialize_category()
+metadata_initialize_category()
 {
     sample_cache::get_cache_metadata().add_string(trait::name<category::amd_smi>::value);
 }
 
 void
-rocpd_initialize_smi_tracks()
+metadata_initialize_smi_tracks()
 {
     const auto thread_id =
         static_cast<size_t>(gettid());  // Internal thread ID for amd-smi
@@ -147,7 +147,7 @@ rocpd_initialize_smi_tracks()
 };
 
 void
-rocpd_initialize_smi_pmc(size_t gpu_id)
+metadata_initialize_smi_pmc(size_t gpu_id)
 {
     // TODO: Find the proper values for a following definitions
     size_t      EVENT_CODE       = 0;
@@ -434,16 +434,12 @@ config()
     for(auto itr : data::device_list)
         data::get_initial().at(itr).sample(itr);
 
-    if(get_use_rocpd())
-    {
-        rocpd_initialize_category();
-        rocpd_initialize_smi_tracks();
+    metadata_initialize_category();
+    metadata_initialize_smi_tracks();
 
-        // Init PMC INFO
-        for(const auto& _dev_id : data::device_list)
-        {
-            rocpd_initialize_smi_pmc(_dev_id);
-        }
+    for(const auto& _dev_id : data::device_list)
+    {
+        metadata_initialize_smi_pmc(_dev_id);
     }
 }
 

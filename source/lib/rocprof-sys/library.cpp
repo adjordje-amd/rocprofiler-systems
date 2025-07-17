@@ -324,9 +324,8 @@ read_command_line(pid_t _pid)
     return _cmdline;
 }
 
-// TODO: Rename
 void
-rocprofsys_preinit_rocpd()
+rocprofsys_preinit_cache()
 {
     auto cmd_line = read_command_line(getpid());
 
@@ -502,7 +501,7 @@ rocprofsys_init_tooling_hidden(void)
     auto _dtor = scope::destructor{ []() {
         // if set to finalized, don't continue
         if(get_state() > State::Active) return;
-        if(get_use_rocpd()) rocprofsys_preinit_rocpd();
+        rocprofsys_preinit_cache();
 
         if(get_use_process_sampling())
         {
@@ -746,6 +745,11 @@ rocprofsys_finalize_hidden(void)
 #endif
         rocprofsys::sample_cache::cache_manager::get_instance().shutdown();
         rocprofsys::sample_cache::cache_manager::get_instance().post_process();
+
+        if(get_use_rocpd())
+        {
+            rocpd::data_processor::get_instance().flush();
+        }
 
         set_state(State::Finalized);
         std::quick_exit(EXIT_SUCCESS);

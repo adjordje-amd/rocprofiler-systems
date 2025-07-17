@@ -83,7 +83,7 @@ write_perfetto_counter_track(uint64_t _val)
 namespace
 {
 void
-rocpd_initialize_comm_data_categories()
+metadata_initialize_comm_data_categories()
 {
     static bool _is_initialized = false;
     if(_is_initialized) return;
@@ -97,7 +97,7 @@ rocpd_initialize_comm_data_categories()
 
 template <typename Track>
 void
-rocpd_initialize_track()
+metadata_initialize_track()
 {
     auto _init_track = [&](const char* label) {
         sample_cache::get_cache_metadata().add_track(
@@ -109,7 +109,7 @@ rocpd_initialize_track()
 }
 
 void
-rocpd_initialize_comm_data_pmc()
+metadata_initialize_comm_data_pmc()
 {
     // find the proper values for a following definitions
     [[maybe_unused]] size_t                EVENT_CODE       = 0;
@@ -142,7 +142,7 @@ rocpd_initialize_comm_data_pmc()
 
 template <typename Track>
 void
-rocpd_process_cpu_usage_events(const uint32_t device_id, int bytes)
+cache_cpu_usage_events(const uint32_t device_id, int bytes)
 {
     auto& agents = rocpd::agent_manager::get_instance();
     auto  agent  = agents.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU);
@@ -176,14 +176,13 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, int bytes)
 void
 comm_data::start()
 {
-    if(get_use_rocpd())
     {
-        rocpd_initialize_comm_data_categories();
-        rocpd_initialize_comm_data_pmc();
+        metadata_initialize_comm_data_categories();
+        metadata_initialize_comm_data_pmc();
 
 #if defined(ROCPROFSYS_USE_MPI)
-        rocpd_initialize_track<mpi_send>();
-        rocpd_initialize_track<mpi_recv>();
+        metadata_initialize_track<mpi_send>();
+        metadata_initialize_track<mpi_recv>();
 #endif
     }
 }
@@ -230,9 +229,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int cou
 
     write_perfetto_counter_track<mpi_send>(count * _size);
 
-    if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+        cache_cpu_usage_events<mpi_send>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -257,9 +255,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, void*, int count,
 
     if(get_use_perfetto()) write_perfetto_counter_track<mpi_recv>(count * _size);
 
-    if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
+        cache_cpu_usage_events<mpi_recv>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -284,9 +281,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int cou
 
     if(get_use_perfetto()) write_perfetto_counter_track<mpi_send>(count * _size);
 
-    if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+        cache_cpu_usage_events<mpi_send>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -311,9 +307,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, void*, int count,
 
     if(get_use_perfetto()) write_perfetto_counter_track<mpi_recv>(count * _size);
 
-    if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
+        cache_cpu_usage_events<mpi_recv>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -338,9 +333,8 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, void*, int count,
 
     if(get_use_perfetto()) write_perfetto_counter_track<mpi_send>(count * _size);
 
-    if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+        cache_cpu_usage_events<mpi_send>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -366,10 +360,9 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, void*, 
         write_perfetto_counter_track<mpi_send>(count * _size);
     }
 
-    if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_recv>(0, count * _size);
-        rocpd_process_cpu_usage_events<mpi_send>(0, count * _size);
+        cache_cpu_usage_events<mpi_recv>(0, count * _size);
+        cache_cpu_usage_events<mpi_send>(0, count * _size);
     }
 
     if(rocprofsys::get_use_timemory()) add(_data, count * _size);
@@ -391,10 +384,9 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int sen
         write_perfetto_counter_track<mpi_recv>(recvcount * _recv_size);
     }
 
-    if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
-        rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
+        cache_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
+        cache_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -442,10 +434,9 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int sen
         write_perfetto_counter_track<mpi_recv>(recvcount * _recv_size);
     }
 
-    if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
-        rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
+        cache_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
+        cache_cpu_usage_events<mpi_recv>(0, recvcount * _send_size);
     }
 
     if(rocprofsys::get_use_timemory())
@@ -476,10 +467,9 @@ comm_data::audit(const gotcha_data& _data, audit::incoming, const void*, int sen
         write_perfetto_counter_track<mpi_recv>(recvcount * _recv_size);
     }
 
-    if(get_use_rocpd())
     {
-        rocpd_process_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
-        rocpd_process_cpu_usage_events<mpi_recv>(0, recvcount * _recv_size);
+        cache_cpu_usage_events<mpi_send>(0, sendcount * _send_size);
+        cache_cpu_usage_events<mpi_recv>(0, recvcount * _recv_size);
     }
 
     if(rocprofsys::get_use_timemory())

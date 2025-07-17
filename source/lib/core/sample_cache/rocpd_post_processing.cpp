@@ -22,6 +22,7 @@
 
 #include "sample_cache/rocpd_post_processing.hpp"
 #include "common.hpp"
+#include "config.hpp"
 #include "library/rocprofiler-sdk/fwd.hpp"
 #include "library/thread_info.hpp"
 #include "rocpd/agent_manager.hpp"
@@ -356,6 +357,10 @@ rocpd_post_processing::rocpd_post_processing(metadata& md)
 void
 rocpd_post_processing::register_parser_callback(storage_parser& parser)
 {
+    if(!get_use_rocpd())
+    {
+        return;
+    }
     parser.register_type_callback(entry_type::region, get_region_callback());
     parser.register_type_callback(entry_type::kernel_dispatch,
                                   get_kernel_dispatch_callback());
@@ -371,6 +376,10 @@ rocpd_post_processing::register_parser_callback(storage_parser& parser)
 void
 rocpd_post_processing::post_process_metadata()
 {
+    if(!get_use_rocpd())
+    {
+        return;
+    }
     auto& data_processor = get_data_processor();
     auto& agent_mngr     = rocpd::agent_manager::get_instance();
     auto  n_info         = node_info::get_instance();

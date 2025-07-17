@@ -96,20 +96,20 @@ get_data_processor()
 }
 
 void
-rocpd_initialize_cpu_freq_category()
+metadata_initialize_cpu_freq_category()
 {
     sample_cache::get_cache_metadata().add_string(trait::name<category::cpu_freq>::value);
 }
 
 void
-rocpd_initialize_thread_info(size_t tid)
+metadata_initialize_thread_info(size_t tid)
 {
     sample_cache::get_cache_metadata().add_thread_info(
         { getppid(), getpid(), tid, 0, 0, "{}" });
 }
 
 void
-rocpd_initialize_cpu_freq_tracks(size_t tid)
+metadata_initialize_cpu_freq_tracks(size_t tid)
 {
     do_for_enabled_cpus([&](size_t cpu_id) {
         sample_cache::get_cache_metadata().add_track(
@@ -118,7 +118,7 @@ rocpd_initialize_cpu_freq_tracks(size_t tid)
 }
 
 void
-rocpd_initialize_cpu_usage_tracks(size_t tid)
+metadata_initialize_cpu_usage_tracks(size_t tid)
 {
     sample_cache::get_cache_metadata().add_track(
         { trait::name<category::process_page>::value, tid, "{}" });
@@ -137,7 +137,7 @@ rocpd_initialize_cpu_usage_tracks(size_t tid)
 }
 
 void
-rocpd_initialize_cpu_freq_pmc(size_t dev_id)
+metadata_initialize_cpu_freq_pmc(size_t dev_id)
 {
     // TODO: Find the proper values for a following definitions
     size_t      EVENT_CODE       = 0;
@@ -265,25 +265,22 @@ setup()
                       category::process_kernel_mode_time>{});
     }
 
-    if(get_use_rocpd())
-    {
-        rocpd_initialize_cpu_freq_category();
-        auto thread_id = gettid();
-        rocpd_initialize_thread_info(thread_id);
-        rocpd_initialize_cpu_usage_tracks(thread_id);
-        rocpd_initialize_cpu_freq_tracks(thread_id);
+    metadata_initialize_cpu_freq_category();
+    auto thread_id = gettid();
+    metadata_initialize_thread_info(thread_id);
+    metadata_initialize_cpu_usage_tracks(thread_id);
+    metadata_initialize_cpu_freq_tracks(thread_id);
 
-        // `get_enabled_cpus()` returns the number of cores enabled for monitoring but
-        // the actuall device_id is 0, since there is a single device avaliable. And
-        // the agents seems to be assigned per device basis not per core.
-        // TODO: `get_enabled_cpus()` should be fixed in the future to align with GPU
-        // implementation.
-        auto cpu_agents = rocpd::agent_manager::get_instance().get_agents_by_type(
-            ROCPROFILER_AGENT_TYPE_CPU);
-        for(auto& agent : cpu_agents)
-        {
-            rocpd_initialize_cpu_freq_pmc(agent->device_id);
-        }
+    // `get_enabled_cpus()` returns the number of cores enabled for monitoring but
+    // the actuall device_id is 0, since there is a single device avaliable. And
+    // the agents seems to be assigned per device basis not per core.
+    // TODO: `get_enabled_cpus()` should be fixed in the future to align with GPU
+    // implementation.
+    auto cpu_agents = rocpd::agent_manager::get_instance().get_agents_by_type(
+        ROCPROFILER_AGENT_TYPE_CPU);
+    for(auto& agent : cpu_agents)
+    {
+        metadata_initialize_cpu_freq_pmc(agent->device_id);
     }
 }
 

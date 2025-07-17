@@ -247,18 +247,6 @@ data_processor::insert_event(size_t string_primary_key, size_t stack_id,
                              const char* extdata)
 {
     std::lock_guard<std::mutex> lock(_data_mutex);
-    // auto                        it = _category_map.find(category_id);
-    // if(it == _category_map.end())
-    // {
-    //     std::ostringstream oss;
-    //     oss << "Insert event failed! Error: Unknown category id: " << category_id
-    //         << " for UPID: " << _upid;
-    //     throw std::runtime_error(oss.str());
-    // }
-
-    // ROCPROFSYS_VERBOSE(3, "Insert event category id: %ld, string id: %ld\n",
-    // category_id,
-    //                    it->second);
 
     _insert_event_statement(_upid.c_str(), string_primary_key, stack_id, parent_stack_id,
                             correlation_id, call_stack, line_info, extdata);
