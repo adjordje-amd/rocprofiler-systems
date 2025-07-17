@@ -88,6 +88,7 @@ cache_storage::cache_storage()
 
         execute_flush(ofs, true);
         ofs.close();
+        m_exit_finished = true;
         m_exit_condition.notify_one();
     });
 }
@@ -99,7 +100,7 @@ cache_storage::shutdown()
     m_shutdown_condition.notify_all();
     std::mutex       exit_mutex;
     std::unique_lock exit_lock{ exit_mutex };
-    m_exit_condition.wait(exit_lock);
+    m_exit_condition.wait(exit_lock, [&]() { return m_exit_finished; });
 }
 
 void
