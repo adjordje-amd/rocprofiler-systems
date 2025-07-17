@@ -326,6 +326,28 @@ rocpd_post_processing::get_in_time_sample_callback() const
                                      "{}");
     };
 }
+postprocessing_callback
+rocpd_post_processing::get_pmc_event_with_sample_callback() const
+{
+    return [&](const storage_parsed_type_base& parsed) {
+        auto  _pmc           = static_cast<const struct pmc_event_with_sample&>(parsed);
+        auto& data_processor = get_data_processor();
+        auto  track_primary_key = data_processor.insert_string(_pmc.track_name.c_str());
+
+        auto& agent_manager = rocpd::agent_manager::get_instance();
+        auto  agent_primary_key =
+            agent_manager.get_agent_by_handle(_pmc.agent_handle).base_id;
+
+        auto event_id = data_processor.insert_event(
+            track_primary_key, _pmc.stack_id, _pmc.parent_stack_id, _pmc.correlation_id,
+            _pmc.call_stack.c_str(), _pmc.line_info.c_str(), _pmc.event_metadata.c_str());
+        data_processor.insert_sample(_pmc.track_name.c_str(), _pmc.timestamp_ns, event_id,
+                                     "{}");
+
+        data_processor.insert_pmc_event(event_id, agent_primary_key,
+                                        _pmc.pmc_info_name.c_str(), _pmc.value);
+    };
+}
 
 rocpd_post_processing::rocpd_post_processing(metadata& md)
 : m_metadata(md)
@@ -342,6 +364,8 @@ rocpd_post_processing::register_parser_callback(storage_parser& parser)
                                   get_memory_allocate_callback());
     parser.register_type_callback(entry_type::in_time_sample,
                                   get_in_time_sample_callback());
+    parser.register_type_callback(entry_type::pmc_event_with_sample,
+                                  get_pmc_event_with_sample_callback());
 };
 
 void

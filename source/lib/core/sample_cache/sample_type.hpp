@@ -87,14 +87,22 @@ struct in_time_sample : storage_parsed_type_base
     std::string line_info;
 };
 
+struct pmc_event_with_sample : in_time_sample
+{
+    size_t      agent_handle;
+    std::string pmc_info_name;
+    size_t      value;
+};
+
 enum class entry_type : uint32_t
 {
-    in_time_sample,
-    region,
-    kernel_dispatch,
-    memory_copy,
-    memory_alloc,
-    fragmented_space = 0xFFFF
+    in_time_sample        = 0x0000,
+    pmc_event_with_sample = 0x0001,
+    region                = 0x0002,
+    kernel_dispatch       = 0x0003,
+    memory_copy           = 0x0004,
+    memory_alloc          = 0x0005,
+    fragmented_space      = 0xFFFF
 };
 }  // namespace sample_cache
 }  // namespace rocprofsys

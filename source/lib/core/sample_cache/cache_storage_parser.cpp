@@ -126,6 +126,22 @@ storage_parser::consume_storage()
                            _in_time_sample.line_info);
                 invoke_callbacks(header.type, _in_time_sample);
             }
+            case entry_type::pmc_event_with_sample:
+            {
+                std::cout << "PMC EVENT WITH SAMPLE" << std::endl;
+                pmc_event_with_sample _pmc_event_with_sample;
+                parse_data(
+                    sample.data(), _pmc_event_with_sample.track_name,
+                    _pmc_event_with_sample.timestamp_ns,
+                    _pmc_event_with_sample.event_metadata,
+                    _pmc_event_with_sample.stack_id,
+                    _pmc_event_with_sample.parent_stack_id,
+                    _pmc_event_with_sample.correlation_id,
+                    _pmc_event_with_sample.call_stack, _pmc_event_with_sample.line_info,
+                    _pmc_event_with_sample.agent_handle,
+                    _pmc_event_with_sample.pmc_info_name, _pmc_event_with_sample.value);
+                invoke_callbacks(header.type, _pmc_event_with_sample);
+            }
             default: break;
         }
     }

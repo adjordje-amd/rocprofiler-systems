@@ -50,6 +50,7 @@ private:
     postprocessing_callback get_memory_allocate_callback() const;
     postprocessing_callback get_region_callback() const;
     postprocessing_callback get_in_time_sample_callback() const;
+    postprocessing_callback get_pmc_event_with_sample_callback() const;
 
     metadata& m_metadata;
 };
