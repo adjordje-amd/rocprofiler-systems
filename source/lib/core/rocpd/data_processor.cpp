@@ -39,7 +39,7 @@ struct scoped_database_transaction
 
     ~scoped_database_transaction()
     {
-        data_storage::database::get_instance().execute_query("END");
+        data_storage::database::get_instance().execute_query("COMMIT");
     }
 };
 
