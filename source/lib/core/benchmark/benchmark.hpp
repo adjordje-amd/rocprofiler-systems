@@ -34,6 +34,7 @@
 #include <sstream>
 #include <string>
 #include <type_traits>
+#include <unistd.h>
 #include <unordered_map>
 #include <vector>
 
@@ -80,6 +81,28 @@ struct benchmark_impl
     static void show_results() {}
 };
 
+using tid_t = __pid_t;
+struct indexed_category
+{
+    size_t category;
+    tid_t  thread_id;
+
+    friend bool operator==(const indexed_category& lhs, const indexed_category& rhs)
+    {
+        return lhs.category == rhs.category && lhs.thread_id == rhs.thread_id;
+    }
+};
+
+struct indexed_category_hash
+{
+    size_t operator()(const indexed_category& p) const noexcept
+    {
+        std::size_t hash1 = std::hash<size_t>{}(p.category);
+        std::size_t hash2 = std::hash<size_t>{}(p.thread_id);
+        return hash1 ^ (hash2 << 1);
+    }
+};
+
 template <typename category_enum, category_enum... enabled_categories>
 struct benchmark_impl<true, category_enum, enabled_categories...>
 {
@@ -110,21 +133,24 @@ public:
     template <category_enum... categories>
     static void start()
     {
-        const auto      now = clock::now();
-        std::lock_guard lock(m_mutex);
-        (..., (if_compiled<categories>([&] {
+        static const thread_local auto _thread_id = gettid();
+        const auto                     now        = clock::now();
+        std::lock_guard                lock(m_mutex);
+        (..., (is_category_defined<categories>([&] {
              if(m_enabled.test(to_index(categories)))
-                 m_started[to_index(categories)] = now;
+                 m_started[{ to_index(categories), _thread_id }] = now;
          })));
     }
 
     template <category_enum... categories>
     static void end()
     {
-        const auto      end_time = clock::now();
-        std::lock_guard lock(m_mutex);
-        (..., (if_compiled<categories>([&] {
-             if(m_enabled.test(to_index(categories))) end_category(end_time, categories);
+        static const thread_local auto _thread_id = getpid();
+        const auto                     _end_time  = clock::now();
+        std::lock_guard                lock(m_mutex);
+        (..., (is_category_defined<categories>([&] {
+             if(m_enabled.test(to_index(categories)))
+                 end_category(_end_time, categories, _thread_id);
          })));
     }
 
@@ -140,8 +166,8 @@ public:
         const auto*     env = std::getenv(envVar);
         if(env == nullptr || std::string(env).empty())
         {
-            ROCPROFSYS_WARNING(
-                1, "No BENCHMARK categories specified in environment variable.\n");
+            ROCPROFSYS_WARNING(1, "No BENCHMARK categories specified in environment "
+                                  "variable ROCPROFSYS_BENCHMARK_CATEGORIES.\n");
             return;
         }
         std::string        _str(env);
@@ -239,25 +265,26 @@ private:
         return static_cast<size_t>(cat);
     }
 
-    static void end_category(const time_point& end_time, category_enum cat)
+    static void end_category(const time_point& end_time, category_enum cat,
+                             const tid_t thread_id)
     {
-        const size_t idx = to_index(cat);
-        auto         it  = m_started.find(idx);
-        if(it == m_started.end())
+        const size_t _idx = to_index(cat);
+        auto         _it  = m_started.find({ _idx, thread_id });
+        if(_it == m_started.end())
         {
             ROCPROFSYS_WARNING(1, "Benchmark error: missing start time for category!\n");
             return;
         }
 
         auto duration =
-            std::chrono::duration_cast<std::chrono::microseconds>(end_time - it->second)
+            std::chrono::duration_cast<std::chrono::microseconds>(end_time - _it->second)
                 .count();
-        m_started.erase(it);
-        m_results[idx].update(duration);
+        m_started.erase(_it);
+        m_results[_idx].update(duration);
     }
 
     template <category_enum Cat, typename Func>
-    static constexpr void if_compiled(Func&& f)
+    static constexpr void is_category_defined(Func&& f)
     {
         if constexpr(((Cat == enabled_categories) || ...))
         {
@@ -268,7 +295,8 @@ private:
     static constexpr std::array<category_enum, sizeof...(enabled_categories)>
         compiledCategories = { enabled_categories... };
 
-    static inline std::unordered_map<size_t, time_point>   m_started;
+    static inline std::unordered_map<indexed_category, time_point, indexed_category_hash>
+                                                           m_started;
     static inline std::array<result_data, _max_categories> m_results{};
     static inline std::bitset<_max_categories>             m_enabled;
     static inline std::mutex                               m_mutex;
