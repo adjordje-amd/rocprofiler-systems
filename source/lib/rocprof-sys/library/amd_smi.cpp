@@ -54,13 +54,11 @@
 #include <timemory/utility/locking.hpp>
 
 #include <cassert>
-#include <chrono>
-#include <ios>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <sys/resource.h>
-#include <thread>
 
 #define ROCPROFSYS_AMD_SMI_CALL(...)                                                     \
     ::rocprofsys::amd_smi::check_error(__FILE__, __LINE__, __VA_ARGS__)
@@ -85,25 +83,6 @@ rocpd::data_processor&
 get_data_processor()
 {
     return rocpd::data_processor::get_instance();
-}
-
-size_t
-rocpd_initialize_thread_info(uint64_t tid)
-{
-    auto&       data_processor = get_data_processor();
-    auto&       n_info         = node_info::get_instance();
-    const auto& thread_info    = thread_info::get(tid, SequentTID);
-
-    if(!thread_info)
-    {
-        ROCPROFSYS_CI_THROW(!thread_info, "Missing thread info for thread 0");
-        return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
-                                                 JOIN(" ", "Thread", tid).c_str());
-    }
-
-    return data_processor.insert_thread_info(
-        n_info.id, getppid(), getpid(), tid, threading::get_thread_name().c_str(),
-        thread_info->get_start(), thread_info->get_stop(), "{}");
 }
 
 void
@@ -524,6 +503,9 @@ data::post_process(uint32_t _dev_id)
 
     auto _settings = get_settings(_dev_id);
 
+    auto use_perfetto = get_use_perfetto();
+    auto use_rocpd    = get_use_rocpd();
+
     for(auto& itr : _amd_smi)
     {
         using counter_track = perfetto_counter_track<data>;
@@ -692,13 +674,13 @@ data::post_process(uint32_t _dev_id)
             }
         };
 
-        if(get_use_perfetto())
+        if(use_perfetto)
         {
             setup_perfetto_counter_tracks();
             write_perfetto_metrics();
         }
 
-        if(get_use_rocpd())
+        if(use_rocpd)
         {
             rocpd_process_smi_pmc_events(_dev_id, _settings, _ts, _mmbusy, _temp, _power,
                                          _usage);

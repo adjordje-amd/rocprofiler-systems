@@ -801,8 +801,6 @@ tool_tracing_callback_stop(
     uint64_t _end_ts    = ts;
 
     {
-        auto _ = rocprofiler::benchmark::scoped_trace<
-            rocprofiler::benchmark::category::Event_Cached>();
         cache_category<CategoryT>();
         cache_add_thread_info(record.thread_id);
         std::string args_str;
@@ -1120,7 +1118,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                       void* /*user_data*/, uint64_t /*drop_count*/)
 {
     auto _ = rocprofiler::benchmark::scoped_trace<
-        rocprofiler::benchmark::category::Sdk_Tool_Buffered_Tracing>();
+        rocprofiler::benchmark::category::sdk_tool_buffered_tracing>();
     if(num_headers == 0 || headers == nullptr) return;
 
     for(size_t i = 0; i < num_headers; ++i)
@@ -1132,7 +1130,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
             if(header->kind == ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH)
             {
                 auto _ = rocprofiler::benchmark::scoped_trace<
-                    rocprofiler::benchmark::category::Kernel_Dispatch>();
+                    rocprofiler::benchmark::category::kernel_dispatch>();
 
                 auto* record =
                     static_cast<rocprofiler_buffer_tracing_kernel_dispatch_record_t*>(
@@ -1151,7 +1149,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
 
                 {
                     auto _ = rocprofiler::benchmark::scoped_trace<
-                        rocprofiler::benchmark::category::Kernel_Dispatch_Cached>();
+                        rocprofiler::benchmark::category::db_entry_kernel_dispatch>();
 
                     cache_category<category::rocm_kernel_dispatch>();
                     cache_add_thread_info(record->thread_id);
@@ -1180,7 +1178,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                 if(get_use_perfetto())
                 {
                     auto _ = rocprofiler::benchmark::scoped_trace<
-                        rocprofiler::benchmark::category::Perfetto_Kernel_Dispatch>();
+                        rocprofiler::benchmark::category::perfetto_kernel_dispatch>();
                     auto _track_desc = [](int32_t _device_id_v, int64_t _queue_id_v) {
                         return JOIN("", "GPU Kernel Dispatch [", _device_id_v, "] Queue ",
                                     _queue_id_v);
@@ -1260,9 +1258,6 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                         JOIN("", "GPU Memory Copy to Agent [",
                              _dst_agent->logical_node_id, "] Thread ", thread_idx);
 
-                    auto _ = rocprofiler::benchmark::scoped_trace<
-                        rocprofiler::benchmark::category::Memory_Copy_Cached>();
-
                     cache_category<category::rocm_memory_copy>();
                     cache_add_track(track_name.c_str(), record->thread_id);
 
@@ -1325,9 +1320,6 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                         header->payload);
 
                 {
-                    auto _ = rocprofiler::benchmark::scoped_trace<
-                        rocprofiler::benchmark::category::Memory_Allocate_Cached>();
-
                     cache_category<category::rocm_memory_allocate>();
                     cache_add_thread_info(record->thread_id);
                     cache_memory_allocation(record);

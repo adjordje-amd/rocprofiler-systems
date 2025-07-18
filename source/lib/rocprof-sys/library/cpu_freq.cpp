@@ -22,10 +22,8 @@
 
 #include "library/cpu_freq.hpp"
 #include "core/common.hpp"
-#include "core/components/fwd.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
-#include "core/defines.hpp"
 #include "core/perfetto.hpp"
 #include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
@@ -33,7 +31,6 @@
 #include "core/sample_cache/cache_manager.hpp"
 #include "core/timemory.hpp"
 #include "library/components/cpu_freq.hpp"
-#include "library/thread_data.hpp"
 #include "library/thread_info.hpp"
 
 #include <timemory/components/rusage/backends.hpp>
@@ -48,7 +45,6 @@
 #include <sys/resource.h>
 #include <tuple>
 #include <utility>
-#include <vector>
 
 namespace rocprofsys
 {
@@ -365,7 +361,7 @@ post_process()
                        "Post-processing %zu cpu frequency and memory usage entries...\n",
                        data.size());
 
-    const auto& enabled_cpus = component::cpu_freq::get_enabled_cpus();
+    auto& enabled_cpus = component::cpu_freq::get_enabled_cpus();
 
     auto _process_frequencies = [](size_t _idx, size_t _offset) {
         using freq_track = perfetto_counter_track<category::cpu_freq>;
@@ -460,13 +456,17 @@ post_process()
 
     _process_cpu_rusage();
 
-    for(auto itr = enabled_cpus.begin(); itr != enabled_cpus.end(); ++itr)
+    if(get_use_perfetto())
     {
-        auto _idx    = *itr;
-        auto _offset = std::distance(enabled_cpus.begin(), itr);
-        _process_frequencies(_idx, _offset);
+        for(auto itr = enabled_cpus.begin(); itr != enabled_cpus.end(); ++itr)
+        {
+            auto _idx    = *itr;
+            auto _offset = std::distance(enabled_cpus.begin(), itr);
+            _process_frequencies(_idx, _offset);
+        }
     }
-    // enabled_cpu_freqs.clear();
+    enabled_cpus.clear();
 }
+
 }  // namespace cpu_freq
 }  // namespace rocprofsys

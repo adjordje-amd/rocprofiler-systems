@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #pragma once
+#include <optional>
 #include <string>
 #include <type_traits>
 
@@ -73,6 +74,17 @@ struct is_string_literal<char* const> : std::true_type
 
 template <typename T>
 inline constexpr bool is_string_literal_v = is_string_literal<T>::value;
+
+template <typename T>
+struct is_optional : std::false_type
+{};
+
+template <typename T>
+struct is_optional<std::optional<T>> : std::true_type
+{};
+
+template <typename T>
+inline constexpr bool is_optional_v = is_optional<T>::value;
 
 }  // namespace traits
 }  // namespace common
