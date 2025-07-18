@@ -47,9 +47,11 @@ storage_parser::consume_storage()
     if(!ifs)
     {
         std::stringstream ss;
-        ss << "Error opening file for writing: " << filename << "\n";
+        ss << "Error opening file for reading: " << filename << "\n";
         throw std::runtime_error(ss.str());
     }
+
+    bool _parsing_needed = !m_callbacks.empty();
 
     struct __attribute__((packed)) sample_header
     {
@@ -59,7 +61,7 @@ storage_parser::consume_storage()
 
     sample_header header;
 
-    while(!ifs.eof())
+    while(!ifs.eof() && _parsing_needed)
     {
         ifs.read(reinterpret_cast<char*>(&header), sizeof(header));
 
