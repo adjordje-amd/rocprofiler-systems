@@ -27,20 +27,22 @@
 #include "api.hpp"
 #include "common/setup.hpp"
 #include "common/static_object.hpp"
+#include "core/agent.hpp"
+#include "core/agent_manager.hpp"
 #include "core/categories.hpp"
 #include "core/components/fwd.hpp"
 #include "core/concepts.hpp"
 #include "core/config.hpp"
 #include "core/constraint.hpp"
+#include "core/cpu.hpp"
 #include "core/debug.hpp"
 #include "core/defines.hpp"
 #include "core/dynamic_library.hpp"
 #include "core/gpu.hpp"
 #include "core/locking.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto_fwd.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/node_info.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
 #include "library/causal/data.hpp"
@@ -80,7 +82,9 @@
 #include <timemory/utility/join.hpp>
 #include <timemory/utility/procfs/maps.hpp>
 
-#include <rocprofiler-sdk/agent.h>
+#if ROCPROFSYS_USE_ROCM > 0
+#    include <rocprofiler-sdk/agent.h>
+#endif
 
 #include <atomic>
 #include <chrono>
@@ -326,35 +330,41 @@ read_command_line(pid_t _pid)
 void
 rocprofsys_preinit_rocpd()
 {
-    auto&       data_processor = rocpd::data_processor::get_instance();
-    const auto& n_info         = node_info::get_instance();
-    auto        cmd_line       = read_command_line(getpid());
-    auto&       agent_mngr     = rocpd::agent_manager::get_instance();
+    auto&       _data_processor = rocpd::data_processor::get_instance();
+    const auto& _n_info         = node_info::get_instance();
+    auto        _cmd_line       = read_command_line(getpid());
+    auto&       _agent_manager  = agent_manager::get_instance();
 
-    if(cmd_line.empty())
+    if(_cmd_line.empty())
     {
-        cmd_line.emplace_back("rocprofiler-systems");
+        _cmd_line.emplace_back("rocprofiler-systems");
     }
 
-    data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
-                                    n_info.system_name.c_str(), n_info.node_name.c_str(),
-                                    n_info.release.c_str(), n_info.version.c_str(),
-                                    n_info.machine.c_str(), n_info.domain_name.c_str());
-    data_processor.insert_process_info(n_info.id, getppid(), getpid(), 0, 0, 0, 0,
-                                       cmd_line[0].c_str(), "{}");
+    _data_processor.insert_node_info(
+        _n_info.id, _n_info.hash, _n_info.machine_id.c_str(), _n_info.system_name.c_str(),
+        _n_info.node_name.c_str(), _n_info.release.c_str(), _n_info.version.c_str(),
+        _n_info.machine.c_str(), _n_info.domain_name.c_str());
+    _data_processor.insert_process_info(_n_info.id, getppid(), getpid(), 0, 0, 0, 0,
+                                        _cmd_line[0].c_str(), "{}");
 
-    const auto& agents = agent_mngr.get_agents();
+    const auto& agents = _agent_manager.get_agents();
     for(const auto& rocpd_agent : agents)
     {
         auto _base_id = rocpd::data_processor::get_instance().insert_agent(
-            n_info.id, getpid(),
-            ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
-            rocpd_agent->agent->node_id, rocpd_agent->agent->logical_node_id,
-            rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
-            rocpd_agent->agent->name, rocpd_agent->agent->model_name,
-            rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
+            _n_info.id, getpid(),
+            ((rocpd_agent->type == agent_type::GPU) ? "GPU" : "CPU"),
+            rocpd_agent->node_id, rocpd_agent->logical_node_id,
+            rocpd_agent->logical_node_type_id, rocpd_agent->id, rocpd_agent->name.c_str(),
+            rocpd_agent->model_name.c_str(), rocpd_agent->vendor_name.c_str(),
+            rocpd_agent->product_name.c_str(), "");
         rocpd_agent->base_id = _base_id;
     }
+}
+
+void
+rocprofsys_preinit_cpu_agents()
+{
+    cpu::query_cpu_agents();
 }
 
 void
@@ -520,6 +530,10 @@ rocprofsys_init_tooling_hidden(void)
     auto _dtor = scope::destructor{ []() {
         // if set to finalized, don't continue
         if(get_state() > State::Active) return;
+
+#if !(ROCPROFSYS_USE_ROCM > 0)
+        rocprofsys_preinit_cpu_agents();
+#endif
         if(get_use_rocpd()) rocprofsys_preinit_rocpd();
 
         if(get_use_process_sampling())

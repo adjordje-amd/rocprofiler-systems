@@ -305,14 +305,16 @@ iterate_args_callback(rocprofiler_callback_tracing_kind_t /*kind*/, int32_t /*op
 auto&
 get_marker_pushed_ranges()
 {
-    static thread_local auto _v = std::vector<tim::hash_value_t>{};
+    static thread_local auto _v =
+        std::vector<std::pair<tim::hash_value_t, rocprofiler_timestamp_t>>{};
     return _v;
 }
 
 auto&
 get_marker_started_ranges()
 {
-    static thread_local auto _v = std::vector<tim::hash_value_t>{};
+    static thread_local auto _v =
+        std::vector<std::pair<tim::hash_value_t, rocprofiler_timestamp_t>>{};
     return _v;
 }
 
@@ -721,8 +723,12 @@ template <typename CategoryT>
 void
 tool_tracing_callback_start(CategoryT, rocprofiler_callback_tracing_record_t record,
                             rocprofiler_user_data_t* /*user_data*/,
-                            rocprofiler_timestamp_t /*ts*/)
+                            rocprofiler_timestamp_t ts)
 {
+    // Required because of how some compilers handle templates. This may result in an
+    // "unused variable" warning.
+    (void) ts;
+
     auto _name = tool_data->callback_tracing_info.at(record.kind, record.operation);
 
     if constexpr(std::is_same<CategoryT, category::rocm_marker_api>::value)
@@ -738,14 +744,14 @@ tool_tracing_callback_start(CategoryT, rocprofiler_callback_tracing_record_t rec
                 {
                     _name      = _data->args.roctxRangePushA.message;
                     auto _hash = tim::add_hash_id(_name);
-                    get_marker_pushed_ranges().emplace_back(_hash);
+                    get_marker_pushed_ranges().emplace_back(_hash, ts);
                     break;
                 }
                 case ROCPROFILER_MARKER_CORE_API_ID_roctxRangeStartA:
                 {
                     _name      = _data->args.roctxRangeStartA.message;
                     auto _hash = tim::add_hash_id(_name);
-                    get_marker_started_ranges().emplace_back(_hash);
+                    get_marker_started_ranges().emplace_back(_hash, ts);
                     break;
                 }
                 case ROCPROFILER_MARKER_CORE_API_ID_roctxMarkA:
@@ -778,6 +784,7 @@ tool_tracing_callback_stop(
 {
     auto _name = tool_data->callback_tracing_info.at(record.kind, record.operation);
 
+    uint64_t begin_ts = user_data->value;
     if constexpr(std::is_same<CategoryT, category::rocm_marker_api>::value)
     {
         if(record.kind == ROCPROFILER_CALLBACK_TRACING_MARKER_CORE_API)
@@ -794,8 +801,9 @@ tool_tracing_callback_stop(
                         "roctxRangePop does not have corresponding roctxRangePush on "
                         "this thread");
 
-                    auto _hash = get_marker_pushed_ranges().back();
+                    auto _hash = get_marker_pushed_ranges().back().first;
                     _name      = tim::get_hash_identifier_fast(_hash);
+                    begin_ts   = get_marker_pushed_ranges().back().second;
                     get_marker_pushed_ranges().pop_back();
                     break;
                 }
@@ -807,8 +815,9 @@ tool_tracing_callback_stop(
                         "on "
                         "this thread");
 
-                    auto _hash = get_marker_started_ranges().back();
+                    auto _hash = get_marker_started_ranges().back().first;
                     _name      = tim::get_hash_identifier_fast(_hash);
+                    begin_ts   = get_marker_started_ranges().back().second;
                     get_marker_started_ranges().pop_back();
                     break;
                 }
@@ -816,6 +825,11 @@ tool_tracing_callback_stop(
                 {
                     _name = _data->args.roctxMarkA.message;
                     break;
+                }
+                case ROCPROFILER_MARKER_CORE_API_ID_roctxRangePushA:
+                case ROCPROFILER_MARKER_CORE_API_ID_roctxRangeStartA:
+                {
+                    return;
                 }
                 default:
                 {
@@ -840,7 +854,7 @@ tool_tracing_callback_stop(
                                                                      &args);
         }
 
-        uint64_t _beg_ts = user_data->value;
+        uint64_t _beg_ts = begin_ts;
         uint64_t _end_ts = ts;
 
         tracing::push_perfetto_ts(
@@ -1086,6 +1100,12 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
                                     record.kind);
                 break;
             }
+            default:
+            {
+                ROCPROFSYS_CI_ABORT(true, "Unhandled callback record kind: %i\n",
+                                    record.kind);
+                break;
+            }
         }
     }
     else if(record.phase == ROCPROFILER_CALLBACK_PHASE_EXIT)
@@ -1185,6 +1205,12 @@ tool_tracing_callback(rocprofiler_callback_tracing_record_t record,
 #endif
             {
                 ROCPROFSYS_CI_ABORT(true, "unhandled callback record kind: %i\n",
+                                    record.kind);
+                break;
+            }
+            default:
+            {
+                ROCPROFSYS_CI_ABORT(true, "Unhandled callback record kind: %i\n",
                                     record.kind);
                 break;
             }

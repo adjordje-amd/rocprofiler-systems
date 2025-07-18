@@ -21,13 +21,14 @@
 // SOFTWARE.
 
 #include "library/cpu_freq.hpp"
+#include "core/agent.hpp"
+#include "core/agent_manager.hpp"
 #include "core/common.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/node_info.hpp"
 #include "library/components/cpu_freq.hpp"
 #include "library/thread_info.hpp"
 
@@ -96,22 +97,12 @@ rocpd_initialize_cpu_freq_category()
                                          trait::name<category::cpu_freq>::value);
 }
 
-size_t
-rocpd_initialize_thread_info(size_t tid)
-{
-    auto& data_processor = get_data_processor();
-    auto& n_info         = node_info::get_instance();
-
-    return data_processor.insert_thread_info(n_info.id, getppid(), getpid(), tid,
-                                             JOIN(" ", "Thread", tid).c_str(), 0, 0,
-                                             "{}");
-}
-
 void
-rocpd_initialize_cpu_freq_tracks(size_t thread_idx)
+rocpd_initialize_cpu_freq_tracks()
 {
-    auto& data_processor = get_data_processor();
-    auto& n_info         = node_info::get_instance();
+    auto&      data_processor = get_data_processor();
+    auto&      n_info         = node_info::get_instance();
+    const auto thread_idx     = std::nullopt;  // Internal thread ID for cpu-freq
 
     do_for_enabled_cpus([&](size_t cpu_id) {
         data_processor.insert_track(
@@ -121,10 +112,11 @@ rocpd_initialize_cpu_freq_tracks(size_t thread_idx)
 }
 
 void
-rocpd_initialize_cpu_usage_tracks(size_t thread_idx)
+rocpd_initialize_cpu_usage_tracks()
 {
-    auto& data_processor = get_data_processor();
-    auto& n_info         = node_info::get_instance();
+    auto&      data_processor = get_data_processor();
+    auto&      n_info         = node_info::get_instance();
+    const auto thread_idx     = std::nullopt;  // Internal thread ID for cpu-freq
 
     data_processor.insert_track(trait::name<category::process_page>::value, n_info.id,
                                 getpid(), thread_idx);
@@ -158,8 +150,8 @@ rocpd_initialize_cpu_freq_pmc(size_t dev_id)
     auto        ni               = node_info::get_instance();
     const auto* TARGET_ARCH      = "CPU";
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto base_id = agent_mngr.get_agent_by_id(dev_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto& _agent_manager = agent_manager::get_instance();
+    auto  base_id = _agent_manager.get_agent_by_id(dev_id, agent_type::CPU).base_id;
 
     do_for_enabled_cpus([&](size_t cpu_id) {
         data_processor.insert_pmc_description(
@@ -222,9 +214,8 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, uint64_t timestamp,
     auto& data_processor = get_data_processor();
     auto  event_id = data_processor.insert_event(ROCPROFSYS_CATEGORY_CPU_FREQ, 0, 0, 0);
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id =
-        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto& agent_mngr = agent_manager::get_instance();
+    auto  base_id    = agent_mngr.get_agent_by_id(device_id, agent_type::CPU).base_id;
 
     auto insert_event_and_sample = [&](const char* name, double value) {
         data_processor.insert_pmc_event(event_id, base_id, name, value);
@@ -355,17 +346,16 @@ post_process()
     if(get_use_rocpd())
     {
         rocpd_initialize_cpu_freq_category();
-        auto thread_idx = rocpd_initialize_thread_info(gettid());
-        rocpd_initialize_cpu_usage_tracks(thread_idx);
-        rocpd_initialize_cpu_freq_tracks(thread_idx);
+        rocpd_initialize_cpu_usage_tracks();
+        rocpd_initialize_cpu_freq_tracks();
 
         // `get_enabled_cpus()` returns the number of cores enabled for monitoring but the
-        // actuall device_id is 0, since there is a single device avaliable. And the
+        // actually device_id is 0, since there is a single device available. And the
         // agents seems to be assigned per device basis not per core.
         // TODO: `get_enabled_cpus()` should be fixed in the future to align with GPU
         // implementation.
-        auto cpu_agents = rocpd::agent_manager::get_instance().get_agents_by_type(
-            ROCPROFILER_AGENT_TYPE_CPU);
+        auto cpu_agents =
+            agent_manager::get_instance().get_agents_by_type(agent_type::CPU);
         for(auto& agent : cpu_agents)
         {
             rocpd_initialize_cpu_freq_pmc(agent->device_id);

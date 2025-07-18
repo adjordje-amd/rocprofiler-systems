@@ -21,13 +21,14 @@
 // SOFTWARE.
 
 #include "library/components/backtrace_metrics.hpp"
+#include "core/agent.hpp"
+#include "core/agent_manager.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/node_info.hpp"
 #include "library/components/ensure_storage.hpp"
 #include "library/ptl.hpp"
 #include "library/runtime.hpp"
@@ -409,10 +410,10 @@ rocpd_initialize_backtrace_metrics_pmc(size_t dev_id, const char* units, int64_t
     const char* BLOCK            = "";
     const char* EXPRESSION       = "";
     auto        ni               = node_info::get_instance();
-    const auto  TARGET_ARCH      = "CPU";
+    const auto* TARGET_ARCH      = "CPU";
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto base_id = agent_mngr.get_agent_by_id(dev_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto& _agent_manager = agent_manager::get_instance();
+    auto  _base_id = _agent_manager.get_agent_by_id(dev_id, agent_type::CPU).base_id;
 
     if constexpr(std::is_same_v<Category, category::thread_hardware_counter>)
     {
@@ -426,7 +427,7 @@ rocpd_initialize_backtrace_metrics_pmc(size_t dev_id, const char* units, int64_t
             std::string track_name = JOIN(' ', "Thread", _desc, _tid_name, "(S)");
 
             data_processor.insert_pmc_description(
-                ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+                ni.id, getpid(), _base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
                 track_name.c_str(), trait::name<Category>::value,
                 trait::name<Category>::description, LONG_DESCRIPTION, COMPONENT, units,
                 "ABS", BLOCK, EXPRESSION, 0, 0);
@@ -434,7 +435,7 @@ rocpd_initialize_backtrace_metrics_pmc(size_t dev_id, const char* units, int64_t
     }
     else
         data_processor.insert_pmc_description(
-            ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
+            ni.id, getpid(), _base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
             JOIN("_", trait::name<Category>::value, _tid_name).c_str(),
             trait::name<Category>::value, trait::name<Category>::description,
             LONG_DESCRIPTION, COMPONENT, units, "ABS", BLOCK, EXPRESSION, 0, 0);
@@ -449,27 +450,26 @@ rocpd_process_backtrace_metrics_events(const uint32_t device_id, uint64_t timest
     auto  _tid_name      = JOIN("", '[', _tid, ']');
     auto  event_id =
         data_processor.insert_event(category_enum_id<Category>::value, 0, 0, 0);
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id =
-        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto& agent_mngr = agent_manager::get_instance();
+    auto  base_id    = agent_mngr.get_agent_by_id(device_id, agent_type::CPU).base_id;
 
-    auto insert_event_and_sample = [&](const char* name, double value) {
-        data_processor.insert_pmc_event(event_id, base_id, name, value);
+    auto insert_event_and_sample = [&](const char* name, double _value) {
+        data_processor.insert_pmc_event(event_id, base_id, name, _value);
         data_processor.insert_sample(name, timestamp, event_id);
     };
 
     if constexpr(std::is_same_v<Category, category::thread_hardware_counter>)
     {
         auto        _hw_cnt_labels = *get_papi_labels(_tid);
-        const auto& hw_counters =
+        const auto& _hw_counters =
             static_cast<backtrace_metrics::hw_counter_data_t>(value);
-        for(size_t i = 0; i < _hw_cnt_labels.size() && i < hw_counters.size(); ++i)
+        for(size_t i = 0; i < _hw_cnt_labels.size() && i < _hw_counters.size(); ++i)
         {
             std::string _desc = tim::papi::get_event_info(_hw_cnt_labels[i]).short_descr;
             if(_desc.empty()) _desc = _hw_cnt_labels[i];
             std::string track_name = JOIN(' ', "Thread", _desc, _tid_name, "(S)");
 
-            insert_event_and_sample(track_name.c_str(), hw_counters.at(i));
+            insert_event_and_sample(track_name.c_str(), _hw_counters.at(i));
         }
     }
     else
@@ -643,30 +643,33 @@ backtrace_metrics::post_process_perfetto(int64_t _tid, uint64_t _ts) const
 void
 backtrace_metrics::post_process_rocpd(int64_t _tid, uint64_t _ts) const
 {
-    if((*this)(category::thread_cpu_time{}))
+    auto is_category_enabled = [&](const auto& _category) { return (*this)(_category); };
+
+    if(is_category_enabled(category::thread_cpu_time{}))
     {
         rocpd_process_backtrace_metrics_events<category::thread_cpu_time, double>(
             0, _ts, m_cpu / units::sec, _tid);
     }
 
-    if((*this)(category::thread_peak_memory{}))
+    if(is_category_enabled(category::thread_peak_memory{}))
     {
         rocpd_process_backtrace_metrics_events<category::thread_peak_memory, double>(
             0, _ts, m_mem_peak / units::megabyte, _tid);
     }
 
-    if((*this)(category::thread_context_switch{}))
+    if(is_category_enabled(category::thread_context_switch{}))
     {
-        rocpd_process_backtrace_metrics_events<category::thread_peak_memory, int64_t>(
+        rocpd_process_backtrace_metrics_events<category::thread_context_switch, int64_t>(
             0, _ts, m_ctx_swch, _tid);
     }
 
-    if((*this)(category::thread_page_fault{}))
+    if(is_category_enabled(category::thread_page_fault{}))
     {
-        rocpd_process_backtrace_metrics_events<category::thread_peak_memory, int64_t>(
+        rocpd_process_backtrace_metrics_events<category::thread_page_fault, int64_t>(
             0, _ts, m_page_flt, _tid);
     }
-    if((*this)(type_list<hw_counters>{}) && (*this)(category::thread_hardware_counter{}))
+    if(is_category_enabled(type_list<hw_counters>{}) &&
+       is_category_enabled(category::thread_hardware_counter{}))
     {
         rocpd_process_backtrace_metrics_events<category::thread_hardware_counter,
                                                hw_counter_data_t>(0, _ts, m_hw_counter,

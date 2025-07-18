@@ -26,21 +26,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH
 // THE SOFTWARE.
 
+#include "core/agent.hpp"
 #if defined(NDEBUG)
 #    undef NDEBUG
 #endif
 
-#include "library/amd_smi.hpp"
+#include "core/agent_manager.hpp"
 #include "core/common.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
 #include "core/gpu.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/node_info.hpp"
 #include "core/state.hpp"
+#include "library/amd_smi.hpp"
 #include "library/runtime.hpp"
 #include "library/thread_info.hpp"
 
@@ -105,7 +106,7 @@ rocpd_initialize_smi_tracks()
                                 getpid(), thread_id);
     data_processor.insert_track(trait::name<category::amd_smi_memory_usage>::value,
                                 n_info.id, getpid(), thread_id);
-};
+}
 
 void
 rocpd_initialize_smi_pmc(size_t gpu_id)
@@ -122,8 +123,8 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
     auto        ni               = node_info::get_instance();
     const auto* TARGET_ARCH      = "GPU";
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto base_id = agent_mngr.get_agent_by_id(gpu_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
+    auto& _agent_manager = agent_manager::get_instance();
+    auto  base_id = _agent_manager.get_agent_by_id(gpu_id, agent_type::GPU).base_id;
 
     data_processor.insert_pmc_description(
         ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
@@ -148,7 +149,7 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
         trait::name<category::amd_smi_memory_usage>::value, "MemUsg",
         trait::name<category::amd_smi_memory_usage>::description, LONG_DESCRIPTION,
         COMPONENT, "MB", "ABS", BLOCK, EXPRESSION, 0, 0);
-};
+}
 
 void
 rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& settings,
@@ -160,9 +161,8 @@ rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& 
     auto& data_processor = get_data_processor();
     auto  event_id = data_processor.insert_event(ROCPROFSYS_CATEGORY_AMD_SMI, 0, 0, 0);
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id =
-        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
+    auto& _agent_manager = agent_manager::get_instance();
+    auto  base_id = _agent_manager.get_agent_by_id(device_id, agent_type::GPU).base_id;
 
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if(!enabled) return;
@@ -178,7 +178,7 @@ rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& 
                             power);
     insert_event_and_sample(settings.mem_usage,
                             trait::name<category::amd_smi_memory_usage>::value, usage);
-};
+}
 
 auto&
 get_settings(uint32_t _dev_id)

@@ -58,7 +58,7 @@ json::to_string() const
 }
 
 std::string
-json::stringify(const std::shared_ptr<json_value> value)
+json::stringify(const std::shared_ptr<json_value>& value)
 {
     std::ostringstream oss;
     std::visit(

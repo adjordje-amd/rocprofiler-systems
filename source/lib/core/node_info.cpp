@@ -20,38 +20,53 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma once
+#include "node_info.hpp"
+#include "debug.hpp"
 
-#include <memory>
-#include <string>
-#include <unordered_map>
-#include <variant>
-#include <vector>
+#include <fstream>
+#include <iostream>
+#include <limits>
+#include <sys/utsname.h>
 
-namespace rocpd
+namespace rocprofsys
 {
 
-class json
+node_info::node_info()
 {
-public:
-    static std::shared_ptr<json> create();
+    auto ifs = std::ifstream{ "/etc/machine-id" };
+    if(!ifs.is_open())
+    {
+        ROCPROFSYS_WARNING(0, "Error: Unable to open /etc/machine-id!");
+        return;
+    }
+    if(!(ifs >> machine_id) || machine_id.empty())
+    {
+        ROCPROFSYS_WARNING(0, "Error: Unable to read machine ID from /etc/machine-id!");
+    }
 
-    using json_value =
-        std::variant<std::string, int, double, long long, bool, std::vector<json>,
-                     std::nullptr_t, std::shared_ptr<json>>;
+    hash = std::hash<std::string>{}(machine_id) % std::numeric_limits<int64_t>::max();
+    id   = hash % std::numeric_limits<size_t>::max();
 
-    void set(const std::string& key, const json_value& value);
+    struct utsname _sys_info;
+    if(uname(&_sys_info))
+    {
+        ROCPROFSYS_WARNING(0, "Error: Unable to get system information!");
+        return;
+    }
 
-    std::string to_string() const;
+    system_name = _sys_info.sysname;
+    node_name   = _sys_info.nodename;
+    release     = _sys_info.release;
+    version     = _sys_info.version;
+    machine     = _sys_info.machine;
+    domain_name = _sys_info.domainname;
+}
 
-private:
-    json() = default;
+node_info&
+node_info::get_instance()
+{
+    static node_info instance;
+    return instance;
+}
 
-private:
-    static std::string stringify(const std::shared_ptr<json_value>& value);
-
-private:
-    std::unordered_map<std::string, std::shared_ptr<json_value>> data;
-};
-
-}  // namespace rocpd
+}  // namespace rocprofsys

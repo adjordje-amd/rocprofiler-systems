@@ -41,7 +41,7 @@ data_processor::data_processor()
     initialize_region_stmt();
     initialize_kernel_dispatch_stmt();
     initialize_memory_copy_stmt();
-    inintialize_code_object_stmt();
+    initialize_code_object_stmt();
     initialize_kernel_symbol_stmt();
     initialize_metadata();
     initialize_args_stmt();
@@ -215,7 +215,7 @@ data_processor::insert_pmc_event(size_t event_id, size_t agent_id, const char* p
         return;
     }
 
-    const auto [_, pmc_description_id] = *it;
+    const auto pmc_description_id = it->second;
     _insert_pmc_event_statement(_upid.c_str(), event_id, pmc_description_id, value,
                                 extdata);
 }
@@ -234,7 +234,7 @@ data_processor::insert_sample(const char* track, uint64_t timestamp, size_t even
                            track);
         return;
     }
-    auto [_, track_info] = *it;
+    auto track_info = it->second;
     _insert_sample_statement(_upid.c_str(), track_info.track_id, timestamp, event_id,
                              extdata);
 }
@@ -385,7 +385,7 @@ data_processor::initialize_kernel_symbol_stmt()
 }
 
 void
-data_processor::inintialize_code_object_stmt()
+data_processor::initialize_code_object_stmt()
 {
     data_storage::queries::table_insert_query query_builder;
     auto                                      query =

@@ -22,36 +22,41 @@
 
 #pragma once
 
-#include <memory>
+#include <cstddef>
+#include <cstdint>
 #include <string>
-#include <unordered_map>
-#include <variant>
-#include <vector>
 
-namespace rocpd
+#if ROCPROFSYS_USE_ROCM > 0
+#    include <amd_smi/amdsmi.h>
+#    include <rocprofiler-sdk/agent.h>
+#endif
+
+namespace rocprofsys
 {
 
-class json
+enum class agent_type : uint8_t
 {
-public:
-    static std::shared_ptr<json> create();
-
-    using json_value =
-        std::variant<std::string, int, double, long long, bool, std::vector<json>,
-                     std::nullptr_t, std::shared_ptr<json>>;
-
-    void set(const std::string& key, const json_value& value);
-
-    std::string to_string() const;
-
-private:
-    json() = default;
-
-private:
-    static std::string stringify(const std::shared_ptr<json_value>& value);
-
-private:
-    std::unordered_map<std::string, std::shared_ptr<json_value>> data;
+    CPU,  ///< Agent type is a CPU
+    GPU   ///< Agent type is a GPU
 };
 
-}  // namespace rocpd
+struct agent
+{
+    agent_type  type;
+    uint64_t    id;
+    uint32_t    node_id;
+    int32_t     logical_node_id;
+    int32_t     logical_node_type_id;
+    std::string name;
+    std::string model_name;
+    std::string vendor_name;
+    std::string product_name;
+
+    size_t device_id{ 0 };
+    size_t base_id{ 0 };
+#if ROCPROFSYS_USE_ROCM > 0
+    amdsmi_processor_handle smi_handle = nullptr;
+#endif
+};
+
+}  // namespace rocprofsys

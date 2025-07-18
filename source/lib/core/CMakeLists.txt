@@ -10,6 +10,7 @@ set(core_sources
     ${CMAKE_CURRENT_LIST_DIR}/categories.cpp
     ${CMAKE_CURRENT_LIST_DIR}/config.cpp
     ${CMAKE_CURRENT_LIST_DIR}/constraint.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/cpu.cpp
     ${CMAKE_CURRENT_LIST_DIR}/debug.cpp
     ${CMAKE_CURRENT_LIST_DIR}/dynamic_library.cpp
     ${CMAKE_CURRENT_LIST_DIR}/exception.cpp
@@ -22,11 +23,8 @@ set(core_sources
     ${CMAKE_CURRENT_LIST_DIR}/state.cpp
     ${CMAKE_CURRENT_LIST_DIR}/timemory.cpp
     ${CMAKE_CURRENT_LIST_DIR}/utility.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_processor.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/node_info.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/json.cpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/agent_manager.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/node_info.cpp
 )
 
 set(core_headers
@@ -36,6 +34,7 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/concepts.hpp
     ${CMAKE_CURRENT_LIST_DIR}/config.hpp
     ${CMAKE_CURRENT_LIST_DIR}/constraint.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/cpu.hpp
     ${CMAKE_CURRENT_LIST_DIR}/debug.hpp
     ${CMAKE_CURRENT_LIST_DIR}/dynamic_library.hpp
     ${CMAKE_CURRENT_LIST_DIR}/exception.hpp
@@ -51,13 +50,9 @@ set(core_headers
     ${CMAKE_CURRENT_LIST_DIR}/state.hpp
     ${CMAKE_CURRENT_LIST_DIR}/timemory.hpp
     ${CMAKE_CURRENT_LIST_DIR}/utility.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_processor.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/agent_manager.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/node_info.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/json.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/database.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/table_insert_query.hpp
-    ${CMAKE_CURRENT_LIST_DIR}/rocpd/data_storage/queries/query_builders/insert_query_builders.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/agent.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/agent_manager.hpp
+    ${CMAKE_CURRENT_LIST_DIR}/node_info.hpp
 )
 
 add_library(rocprofiler-systems-core-library STATIC)
@@ -73,6 +68,7 @@ target_sources(
 add_subdirectory(binary)
 add_subdirectory(components)
 add_subdirectory(containers)
+add_subdirectory(rocpd)
 
 target_include_directories(
     rocprofiler-systems-core-library

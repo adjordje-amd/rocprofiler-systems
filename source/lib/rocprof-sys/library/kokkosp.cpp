@@ -20,18 +20,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <optional>
 #define TIMEMORY_KOKKOSP_POSTFIX ROCPROFSYS_PUBLIC_API
 
 #include "api.hpp"
+#include "core/agent_manager.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
 #include "core/defines.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
-#include "core/rocpd/node_info.hpp"
 #include "library/components/category_region.hpp"
 #include "library/runtime.hpp"
 
@@ -175,9 +176,10 @@ rocpd_initialize_kokos_track()
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = rocprofsys::node_info::get_instance();
+    auto  thread_id      = std::nullopt;
 
     data_processor.insert_track(rocprofsys::trait::name<category::kokkos>::value,
-                                n_info.id, getpid(), gettid());
+                                n_info.id, getpid(), thread_id);
 }
 
 void

@@ -21,37 +21,42 @@
 // SOFTWARE.
 
 #pragma once
-
+#include <cstddef>
 #include <memory>
-#include <string>
-#include <unordered_map>
-#include <variant>
 #include <vector>
 
-namespace rocpd
+#include "agent.hpp"
+
+namespace rocprofsys
 {
 
-class json
+struct agent_manager
 {
-public:
-    static std::shared_ptr<json> create();
+    static agent_manager& get_instance();
 
-    using json_value =
-        std::variant<std::string, int, double, long long, bool, std::vector<json>,
-                     std::nullptr_t, std::shared_ptr<json>>;
+    agent_manager(const agent_manager&)            = delete;
+    agent_manager& operator=(const agent_manager&) = delete;
+    agent_manager(agent_manager&&)                 = delete;
+    agent_manager& operator=(agent_manager&&)      = delete;
+    ~agent_manager()                               = default;
 
-    void set(const std::string& key, const json_value& value);
+    void         insert_agent(agent& agent);
+    const agent& get_agent_by_id(size_t device_id, agent_type type) const;
+    const agent& get_agent_by_handle(size_t device_id, agent_type type) const;
+    const agent& get_agent_by_handle(size_t device_handle) const;
 
-    std::string to_string() const;
+    std::vector<std::shared_ptr<agent>> get_agents_by_type(agent_type type) const;
+
+    std::vector<std::shared_ptr<agent>> get_agents() const;
+
+    size_t get_gpu_agents_count() const;
+    size_t get_cpu_agents_count() const;
 
 private:
-    json() = default;
-
-private:
-    static std::string stringify(const std::shared_ptr<json_value>& value);
-
-private:
-    std::unordered_map<std::string, std::shared_ptr<json_value>> data;
+    std::vector<std::shared_ptr<agent>> _agents;
+    size_t                              _gpu_agents_cnt{ 0 };
+    size_t                              _cpu_agents_cnt{ 0 };
+    agent_manager() = default;
 };
 
-}  // namespace rocpd
+}  // namespace rocprofsys
