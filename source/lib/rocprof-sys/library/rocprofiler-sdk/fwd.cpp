@@ -129,7 +129,7 @@ client_data::initialize()
 void
 client_data::initialize_event_info()
 {
-    if(rocpd::agent_manager::get_instance().get_agents().empty())
+    if(agent_manager::get_instance().get_agents().empty())
     {
         initialize();
     }
@@ -228,7 +228,7 @@ client_data::initialize_event_info()
 void
 client_data::set_agents()
 {
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto& agent_mngr = agent_manager::get_instance();
 
     auto fill_agents = [&](rocprofiler_agent_type_t type, std::vector<tool_agent>& out) {
         const auto& _agents = agent_mngr.get_agents_by_type(type);

@@ -23,6 +23,7 @@
 #include "core/rocprofiler-sdk.hpp"
 #include "api.hpp"
 #include "common/synchronized.hpp"
+#include "core/agent_manager.hpp"
 #include "core/benchmark/benchmark.hpp"
 #include "core/benchmark/category.hpp"
 #include "core/config.hpp"
@@ -30,7 +31,6 @@
 #include "core/debug.hpp"
 #include "core/gpu.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
 #include "core/rocpd/node_info.hpp"
@@ -551,7 +551,7 @@ rocpd_insert_code_object_info(
     const rocprofiler_callback_tracing_code_object_load_data_t* code_obj_data)
 {
     auto&       data_processor = get_data_processor();
-    auto&       agent_mngr     = rocpd::agent_manager::get_instance();
+    auto&       agent_mngr     = agent_manager::get_instance();
     auto&       n_info         = node_info::get_instance();
     const char* strg_type      = "UNKNOWN";
 
@@ -606,7 +606,7 @@ rocpd_insert_kernel_dispatch(rocprofiler_buffer_tracing_kernel_dispatch_record_t
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
-    auto& agent_mngr     = rocpd::agent_manager::get_instance();
+    auto& agent_mngr     = agent_manager::get_instance();
     auto  stream_id      = get_stream_id(record);
     auto  agent_id =
         agent_mngr.get_agent_by_handle(record->dispatch_info.agent_id.handle).base_id;
@@ -632,7 +632,7 @@ rocpd_insert_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = node_info::get_instance();
-    auto& agent_mngr     = rocpd::agent_manager::get_instance();
+    auto& agent_mngr     = agent_manager::get_instance();
     auto  stream_id      = get_stream_id(record);
     auto  dst_agent_id =
         agent_mngr.get_agent_by_handle(record->dst_agent_id.handle).base_id;
@@ -654,7 +654,7 @@ rocpd_insert_memory_allocation(
     const char* level, size_t event_id, size_t thread_id, const char* extdata = "{}")
 {
     auto& data_processor = get_data_processor();
-    auto& agent_mngr     = rocpd::agent_manager::get_instance();
+    auto& agent_mngr     = agent_manager::get_instance();
     auto& n_info         = node_info::get_instance();
 
     auto stream_id = get_stream_id(record);

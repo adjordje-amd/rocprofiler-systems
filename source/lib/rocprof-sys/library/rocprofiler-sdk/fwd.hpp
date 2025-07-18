@@ -23,7 +23,7 @@
 #pragma once
 
 #include "common/synchronized.hpp"
-#include "core/rocpd/agent_manager.hpp"
+#include "core/agent_manager.hpp"
 #include "core/timemory.hpp"
 
 #include <rocprofiler-sdk/agent.h>
@@ -196,8 +196,7 @@ client_data::get_buffers() const
 inline const rocprofiler_agent_t*
 client_data::get_agent(rocprofiler_agent_id_t _id) const
 {
-    const auto& agent =
-        rocpd::agent_manager::get_instance().get_agent_by_handle(_id.handle);
+    const auto& agent = agent_manager::get_instance().get_agent_by_handle(_id.handle);
 
     return agent.agent;
 }
