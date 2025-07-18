@@ -33,24 +33,23 @@ namespace sample_cache
 cache_storage::cache_storage()
 {
     tasking::general::get_task_group().exec([this]() {
-        std::filesystem::path path{ filename };
-        std::ofstream         ofs(path, std::ios::binary | std::ios::out);
+        std::ofstream _ofs(filename, std::ios::binary | std::ios::out);
 
-        if(!ofs)
+        if(!_ofs)
         {
-            std::stringstream ss;
-            ss << "Error opening file for writing: " << path;
-            throw std::runtime_error(ss.str());
+            std::stringstream _ss;
+            _ss << "Error opening file for writing: " << filename;
+            throw std::runtime_error(_ss.str());
         }
 
         auto execute_flush = [&](std::ofstream& ofs, bool force = false) {
-            size_t head, tail;
+            size_t _head, _tail;
             {
                 std::lock_guard guard{ m_mutex };
-                head = m_head;
-                tail = m_tail;
+                _head = m_head;
+                _tail = m_tail;
 
-                if(head == tail)
+                if(_head == _tail)
                 {
                     return;
                 }
@@ -64,30 +63,30 @@ cache_storage::cache_storage()
                 m_tail = m_head;
             }
 
-            if(head > tail)
+            if(_head > _tail)
             {
-                ofs.write(reinterpret_cast<const char*>(m_buffer->data() + tail),
-                          head - tail);
+                ofs.write(reinterpret_cast<const char*>(m_buffer->data() + _tail),
+                          _head - _tail);
             }
             else
             {
-                ofs.write(reinterpret_cast<const char*>(m_buffer->data() + tail),
-                          buffer_size - tail);
-                ofs.write(reinterpret_cast<const char*>(m_buffer->data()), head);
+                ofs.write(reinterpret_cast<const char*>(m_buffer->data() + _tail),
+                          buffer_size - _tail);
+                ofs.write(reinterpret_cast<const char*>(m_buffer->data()), _head);
             }
         };
 
-        std::mutex shutdown_condition_mutex;
+        std::mutex _shutdown_condition_mutex;
         while(!m_shutdown)
         {
-            execute_flush(ofs);
-            std::unique_lock lock{ shutdown_condition_mutex };
-            m_shutdown_condition.wait_for(lock, std::chrono::milliseconds(30),
+            execute_flush(_ofs);
+            std::unique_lock _lock{ _shutdown_condition_mutex };
+            m_shutdown_condition.wait_for(_lock, std::chrono::milliseconds(30),
                                           [&]() { return m_shutdown; });
         }
 
-        execute_flush(ofs, true);
-        ofs.close();
+        execute_flush(_ofs, true);
+        _ofs.close();
         m_exit_finished = true;
         m_exit_condition.notify_one();
     });
@@ -98,27 +97,27 @@ cache_storage::shutdown()
 {
     m_shutdown = true;
     m_shutdown_condition.notify_all();
-    std::mutex       exit_mutex;
-    std::unique_lock exit_lock{ exit_mutex };
-    m_exit_condition.wait(exit_lock, [&]() { return m_exit_finished; });
+    std::mutex       _exit_mutex;
+    std::unique_lock _exit_lock{ _exit_mutex };
+    m_exit_condition.wait(_exit_lock, [&]() { return m_exit_finished; });
 }
 
 void
 cache_storage::fragment_memory()
 {
-    auto* data = m_buffer->data();
-    memset(data + m_head, 0xFFFF, buffer_size - m_head);
-    *reinterpret_cast<entry_type*>(data + m_head) = entry_type::fragmented_space;
+    auto* _data = m_buffer->data();
+    memset(_data + m_head, 0xFFFF, buffer_size - m_head);
+    *reinterpret_cast<entry_type*>(_data + m_head) = entry_type::fragmented_space;
 
     size_t remining_bytes = buffer_size - m_head - minimal_fragmented_memory_size;
-    *reinterpret_cast<size_t*>(data + m_head + sizeof(entry_type)) = remining_bytes;
-    m_head                                                         = 0;
+    *reinterpret_cast<size_t*>(_data + m_head + sizeof(entry_type)) = remining_bytes;
+    m_head                                                          = 0;
 }
 
 uint8_t*
 cache_storage::reserve_memory_space(size_t len)
 {
-    size_t size;
+    size_t _size;
     {
         std::lock_guard scope{ m_mutex };
 
@@ -126,13 +125,13 @@ cache_storage::reserve_memory_space(size_t len)
         {
             fragment_memory();
         }
-        size   = m_head;
+        _size  = m_head;
         m_head = m_head + len;
     }
 
-    auto* result = m_buffer->data() + size;
-    memset(result, 0, len);
-    return result;
+    auto* _result = m_buffer->data() + _size;
+    memset(_result, 0, len);
+    return _result;
 };
 
 bool

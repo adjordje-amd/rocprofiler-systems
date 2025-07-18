@@ -22,38 +22,24 @@
 
 #pragma once
 
+#include "cache_utility.hpp"
 #include "sample_type.hpp"
-#include <array>
 #include <cassert>
-#include <chrono>
 #include <condition_variable>
 #include <cstdlib>
 #include <cstring>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
 #include <memory>
 #include <mutex>
 #include <stdint.h>
 #include <string.h>
-#include <string>
 #include <thread>
 #include <type_traits>
 #include <unistd.h>
-#include <vector>
 
 namespace rocprofsys
 {
 namespace sample_cache
 {
-constexpr auto MByte           = 1024 * 1024;
-constexpr auto GByte           = 1024 * 1024 * 1024;
-constexpr auto buffer_size     = 10 * MByte;
-constexpr auto flush_treshhold = 5 * MByte;
-const auto     filename        = "buffered_storage_" + std::to_string(getpid()) + ".bin";
-
-constexpr auto minimal_fragmented_memory_size = sizeof(entry_type) + sizeof(size_t);
-using buffer_array                            = std::array<uint8_t, buffer_size>;
 
 class cache_manager;
 class cache_storage
@@ -123,15 +109,15 @@ private:
     }
 
 private:
-    std::mutex                    m_mutex;
-    std::condition_variable       m_exit_condition;
-    bool                          m_exit_finished{ false };
-    bool                          m_shutdown{ false };
-    std::condition_variable       m_shutdown_condition;
-    std::thread                   m_flushing_thread;
-    size_t                        m_head{ 0 };
-    size_t                        m_tail{ 0 };
-    std::unique_ptr<buffer_array> m_buffer{ std::make_unique<buffer_array>() };
+    std::mutex                      m_mutex;
+    std::condition_variable         m_exit_condition;
+    bool                            m_exit_finished{ false };
+    bool                            m_shutdown{ false };
+    std::condition_variable         m_shutdown_condition;
+    std::thread                     m_flushing_thread;
+    size_t                          m_head{ 0 };
+    size_t                          m_tail{ 0 };
+    std::unique_ptr<buffer_array_t> m_buffer{ std::make_unique<buffer_array_t>() };
 };
 
 }  // namespace sample_cache

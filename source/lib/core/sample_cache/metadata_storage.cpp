@@ -21,11 +21,9 @@
 // SOFTWARE.
 
 #include "metadata_storage.hpp"
-#include "sample_cache/cache_storage.hpp"
 #include <algorithm>
 #include <cstdint>
 #include <rocprofiler-sdk/callback_tracing.h>
-#include <utility>
 
 namespace rocprofsys
 {

@@ -26,6 +26,7 @@
 #include "cache_storage_parser.hpp"
 #include "core/sample_cache/rocpd_post_processing.hpp"
 #include "metadata_storage.hpp"
+
 namespace rocprofsys
 {
 namespace sample_cache

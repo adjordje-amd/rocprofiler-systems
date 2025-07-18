@@ -32,7 +32,6 @@
 #include <rocprofiler-sdk/fwd.h>
 #include <rocprofiler-systems/categories.h>
 #include <stdint.h>
-#include <string.h>
 #include <string>
 #include <type_traits>
 #include <vector>

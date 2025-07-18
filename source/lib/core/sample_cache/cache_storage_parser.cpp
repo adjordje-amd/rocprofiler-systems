@@ -23,8 +23,9 @@
 #include "cache_storage_parser.hpp"
 #include "sample_cache/sample_type.hpp"
 #include <cstdio>
-#include <stdexcept>
-#include <utility>
+#include <fstream>
+#include <sstream>
+#include <string>
 
 namespace rocprofsys
 {
@@ -42,12 +43,11 @@ storage_parser::register_type_callback(
 void
 storage_parser::consume_storage()
 {
-    const std::filesystem::path& path = { filename };
-    std::ifstream                ifs(path, std::ios::binary);
+    std::ifstream ifs(filename, std::ios::binary);
     if(!ifs)
     {
         std::stringstream ss;
-        ss << "Error opening file for writing: " << path << "\n";
+        ss << "Error opening file for writing: " << filename << "\n";
         throw std::runtime_error(ss.str());
     }
 
@@ -125,10 +125,10 @@ storage_parser::consume_storage()
                            _in_time_sample.correlation_id, _in_time_sample.call_stack,
                            _in_time_sample.line_info);
                 invoke_callbacks(header.type, _in_time_sample);
+                break;
             }
             case entry_type::pmc_event_with_sample:
             {
-                std::cout << "PMC EVENT WITH SAMPLE" << std::endl;
                 pmc_event_with_sample _pmc_event_with_sample;
                 parse_data(
                     sample.data(), _pmc_event_with_sample.track_name,
@@ -141,13 +141,14 @@ storage_parser::consume_storage()
                     _pmc_event_with_sample.agent_handle,
                     _pmc_event_with_sample.pmc_info_name, _pmc_event_with_sample.value);
                 invoke_callbacks(header.type, _pmc_event_with_sample);
+                break;
             }
             default: break;
         }
     }
 
     ifs.close();
-    std::filesystem::remove(path);
+    std::remove(filename.c_str());
 }
 
 void

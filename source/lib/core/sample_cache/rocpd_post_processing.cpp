@@ -28,7 +28,6 @@
 #include "rocpd/agent_manager.hpp"
 #include "rocpd/data_processor.hpp"
 #include "rocpd/node_info.hpp"
-#include "rocprofiler-systems/categories.h"
 #include "sample_cache/cache_storage_parser.hpp"
 #include "sample_cache/metadata_storage.hpp"
 #include "sample_cache/sample_type.hpp"

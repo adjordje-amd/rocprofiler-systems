@@ -21,38 +21,23 @@
 // SOFTWARE.
 
 #pragma once
-#include "core/rocpd/node_info.hpp"
-#include "core/sample_cache/cache_storage_parser.hpp"
-#include "core/sample_cache/metadata_storage.hpp"
+#include "sample_type.hpp"
+#include <array>
+#include <string>
+#include <unistd.h>
 
 namespace rocprofsys
 {
 namespace sample_cache
 {
+constexpr size_t MByte           = 1024 * 1024;
+constexpr size_t GByte           = 1024 * 1024 * 1024;
+constexpr size_t buffer_size     = 15 * MByte;
+constexpr size_t flush_treshhold = 12 * MByte;
+const auto       filename = "buffered_storage_" + std::to_string(getpid()) + ".bin";
 
-class rocpd_post_processing
-{
-public:
-    rocpd_post_processing(metadata& metadata);
-
-    void register_parser_callback(storage_parser& parser);
-    void post_process_metadata();
-
-private:
-    using primary_key = size_t;
-
-    inline void rocpd_insert_thread_id(info::thread& t_info, const node_info& n_info,
-                                       const info::process& process_info) const;
-
-    postprocessing_callback get_kernel_dispatch_callback() const;
-    postprocessing_callback get_memory_copy_callback() const;
-    postprocessing_callback get_memory_allocate_callback() const;
-    postprocessing_callback get_region_callback() const;
-    postprocessing_callback get_in_time_sample_callback() const;
-    postprocessing_callback get_pmc_event_with_sample_callback() const;
-
-    metadata& m_metadata;
-};
+constexpr size_t minimal_fragmented_memory_size = sizeof(entry_type) + sizeof(size_t);
+using buffer_array_t                            = std::array<uint8_t, buffer_size>;
 
 }  // namespace sample_cache
 }  // namespace rocprofsys

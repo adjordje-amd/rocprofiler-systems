@@ -27,6 +27,7 @@
 #include <string>
 #include <unistd.h>
 #include <utility>
+
 namespace rocprofsys
 {
 namespace sample_cache
