@@ -29,6 +29,20 @@ namespace rocprofsys
 {
 namespace rocpd
 {
+
+struct scoped_database_transaction
+{
+    scoped_database_transaction()
+    {
+        data_storage::database::get_instance().execute_query("BEGIN");
+    };
+
+    ~scoped_database_transaction()
+    {
+        data_storage::database::get_instance().execute_query("END");
+    }
+};
+
 data_processor::data_processor()
 {
     data_storage::database::get_instance().initialize_schema();
