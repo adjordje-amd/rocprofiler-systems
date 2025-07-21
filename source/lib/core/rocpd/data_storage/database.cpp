@@ -81,8 +81,9 @@ database::initialize_schema()
     auto get_file_path = [](const std::string_view filename) {
         auto _rocprofsys_root = tim::get_env<std::string>(
             "rocprofiler_systems_ROOT", tim::get_env<std::string>("ROCPROFSYS_ROOT", ""));
+        auto dir_exists = tim::filepath::direxists(std::string(_rocprofsys_root));
         if(!_rocprofsys_root.empty() &&
-           tim::filepath::exists(std::string(_rocprofsys_root)))
+           dir_exists)
         {
             auto new_file_path = std::string(_rocprofsys_root)
                                      .append("/share/rocprofiler-systems/")
@@ -93,7 +94,7 @@ database::initialize_schema()
             }
         }
         return std::string(
-                   "rocprofiler-systems/source/lib/core/rocpd/data_storage/schema/")
+                   "source/lib/core/rocpd/data_storage/schema/")
             .append(filename);
     };
 

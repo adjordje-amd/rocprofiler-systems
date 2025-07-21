@@ -354,7 +354,7 @@ rocprofsys_preinit_rocpd()
             _n_info.id, getpid(),
             ((rocpd_agent->type == agent_type::GPU) ? "GPU" : "CPU"),
             rocpd_agent->node_id, rocpd_agent->logical_node_id,
-            rocpd_agent->logical_node_type_id, rocpd_agent->id, rocpd_agent->name.c_str(),
+            rocpd_agent->logical_node_type_id, rocpd_agent->device_id, rocpd_agent->name.c_str(),
             rocpd_agent->model_name.c_str(), rocpd_agent->vendor_name.c_str(),
             rocpd_agent->product_name.c_str(), "");
         rocpd_agent->base_id = _base_id;

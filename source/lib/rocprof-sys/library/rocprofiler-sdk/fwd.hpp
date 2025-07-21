@@ -51,6 +51,8 @@ using kernel_symbol_map_t =
     std::unordered_map<rocprofiler_kernel_id_t, kernel_symbol_data_t>;
 using callback_arg_array_t = std::vector<std::pair<std::string, std::string>>;
 
+using rocprofsys_agent_t = agent;
+
 struct code_object_callback_record_t
 {
     uint64_t                                             timestamp = 0;
@@ -90,7 +92,7 @@ struct rocprofiler_tool_counter_info_t : rocprofiler_counter_info_v0_t
 struct tool_agent
 {
     uint64_t                      device_id = 0;
-    const rocprofiler_agent_v0_t* agent     = nullptr;
+    const rocprofsys_agent_t* agent     = nullptr;
 };
 
 struct timing_interval
@@ -164,7 +166,7 @@ struct client_data
     void                        set_agents();
     context_id_vec_t            get_contexts() const;
     buffer_id_vec_t             get_buffers() const;
-    const rocprofiler_agent_t*  get_agent(rocprofiler_agent_id_t _id) const;
+    const rocprofsys_agent_t*   get_agent(rocprofiler_agent_id_t _id) const;
     const tool_agent*           get_gpu_tool_agent(rocprofiler_agent_id_t id) const;
     const kernel_symbol_data_t* get_kernel_symbol_info(uint64_t _kernel_id) const;
     const rocprofiler_tool_counter_info_t* get_tool_counter_info(
@@ -193,19 +195,19 @@ client_data::get_buffers() const
     };
 }
 
-inline const rocprofiler_agent_t*
+inline const rocprofsys_agent_t*
 client_data::get_agent(rocprofiler_agent_id_t _id) const
 {
     const auto& agent = agent_manager::get_instance().get_agent_by_handle(_id.handle);
 
-    return agent.agent;
+    return &agent;
 }
 
 inline const tool_agent*
 client_data::get_gpu_tool_agent(rocprofiler_agent_id_t id) const
 {
     for(const auto& itr : gpu_agents)
-        if(id == itr.agent->id) return &itr;
+        if(id.handle == itr.agent->handle) return &itr;
     return nullptr;
 }
 

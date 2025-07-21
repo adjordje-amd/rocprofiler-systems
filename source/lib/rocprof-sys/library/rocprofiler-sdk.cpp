@@ -1863,9 +1863,10 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
     {
         for(const auto& itr : _data->gpu_agents)
         {
+            const auto& _agent_id = rocprofiler_agent_id_t{itr.agent->handle};
             _data->agent_events.emplace(
-                itr.agent->id,
-                create_agent_profile(itr.agent->id, _counter_events, _data));
+                _agent_id,
+                create_agent_profile(_agent_id, _counter_events, _data));
         }
 
         ROCPROFILER_CALL(rocprofiler_create_context(&_data->counter_ctx));
