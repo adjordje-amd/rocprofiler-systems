@@ -54,7 +54,7 @@ rocprofiler_systems_add_interface_library(rocprofiler-systems-perfetto
                                           "Enables Perfetto support"
 )
 rocprofiler_systems_add_interface_library(rocprofiler-systems-sqlite3
-                                          "Enables SQLite3 support"
+                                          "Use SQLite3 for rocpd data storage"
 )
 rocprofiler_systems_add_interface_library(rocprofiler-systems-timemory
                                           "Provides timemory libraries"

@@ -22,12 +22,12 @@
 
 #include "agent_manager.hpp"
 #include "debug.hpp"
+#include <algorithm>
 #include <iterator>
 
 namespace rocprofsys
 {
-namespace rocpd
-{
+
 agent_manager&
 agent_manager::get_instance()
 {
@@ -36,57 +36,71 @@ agent_manager::get_instance()
 }
 
 void
-agent_manager::insert_agent(const rocprofiler_agent_v0_t* _agent)
+agent_manager::insert_agent(agent& _agent)
 {
     ROCPROFSYS_VERBOSE(
         3, "Inserting agent with device handle: %lu, and agent id: %ld, device type: %s",
-        _agent->id.handle,
-        (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? _gpu_agents_cnt : _cpu_agents_cnt),
-        (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU"));
+        _agent.device_id,
+        (_agent.type == agent_type::GPU ? _gpu_agents_cnt : _cpu_agents_cnt),
+        (_agent.type == agent_type::GPU ? "GPU" : "CPU"));
 
-    _agents.emplace_back(std::make_shared<agent>(agent{
-        .agent     = _agent,
-        .device_id = (_agent->type == ROCPROFILER_AGENT_TYPE_GPU ? _gpu_agents_cnt++
-                                                                 : _cpu_agents_cnt++),
-        .global_id = _global_cnt++ }));
+    _agent.device_type_index =
+        (_agent.type == agent_type::GPU ? _gpu_agents_cnt++ : _cpu_agents_cnt++);
+    _agents.emplace_back(std::make_shared<agent>(_agent));
 }
 
 const agent&
-agent_manager::get_agent_by_id(size_t device_id, rocprofiler_agent_type_t type) const
+agent_manager::get_agent_by_type_index(size_t type_index, agent_type type) const
 {
-    ROCPROFSYS_VERBOSE(3, "Getting agent for device id: %ld, type %s\n", device_id,
-                       (type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU");
+    ROCPROFSYS_VERBOSE(3, "Getting agent for type: %s, with type index: %ld\n",
+                        (type == agent_type::GPU) ? "GPU" : "CPU", type_index);
     auto _agent =
         std::find_if(_agents.begin(), _agents.end(), [&](const auto& agent_ptr) {
-            return agent_ptr->agent->type == type && agent_ptr->device_id == device_id;
+            return agent_ptr->type == type && agent_ptr->device_type_index == type_index;
         });
     if(_agent == _agents.end())
     {
         std::ostringstream oss;
-        oss << "Agent not found for device id: " << device_id
-            << ", type: " << (type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU");
+        oss << "Agent not found for type index: " << type_index
+            << ", type: " << (type == agent_type::GPU ? "GPU" : "CPU");
         throw std::out_of_range(oss.str());
     }
     return **_agent;
 }
 
 const agent&
-agent_manager::get_agent_by_handle(uint64_t                 device_handle,
-                                   rocprofiler_agent_type_t type) const
+agent_manager::get_agent_by_id(size_t device_id, agent_type type) const
 {
-    ROCPROFSYS_VERBOSE(3, "Getting agent for device handle: %ld, type %s\n",
-                       device_handle,
-                       (type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU"));
+    ROCPROFSYS_VERBOSE(3, "Getting agent for device id: %ld, type %s\n", device_id,
+                       (type == agent_type::GPU) ? "GPU" : "CPU");
     auto _agent =
         std::find_if(_agents.begin(), _agents.end(), [&](const auto& agent_ptr) {
-            return agent_ptr->agent->type == type &&
-                   agent_ptr->agent->id.handle == device_handle;
+            return agent_ptr->type == type && agent_ptr->device_id == device_id;
+        });
+    if(_agent == _agents.end())
+    {
+        std::ostringstream oss;
+        oss << "Agent not found for device id: " << device_id
+            << ", type: " << (type == agent_type::GPU ? "GPU" : "CPU");
+        throw std::out_of_range(oss.str());
+    }
+    return **_agent;
+}
+
+const agent&
+agent_manager::get_agent_by_handle(uint64_t device_handle, agent_type type) const
+{
+    ROCPROFSYS_VERBOSE(3, "Getting agent for device handle: %ld, type %s\n",
+                       device_handle, (type == agent_type::GPU ? "GPU" : "CPU"));
+    auto _agent =
+        std::find_if(_agents.begin(), _agents.end(), [&](const auto& agent_ptr) {
+            return agent_ptr->type == type && agent_ptr->handle == device_handle;
         });
     if(_agent == _agents.end())
     {
         std::ostringstream oss;
         oss << "Agent not found for device handle: " << device_handle
-            << ", type: " << (type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU");
+            << ", type: " << (type == agent_type::GPU ? "GPU" : "CPU");
         throw std::out_of_range(oss.str());
     }
     return **_agent;
@@ -98,7 +112,7 @@ agent_manager::get_agent_by_handle(size_t device_handle) const
     ROCPROFSYS_VERBOSE(3, "Getting agent for device handle: %ld\n", device_handle);
     auto _agent =
         std::find_if(_agents.begin(), _agents.end(), [&](const auto& agent_ptr) {
-            return agent_ptr->agent->id.handle == device_handle;
+            return agent_ptr->handle == device_handle;
         });
     if(_agent == _agents.end())
     {
@@ -109,33 +123,15 @@ agent_manager::get_agent_by_handle(size_t device_handle) const
     return **_agent;
 }
 
-const agent&
-agent_manager::get_agent_by_global_id(size_t global_id) const
-{
-    ROCPROFSYS_VERBOSE(3, "Getting agent for global id: %ld\n", global_id);
-    auto _agent =
-        std::find_if(_agents.begin(), _agents.end(), [&](const auto& agent_ptr) {
-            return agent_ptr->global_id == global_id;
-        });
-    if(_agent == _agents.end())
-    {
-        std::ostringstream oss;
-        oss << "Agent not found for global id: " << global_id;
-        throw std::out_of_range(oss.str());
-    }
-    return **_agent;
-}
-
 std::vector<std::shared_ptr<agent>>
-agent_manager::get_agents_by_type(rocprofiler_agent_type_t type) const
+agent_manager::get_agents_by_type(agent_type type) const
 {
     ROCPROFSYS_VERBOSE(3, "Getting agent for device type: %s\n",
-                       type == ROCPROFILER_AGENT_TYPE_GPU ? "GPU" : "CPU");
+                       type == agent_type::GPU ? "GPU" : "CPU");
 
     std::vector<std::shared_ptr<agent>> agents;
-    std::copy_if(
-        std::begin(_agents), std::end(_agents), std::back_inserter(agents),
-        [&type](const auto& agent_ptr) { return agent_ptr->agent->type == type; });
+    std::copy_if(std::begin(_agents), std::end(_agents), std::back_inserter(agents),
+                 [&type](const auto& agent_ptr) { return agent_ptr->type == type; });
     return agents;
 }
 
@@ -157,5 +153,4 @@ agent_manager::get_cpu_agents_count() const
     return _cpu_agents_cnt;
 }
 
-}  // namespace rocpd
 }  // namespace rocprofsys

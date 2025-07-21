@@ -22,36 +22,37 @@
 
 #pragma once
 
-#include <memory>
+#include <cstdint>
 #include <string>
-#include <unordered_map>
-#include <variant>
-#include <vector>
 
-namespace rocpd
+namespace rocprofsys
 {
 
-class json
+struct node_info
 {
+private:
+    node_info();
+
 public:
-    static std::shared_ptr<json> create();
+    ~node_info()                               = default;
+    node_info(const node_info&)                = default;
+    node_info(node_info&&) noexcept            = default;
+    node_info& operator=(const node_info&)     = default;
+    node_info& operator=(node_info&&) noexcept = default;
 
-    using json_value =
-        std::variant<std::string, int, double, long long, bool, std::vector<json>,
-                     std::nullptr_t, std::shared_ptr<json>>;
+    static node_info& get_instance();
 
-    void set(const std::string& key, const json_value& value);
-
-    std::string to_string() const;
-
-private:
-    json() = default;
-
-private:
-    static std::string stringify(const std::shared_ptr<json_value>& value);
-
-private:
-    std::unordered_map<std::string, std::shared_ptr<json_value>> data;
+    uint64_t    id          = 0;
+    uint64_t    hash        = 0;
+    std::string machine_id  = {};
+    std::string system_name = {};
+    std::string node_name   = {};
+    std::string release     = {};
+    std::string version     = {};
+    std::string machine     = {};
+    std::string domain_name = {};
 };
 
-}  // namespace rocpd
+const node_info&
+get_node_info();
+}  // namespace rocprofsys

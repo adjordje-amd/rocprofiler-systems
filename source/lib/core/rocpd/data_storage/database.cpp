@@ -23,16 +23,14 @@
 #include "database.hpp"
 #include "common/md5sum.hpp"
 #include "debug.hpp"
-#include "rocpd/node_info.hpp"
+#include "node_info.hpp"
 
 #include <config.hpp>
-#include <filesystem>
 #include <fstream>
 #include <regex>
 #include <timemory/environment/types.hpp>
 #include <unistd.h>
 
-namespace fs = std::filesystem;
 namespace
 {
 void
@@ -45,7 +43,6 @@ create_directory_for_database_file(const std::string& db_file)
     }
 }
 }  // namespace
-
 namespace rocprofsys
 {
 namespace rocpd
@@ -70,7 +67,7 @@ database::database()
                             "database open failed!");
     validate_sqlite3_result(sqlite3_open(abs_db_path.c_str(), &_sqlite3_db), "",
                             "database open failed!");
-};
+}
 
 database::~database()
 {
@@ -84,18 +81,20 @@ database::initialize_schema()
     auto get_file_path = [](const std::string_view filename) {
         auto _rocprofsys_root = tim::get_env<std::string>(
             "rocprofiler_systems_ROOT", tim::get_env<std::string>("ROCPROFSYS_ROOT", ""));
-        if(!_rocprofsys_root.empty() && fs::exists(std::string(_rocprofsys_root)))
+        auto dir_exists = tim::filepath::direxists(std::string(_rocprofsys_root));
+        if(!_rocprofsys_root.empty() &&
+           dir_exists)
         {
             auto new_file_path = std::string(_rocprofsys_root)
                                      .append("/share/rocprofiler-systems/")
                                      .append(filename);
-            if(fs::exists(new_file_path))
+            if(tim::filepath::exists(new_file_path))
             {
                 return new_file_path;
             }
         }
         return std::string(
-                   "rocprofiler-systems/source/lib/core/rocpd/data_storage/schema/")
+                   "source/lib/core/rocpd/data_storage/schema/")
             .append(filename);
     };
 

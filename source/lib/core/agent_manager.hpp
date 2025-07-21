@@ -29,8 +29,6 @@
 
 namespace rocprofsys
 {
-namespace rocpd
-{
 struct agent_manager
 {
     static agent_manager& get_instance();
@@ -41,16 +39,14 @@ struct agent_manager
     agent_manager& operator=(agent_manager&&)      = delete;
     ~agent_manager()                               = default;
 
-    void insert_agent(const rocprofiler_agent_v0_t* agent);
-
-    const agent& get_agent_by_id(size_t device_id, rocprofiler_agent_type_t type) const;
-    const agent& get_agent_by_handle(size_t                   device_id,
-                                     rocprofiler_agent_type_t type) const;
+    void         insert_agent(agent& agent);
+    const agent& get_agent_by_type_index(size_t type_index, agent_type type) const;
+    const agent& get_agent_by_id(size_t device_id, agent_type type) const;
+    const agent& get_agent_by_handle(size_t device_handle, agent_type type) const;
     const agent& get_agent_by_handle(size_t device_handle) const;
-    const agent& get_agent_by_global_id(size_t global_id) const;
 
-    std::vector<std::shared_ptr<agent>> get_agents_by_type(
-        rocprofiler_agent_type_t type) const;
+    std::vector<std::shared_ptr<agent>> get_agents_by_type(agent_type type) const;
+
     std::vector<std::shared_ptr<agent>> get_agents() const;
 
     size_t get_gpu_agents_count() const;
@@ -58,11 +54,9 @@ struct agent_manager
 
 private:
     std::vector<std::shared_ptr<agent>> _agents;
-    size_t                              _global_cnt{ 0 };
     size_t                              _gpu_agents_cnt{ 0 };
     size_t                              _cpu_agents_cnt{ 0 };
     agent_manager() = default;
 };
 
-}  // namespace rocpd
 }  // namespace rocprofsys

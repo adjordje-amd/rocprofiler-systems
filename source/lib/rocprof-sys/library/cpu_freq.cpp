@@ -21,11 +21,13 @@
 // SOFTWARE.
 
 #include "library/cpu_freq.hpp"
+#include "core/agent.hpp"
+#include "core/agent_manager.hpp"
 #include "core/common.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
@@ -215,9 +217,8 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, uint64_t timestamp,
     auto  name_primary_key = data_processor.insert_string(_name);
     auto  event_id         = data_processor.insert_event(name_primary_key, 0, 0, 0);
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id =
-        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto& agent_mngr = agent_manager::get_instance();
+    auto  base_id    = agent_mngr.get_agent_by_type_index(device_id, agent_type::CPU).base_id;
 
     auto insert_event_and_sample = [&](const char* name, double value) {
         data_processor.insert_pmc_event(event_id, base_id, name, value);

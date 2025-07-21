@@ -21,10 +21,11 @@
 // SOFTWARE.
 
 #include "library/components/comm_data.hpp"
+#include "core/agent_manager.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
 #include "core/rocpd/node_info.hpp"
@@ -32,10 +33,7 @@
 #include "core/sample_cache/sample_type.hpp"
 #include "library/tracing.hpp"
 
-#include <timemory/backends/mpi.hpp>
-#include <timemory/manager.hpp>
 #include <timemory/units.hpp>
-#include <timemory/utility/locking.hpp>
 
 namespace rocprofsys
 {
@@ -145,7 +143,7 @@ void
 cache_cpu_usage_events(const uint32_t device_id, int bytes)
 {
     auto& agents = rocpd::agent_manager::get_instance();
-    auto  agent  = agents.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU);
+    auto  agent  = agents.get_agent_by_type_index(device_id, agent_type::CPU);
 
     static std::mutex _mutex{};
     static uint64_t   value = 0;

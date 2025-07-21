@@ -26,6 +26,7 @@
 #include "core/config.hpp"
 #include "core/debug.hpp"
 #include "core/locking.hpp"
+#include "core/node_info.hpp"
 #include "core/perf.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
@@ -179,25 +180,24 @@ generate_call_stack_json(const tim::unwind::processed_entry& stack_entry)
 }
 
 std::string
-generate_line_info_json(const tim::unwind::processed_entry& linfo_entry)
+generate_line_info_json(const tim::unwind::processed_entry& line_info_entry)
 {
     auto line_info = ::rocpd::json::create();
-    line_info->set("line_address", as_hex(linfo_entry.line_address));
-    line_info->set("name", std::string(demangle(linfo_entry.name)));
+    line_info->set("line_address", as_hex(line_info_entry.line_address));
+    line_info->set("name", std::string(demangle(line_info_entry.name)));
 
-    if(linfo_entry.lineinfo && !linfo_entry.lineinfo.lines.empty())
+    if(line_info_entry.lineinfo && !line_info_entry.lineinfo.lines.empty())
     {
-        auto _lines = linfo_entry.lineinfo.lines;
+        auto _lines = line_info_entry.lineinfo.lines;
         std::reverse(_lines.begin(), _lines.end());
-        auto inlined = ::rocpd::json::create();
-        for(size_t _n = 0; _n < _lines.size(); ++_n)
+        for(const auto& line : _lines)
         {
-            const auto& litr = _lines[_n];
-            inlined->set("name", std::string(demangle(litr.name)));
-            inlined->set("location", std::string(litr.location));
-            inlined->set("line", std::to_string(litr.line));
+            auto inlined = ::rocpd::json::create();
+            inlined->set("name", std::string(demangle(line.name)));
+            inlined->set("location", std::string(line.location));
+            inlined->set("line", std::to_string(line.line));
+            line_info->set("inlined", inlined);
         }
-        line_info->set("inlined", inlined);
     }
 
     return line_info->to_string();
@@ -1096,15 +1096,15 @@ post_process()
 
         auto _raw_data    = _sampler->get_data();
         auto _loaded_data = load_offload_buffer(i);
-        for(auto litr : _loaded_data)
+        for(auto line : _loaded_data)
         {
-            while(!litr.is_empty())
+            while(!line.is_empty())
             {
                 auto _v = sampler_bundle_t{};
-                litr.read(&_v);
+                line.read(&_v);
                 _raw_data.emplace_back(std::move(_v));
             }
-            litr.destroy();
+            line.destroy();
         }
 
         ROCPROFSYS_VERBOSE(2 || get_debug_sampling(),
@@ -1363,13 +1363,13 @@ post_process_perfetto(int64_t _tid, const std::vector<timer_sampling_data>& _tim
                                 auto _lines = iitr.lineinfo.lines;
                                 std::reverse(_lines.begin(), _lines.end());
                                 size_t _n = 0;
-                                for(const auto& litr : _lines)
+                                for(const auto& line : _lines)
                                 {
                                     auto _label = JOIN('-', "lineinfo", _n++);
                                     tracing::add_perfetto_annotation(
                                         ctx, _label.c_str(),
-                                        JOIN('@', demangle(litr.name),
-                                             JOIN(':', litr.location, litr.line)));
+                                        JOIN('@', demangle(line.name),
+                                             JOIN(':', line.location, line.line)));
                                 }
                             }
                         }
@@ -1456,11 +1456,11 @@ post_process_perfetto(int64_t _tid, const std::vector<timer_sampling_data>& _tim
                     auto _lines = iitr.lineinfo.lines;
                     std::reverse(_lines.begin(), _lines.end());
                     size_t _n = 0;
-                    for(const auto& litr : _lines)
+                    for(const auto& line : _lines)
                     {
                         const auto* _name =
-                            static_strings.emplace(demangle(litr.name)).first->c_str();
-                        auto _info = JOIN(':', litr.location, litr.line);
+                            static_strings.emplace(demangle(line.name)).first->c_str();
+                        auto _info = JOIN(':', line.location, line.line);
                         tracing::push_perfetto_track(
                             category::timer_sampling{}, _name, _track, _beg,
                             [&](::perfetto::EventContext ctx) {
@@ -1500,13 +1500,13 @@ post_process_perfetto(int64_t _tid, const std::vector<timer_sampling_data>& _tim
                                     auto _lines = iitr.lineinfo.lines;
                                     std::reverse(_lines.begin(), _lines.end());
                                     size_t _n = 0;
-                                    for(const auto& litr : _lines)
+                                    for(const auto& line : _lines)
                                     {
                                         auto _label = JOIN('-', "lineinfo", _n++);
                                         tracing::add_perfetto_annotation(
                                             ctx, _label.c_str(),
-                                            JOIN('@', demangle(litr.name),
-                                                 JOIN(':', litr.location, litr.line)));
+                                            JOIN('@', demangle(line.name),
+                                                 JOIN(':', line.location, line.line)));
                                     }
                                 }
                             }
@@ -1840,16 +1840,16 @@ rocpd_post_process_timer_data(int64_t                                 _tid,
                     auto _lines = iitr.lineinfo.lines;
                     std::reverse(_lines.begin(), _lines.end());
                     size_t _n = 0;
-                    for(const auto& litr : _lines)
+                    for(const auto& line : _lines)
                     {
                         const auto* _name =
-                            static_strings.emplace(demangle(litr.name)).first->c_str();
+                            static_strings.emplace(demangle(line.name)).first->c_str();
                         auto inlined_name_id = data_processor.insert_string(_name);
 
                         auto inlined_call_stack = ::rocpd::json::create();
-                        inlined_call_stack->set("name", std::string(demangle(litr.name)));
-                        inlined_call_stack->set("location", std::string(litr.location));
-                        inlined_call_stack->set("line", std::to_string(litr.line));
+                        inlined_call_stack->set("name", std::string(demangle(line.name)));
+                        inlined_call_stack->set("location", std::string(line.location));
+                        inlined_call_stack->set("line", std::to_string(line.line));
                         inlined_call_stack->set("inlined", "true");
 
                         rocpd_insert_region<category::timer_sampling>(

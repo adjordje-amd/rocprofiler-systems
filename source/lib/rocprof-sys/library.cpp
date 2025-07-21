@@ -27,18 +27,21 @@
 #include "api.hpp"
 #include "common/setup.hpp"
 #include "common/static_object.hpp"
+#include "core/agent.hpp"
+#include "core/agent_manager.hpp"
 #include "core/categories.hpp"
 #include "core/components/fwd.hpp"
 #include "core/concepts.hpp"
 #include "core/config.hpp"
 #include "core/constraint.hpp"
+#include "core/cpu.hpp"
 #include "core/debug.hpp"
 #include "core/defines.hpp"
 #include "core/dynamic_library.hpp"
 #include "core/gpu.hpp"
 #include "core/locking.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto_fwd.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
@@ -81,7 +84,9 @@
 #include <timemory/utility/join.hpp>
 #include <timemory/utility/procfs/maps.hpp>
 
-#include <rocprofiler-sdk/agent.h>
+#if ROCPROFSYS_USE_ROCM > 0
+#    include <rocprofiler-sdk/agent.h>
+#endif
 
 #include <atomic>
 #include <chrono>
@@ -329,13 +334,19 @@ rocprofsys_preinit_cache()
 {
     auto cmd_line = read_command_line(getpid());
 
-    if(cmd_line.empty())
+    if(_cmd_line.empty())
     {
-        cmd_line.emplace_back("rocprofiler-systems");
+        _cmd_line.emplace_back("rocprofiler-systems");
     }
 
     sample_cache::get_cache_metadata().set_process(
         { getpid(), getppid(), cmd_line.at(0) });
+}
+
+void
+rocprofsys_preinit_cpu_agents()
+{
+    cpu::query_cpu_agents();
 }
 
 void
@@ -501,6 +512,10 @@ rocprofsys_init_tooling_hidden(void)
     auto _dtor = scope::destructor{ []() {
         // if set to finalized, don't continue
         if(get_state() > State::Active) return;
+
+#if !(ROCPROFSYS_USE_ROCM > 0)
+        rocprofsys_preinit_cpu_agents();
+#endif
         rocprofsys_preinit_cache();
 
         if(get_use_process_sampling())

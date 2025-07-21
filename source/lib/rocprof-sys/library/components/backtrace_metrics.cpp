@@ -22,13 +22,14 @@
 
 #include "library/components/backtrace_metrics.hpp"
 #include "core/common.hpp"
+#include "core/agent.hpp"
+#include "core/agent_manager.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/node_info.hpp"
 #include "library/components/ensure_storage.hpp"
 #include "library/ptl.hpp"
 #include "library/runtime.hpp"
@@ -645,30 +646,33 @@ backtrace_metrics::post_process_perfetto(int64_t _tid, uint64_t _ts) const
 void
 backtrace_metrics::post_process_rocpd(int64_t _tid, uint64_t _ts) const
 {
-    if((*this)(category::thread_cpu_time{}))
+    auto is_category_enabled = [&](const auto& _category) { return (*this)(_category); };
+
+    if(is_category_enabled(category::thread_cpu_time{}))
     {
         rocpd_process_backtrace_metrics_events<category::thread_cpu_time, double>(
             0, _ts, m_cpu / units::sec, _tid);
     }
 
-    if((*this)(category::thread_peak_memory{}))
+    if(is_category_enabled(category::thread_peak_memory{}))
     {
         rocpd_process_backtrace_metrics_events<category::thread_peak_memory, double>(
             0, _ts, m_mem_peak / units::megabyte, _tid);
     }
 
-    if((*this)(category::thread_context_switch{}))
+    if(is_category_enabled(category::thread_context_switch{}))
     {
         rocpd_process_backtrace_metrics_events<category::thread_context_switch, int64_t>(
             0, _ts, m_ctx_swch, _tid);
     }
 
-    if((*this)(category::thread_page_fault{}))
+    if(is_category_enabled(category::thread_page_fault{}))
     {
         rocpd_process_backtrace_metrics_events<category::thread_page_fault, int64_t>(
             0, _ts, m_page_flt, _tid);
     }
-    if((*this)(type_list<hw_counters>{}) && (*this)(category::thread_hardware_counter{}))
+    if(is_category_enabled(type_list<hw_counters>{}) &&
+       is_category_enabled(category::thread_hardware_counter{}))
     {
         rocpd_process_backtrace_metrics_events<category::thread_hardware_counter,
                                                hw_counter_data_t>(0, _ts, m_hw_counter,

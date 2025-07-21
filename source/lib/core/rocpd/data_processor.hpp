@@ -216,7 +216,7 @@ private:
     void initialize_kernel_dispatch_stmt();
     void initialize_memory_copy_stmt();
     void initialize_kernel_symbol_stmt();
-    void inintialize_code_object_stmt();
+    void initialize_code_object_stmt();
     void initialize_metadata();
     void initialize_args_stmt();
     void initialize_memory_alloc_stmt();

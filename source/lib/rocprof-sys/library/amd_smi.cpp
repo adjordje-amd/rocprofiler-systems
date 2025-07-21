@@ -27,17 +27,19 @@
 // THE SOFTWARE.
 
 #include "core/sample_cache/cache_manager.hpp"
+#include "core/agent.hpp"
 #if defined(NDEBUG)
 #    undef NDEBUG
 #endif
 
+#include "core/agent_manager.hpp"
 #include "core/common.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
 #include "core/gpu.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/node_info.hpp"
 #include "core/sample_cache/metadata_storage.hpp"
@@ -181,9 +183,8 @@ rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& 
     auto        name_primary_key = data_processor.insert_string(_name);
     auto        event_id         = data_processor.insert_event(name_primary_key, 0, 0, 0);
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto  base_id =
-        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_GPU).base_id;
+    auto& _agent_manager = agent_manager::get_instance();
+    auto  base_id = _agent_manager.get_agent_by_type_index(device_id, agent_type::GPU).base_id;
 
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if(!enabled) return;
@@ -199,7 +200,7 @@ rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& 
                             power);
     insert_event_and_sample(settings.mem_usage,
                             trait::name<category::amd_smi_memory_usage>::value, usage);
-};
+}
 
 auto&
 get_settings(uint32_t _dev_id)

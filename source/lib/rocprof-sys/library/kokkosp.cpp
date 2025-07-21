@@ -20,22 +20,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "core/sample_cache/sample_type.hpp"
 #define TIMEMORY_KOKKOSP_POSTFIX ROCPROFSYS_PUBLIC_API
 
 #include "api.hpp"
+#include "core/agent_manager.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
 #include "core/defines.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/agent_manager.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
 #include "core/rocpd/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
 #include "library/components/category_region.hpp"
 #include "library/runtime.hpp"
+#include "core/sample_cache/sample_type.hpp"
+#include <optional>
 
 #include <timemory/api/kokkosp.hpp>
 #include <timemory/backends/process.hpp>
