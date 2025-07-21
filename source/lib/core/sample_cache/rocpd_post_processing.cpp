@@ -25,9 +25,9 @@
 #include "config.hpp"
 #include "library/rocprofiler-sdk/fwd.hpp"
 #include "library/thread_info.hpp"
-#include "rocpd/agent_manager.hpp"
+#include "agent_manager.hpp"
 #include "rocpd/data_processor.hpp"
-#include "rocpd/node_info.hpp"
+#include "node_info.hpp"
 #include "sample_cache/cache_storage_parser.hpp"
 #include "sample_cache/metadata_storage.hpp"
 #include "sample_cache/sample_type.hpp"
@@ -68,7 +68,7 @@ rocpd_post_processing::get_kernel_dispatch_callback() const
         auto _kds = static_cast<const struct kernel_dispatch_sample&>(parsed);
 
         auto& data_processor = get_data_processor();
-        auto& agent_manager  = rocpd::agent_manager::get_instance();
+        auto& agent_manager  = agent_manager::get_instance();
         auto& n_info         = node_info::get_instance();
         auto  process        = m_metadata.get_process_info();
         auto  agent_primary_key =
@@ -122,7 +122,7 @@ rocpd_post_processing::get_memory_copy_callback() const
         auto _mcs = static_cast<const struct memory_copy_sample&>(parsed);
 
         auto& data_processor = get_data_processor();
-        auto& agent_manager  = rocpd::agent_manager::get_instance();
+        auto& agent_manager  = agent_manager::get_instance();
         auto& n_info         = node_info::get_instance();
         auto  process        = m_metadata.get_process_info();
 
@@ -204,7 +204,7 @@ rocpd_post_processing::get_memory_allocate_callback() const
     return [&](const storage_parsed_type_base& parsed) {
         auto  _mas           = static_cast<const struct memory_allocate_sample&>(parsed);
         auto& data_processor = get_data_processor();
-        auto& agent_manager  = rocpd::agent_manager::get_instance();
+        auto& agent_manager  = agent_manager::get_instance();
         auto& n_info         = node_info::get_instance();
         auto  process        = m_metadata.get_process_info();
         auto  thread_primary_key =
@@ -334,7 +334,7 @@ rocpd_post_processing::get_pmc_event_with_sample_callback() const
         auto& data_processor = get_data_processor();
         auto  track_primary_key = data_processor.insert_string(_pmc.track_name.c_str());
 
-        auto& agent_manager = rocpd::agent_manager::get_instance();
+        auto& agent_manager = agent_manager::get_instance();
         auto  agent_primary_key =
             agent_manager.get_agent_by_handle(_pmc.agent_handle).base_id;
 
@@ -380,7 +380,7 @@ rocpd_post_processing::post_process_metadata()
         return;
     }
     auto& data_processor = get_data_processor();
-    auto& agent_mngr     = rocpd::agent_manager::get_instance();
+    auto& agent_mngr     = agent_manager::get_instance();
     auto  n_info         = node_info::get_instance();
 
     data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
@@ -393,15 +393,16 @@ rocpd_post_processing::post_process_metadata()
                                        0, 0, 0, process_info.command.c_str(), "{}");
 
     const auto& agents = agent_mngr.get_agents();
+    int counter = 0;
     for(const auto& rocpd_agent : agents)
     {
         auto _base_id = rocpd::data_processor::get_instance().insert_agent(
             n_info.id, process_info.pid,
-            ((rocpd_agent->agent->type == ROCPROFILER_AGENT_TYPE_GPU) ? "GPU" : "CPU"),
-            rocpd_agent->global_id, rocpd_agent->agent->logical_node_id,
-            rocpd_agent->agent->logical_node_type_id, rocpd_agent->agent->device_id,
-            rocpd_agent->agent->name, rocpd_agent->agent->model_name,
-            rocpd_agent->agent->vendor_name, rocpd_agent->agent->product_name, "");
+            ((rocpd_agent->type == agent_type::GPU) ? "GPU" : "CPU"),
+            counter++, rocpd_agent->logical_node_id,
+            rocpd_agent->logical_node_type_id, rocpd_agent->device_id,
+            rocpd_agent->name.c_str(), rocpd_agent->model_name.c_str(),
+            rocpd_agent->vendor_name.c_str(), rocpd_agent->product_name.c_str(), "");
         rocpd_agent->base_id = _base_id;
     }
     auto _string_list = m_metadata.get_string_list();

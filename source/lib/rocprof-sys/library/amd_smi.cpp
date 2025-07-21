@@ -38,10 +38,9 @@
 #include "core/config.hpp"
 #include "core/debug.hpp"
 #include "core/gpu.hpp"
-#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/node_info.hpp"
+#include "core/node_info.hpp"
 #include "core/sample_cache/metadata_storage.hpp"
 #include "core/state.hpp"
 #include "library/amd_smi.hpp"
@@ -141,9 +140,9 @@ metadata_initialize_smi_pmc(size_t gpu_id)
     auto        ni               = node_info::get_instance();
     const char* TARGET_ARCH      = "GPU";
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto& agent_mngr = agent_manager::get_instance();
     auto  agent_handle =
-        agent_mngr.get_agent_by_id(gpu_id, ROCPROFILER_AGENT_TYPE_GPU).agent->id.handle;
+        agent_mngr.get_agent_by_type_index(gpu_id, agent_type::GPU).handle;
 
     sample_cache::get_cache_metadata().add_pmc_info(
         { agent_handle, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,

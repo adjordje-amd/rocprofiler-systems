@@ -28,7 +28,7 @@
 #include "core/perfetto.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
-#include "core/rocpd/node_info.hpp"
+#include "core/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
 #include "core/sample_cache/sample_type.hpp"
 #include "library/tracing.hpp"
@@ -121,10 +121,9 @@ metadata_initialize_comm_data_pmc()
     auto                                   ni               = node_info::get_instance();
     constexpr const auto                   DEVICE_ID = 0;  // Assuming CPU device ID is 0
 
-    auto&                 agent_mngr = rocpd::agent_manager::get_instance();
+    auto&                 agent_mngr = agent_manager::get_instance();
     [[maybe_unused]] auto agent_handle =
-        agent_mngr.get_agent_by_id(DEVICE_ID, ROCPROFILER_AGENT_TYPE_CPU)
-            .agent->id.handle;
+        agent_mngr.get_agent_by_type_index(DEVICE_ID,  agent_type::CPU).handle;
 
 #if defined(ROCPROFSYS_USE_MPI)
     sample_cache::get_cache_metadata().add_pmc_info(
@@ -142,7 +141,7 @@ template <typename Track>
 void
 cache_cpu_usage_events(const uint32_t device_id, int bytes)
 {
-    auto& agents = rocpd::agent_manager::get_instance();
+    auto& agents = agent_manager::get_instance();
     auto  agent  = agents.get_agent_by_type_index(device_id, agent_type::CPU);
 
     static std::mutex _mutex{};
@@ -161,7 +160,7 @@ cache_cpu_usage_events(const uint32_t device_id, int bytes)
     const size_t      correlation_id  = 0;
     const std::string call_stack      = "{}";
     const std::string line_info       = "{}";
-    const size_t      agent_handle    = agent.agent->id.handle;
+    const size_t      agent_handle    = agent.handle;
 
     sample_cache::get_cache_storage().store(
         sample_cache::entry_type::pmc_event_with_sample, track_name.c_str(), timestamp_ns,

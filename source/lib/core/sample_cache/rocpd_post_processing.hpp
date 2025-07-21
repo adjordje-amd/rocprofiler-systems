@@ -21,7 +21,7 @@
 // SOFTWARE.
 
 #pragma once
-#include "core/rocpd/node_info.hpp"
+#include "core/node_info.hpp"
 #include "core/sample_cache/cache_storage_parser.hpp"
 #include "core/sample_cache/metadata_storage.hpp"
 

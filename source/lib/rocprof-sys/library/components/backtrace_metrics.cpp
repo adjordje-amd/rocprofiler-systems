@@ -244,8 +244,8 @@ rocpd_initialize_backtrace_metrics_pmc(size_t dev_id, const char* units, int64_t
     auto        ni               = node_info::get_instance();
     const auto  TARGET_ARCH      = "CPU";
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
-    auto base_id = agent_mngr.get_agent_by_id(dev_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+    auto& agent_mngr = agent_manager::get_instance();
+    auto base_id = agent_mngr.get_agent_by_id(dev_id, agent_type::CPU).base_id;
 
     if constexpr(std::is_same_v<Category, category::thread_hardware_counter>)
     {
@@ -282,9 +282,9 @@ rocpd_process_backtrace_metrics_events(const uint32_t device_id, uint64_t timest
     auto  _tid_name      = JOIN("", '[', _tid, ']');
     auto  event_id =
         data_processor.insert_event(category_enum_id<Category>::value, 0, 0, 0);
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto& agent_mngr = agent_manager::get_instance();
     auto  base_id =
-        agent_mngr.get_agent_by_id(device_id, ROCPROFILER_AGENT_TYPE_CPU).base_id;
+        agent_mngr.get_agent_by_id(device_id, agent_type::CPU).base_id;
 
     auto insert_event_and_sample = [&](const char* name, double value) {
         data_processor.insert_pmc_event(event_id, base_id, name, value);

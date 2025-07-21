@@ -43,7 +43,7 @@
 #include "core/node_info.hpp"
 #include "core/perfetto_fwd.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/node_info.hpp"
+#include "core/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
 #include "core/timemory.hpp"
 #include "core/utility.hpp"
@@ -332,7 +332,7 @@ read_command_line(pid_t _pid)
 void
 rocprofsys_preinit_cache()
 {
-    auto cmd_line = read_command_line(getpid());
+    auto _cmd_line = read_command_line(getpid());
 
     if(_cmd_line.empty())
     {
@@ -340,7 +340,7 @@ rocprofsys_preinit_cache()
     }
 
     sample_cache::get_cache_metadata().set_process(
-        { getpid(), getppid(), cmd_line.at(0) });
+        { getpid(), getppid(), _cmd_line.at(0) });
 }
 
 void

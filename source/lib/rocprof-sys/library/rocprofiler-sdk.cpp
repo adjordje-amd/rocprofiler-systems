@@ -34,7 +34,7 @@
 #include "core/perfetto.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
-#include "core/rocpd/node_info.hpp"
+#include "core/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
 #include "core/sample_cache/cache_storage.hpp"
 #include "core/sample_cache/cache_storage_parser.hpp"

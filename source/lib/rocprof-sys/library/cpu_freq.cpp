@@ -29,7 +29,7 @@
 #include "core/node_info.hpp"
 #include "core/perfetto.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/node_info.hpp"
+#include "core/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
 #include "core/timemory.hpp"
 #include "library/components/cpu_freq.hpp"
@@ -149,9 +149,9 @@ metadata_initialize_cpu_freq_pmc(size_t dev_id)
     auto        ni               = node_info::get_instance();
     const auto* TARGET_ARCH      = "CPU";
 
-    auto& agent_mngr = rocpd::agent_manager::get_instance();
+    auto& agent_mngr = agent_manager::get_instance();
     auto  agent_handle =
-        agent_mngr.get_agent_by_id(dev_id, ROCPROFILER_AGENT_TYPE_CPU).agent->id.handle;
+        agent_mngr.get_agent_by_type_index(dev_id, agent_type::CPU).handle;
 
     do_for_enabled_cpus([&](size_t cpu_id) {
         sample_cache::get_cache_metadata().add_pmc_info(
@@ -273,8 +273,8 @@ setup()
     // the agents seems to be assigned per device basis not per core.
     // TODO: `get_enabled_cpus()` should be fixed in the future to align with GPU
     // implementation.
-    auto cpu_agents = rocpd::agent_manager::get_instance().get_agents_by_type(
-        ROCPROFILER_AGENT_TYPE_CPU);
+    auto cpu_agents = agent_manager::get_instance().get_agents_by_type(
+        agent_type::CPU);
     for(auto& agent : cpu_agents)
     {
         metadata_initialize_cpu_freq_pmc(agent->device_id);
