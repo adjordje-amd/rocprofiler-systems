@@ -151,7 +151,7 @@ rocpd_initialize_cpu_freq_pmc(size_t dev_id)
     const auto* TARGET_ARCH      = "CPU";
 
     auto& _agent_manager = agent_manager::get_instance();
-    auto  base_id = _agent_manager.get_agent_by_id(dev_id, agent_type::CPU).base_id;
+    auto  base_id = _agent_manager.get_agent_by_type_index(dev_id, agent_type::CPU).base_id;
 
     do_for_enabled_cpus([&](size_t cpu_id) {
         data_processor.insert_pmc_description(
@@ -215,7 +215,7 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, uint64_t timestamp,
     auto  event_id = data_processor.insert_event(ROCPROFSYS_CATEGORY_CPU_FREQ, 0, 0, 0);
 
     auto& agent_mngr = agent_manager::get_instance();
-    auto  base_id    = agent_mngr.get_agent_by_id(device_id, agent_type::CPU).base_id;
+    auto  base_id    = agent_mngr.get_agent_by_type_index(device_id, agent_type::CPU).base_id;
 
     auto insert_event_and_sample = [&](const char* name, double value) {
         data_processor.insert_pmc_event(event_id, base_id, name, value);

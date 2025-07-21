@@ -153,6 +153,7 @@ query_cpu_agents()
         auto logical_id = id_count++;
         auto id         = cpu_count++;
         auto cur_agent  = agent{ agent_type::CPU,
+                                0,
                                 id,
                                 node_id,
                                 logical_id,

@@ -124,7 +124,7 @@ rocpd_initialize_smi_pmc(size_t gpu_id)
     const auto* TARGET_ARCH      = "GPU";
 
     auto& _agent_manager = agent_manager::get_instance();
-    auto  base_id = _agent_manager.get_agent_by_id(gpu_id, agent_type::GPU).base_id;
+    auto  base_id = _agent_manager.get_agent_by_type_index(gpu_id, agent_type::GPU).base_id;
 
     data_processor.insert_pmc_description(
         ni.id, getpid(), base_id, TARGET_ARCH, EVENT_CODE, INSTANCE_ID,
@@ -162,7 +162,7 @@ rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& 
     auto  event_id = data_processor.insert_event(ROCPROFSYS_CATEGORY_AMD_SMI, 0, 0, 0);
 
     auto& _agent_manager = agent_manager::get_instance();
-    auto  base_id = _agent_manager.get_agent_by_id(device_id, agent_type::GPU).base_id;
+    auto  base_id = _agent_manager.get_agent_by_type_index(device_id, agent_type::GPU).base_id;
 
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if(!enabled) return;
