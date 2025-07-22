@@ -209,8 +209,12 @@ rocpd_post_processing::get_memory_allocate_callback() const
         auto  process        = m_metadata.get_process_info();
         auto  thread_primary_key =
             data_processor.map_thread_id_to_primary_key(_mas.record.thread_id);
-        auto agent_primary_key =
+        auto agent_primary_key = std::optional<uint64_t>{};
+        if(_mas.record.agent_id.handle != static_cast<uint64_t>(-1))
+        {
+            agent_primary_key =
             agent_manager.get_agent_by_handle(_mas.record.agent_id.handle).base_id;
+        }
         const auto* _name =
             m_metadata.get_buffer_name_info().at(_mas.record.kind, _mas.record.operation);
 
