@@ -95,18 +95,7 @@ metadata_initialize_category()
 void
 metadata_initialize_smi_tracks()
 {
-    const auto thread_id =
-        static_cast<size_t>(gettid());  // Internal thread ID for amd-smi
-
-    const auto& thread_info = thread_info::get(thread_id, SequentTID);
-
-    sample_cache::get_cache_metadata().add_thread_info(
-        { .parent_process_id = getppid(),
-          .process_id        = getpid(),
-          .thread_id         = thread_id,
-          .start             = static_cast<uint32_t>(thread_info->get_start()),
-          .end               = static_cast<uint32_t>(thread_info->get_stop()),
-          .extdata           = "{}" });
+    const auto thread_id = std::nullopt;
 
     sample_cache::get_cache_metadata().add_track(
         { .track_name = trait::name<category::amd_smi_mm_busy>::value,

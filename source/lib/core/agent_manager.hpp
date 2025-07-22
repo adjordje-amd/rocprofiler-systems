@@ -29,6 +29,7 @@
 
 namespace rocprofsys
 {
+
 struct agent_manager
 {
     static agent_manager& get_instance();

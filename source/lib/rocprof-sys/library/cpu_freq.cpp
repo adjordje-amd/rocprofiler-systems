@@ -100,38 +100,31 @@ metadata_initialize_cpu_freq_category()
 }
 
 void
-metadata_initialize_thread_info(size_t tid)
-{
-    sample_cache::get_cache_metadata().add_thread_info(
-        { getppid(), getpid(), tid, 0, 0, "{}" });
-}
-
-void
-metadata_initialize_cpu_freq_tracks(size_t tid)
+metadata_initialize_cpu_freq_tracks()
 {
     do_for_enabled_cpus([&](size_t cpu_id) {
         sample_cache::get_cache_metadata().add_track(
-            { get_cpu_freq_track_name<category::cpu_freq>(cpu_id).c_str(), tid, "{}" });
+            { get_cpu_freq_track_name<category::cpu_freq>(cpu_id).c_str(),std::nullopt, "{}" });
     });
 }
 
 void
-metadata_initialize_cpu_usage_tracks(size_t tid)
+metadata_initialize_cpu_usage_tracks()
 {
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_page>::value, tid, "{}" });
+        { trait::name<category::process_page>::value,std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_virt>::value, tid, "{}" });
+        { trait::name<category::process_virt>::value,std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_peak>::value, tid, "{}" });
+        { trait::name<category::process_peak>::value,std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_context_switch>::value, tid, "{}" });
+        { trait::name<category::process_context_switch>::value,std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_page_fault>::value, tid, "{}" });
+        { trait::name<category::process_page_fault>::value,std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_user_mode_time>::value, tid, "{}" });
+        { trait::name<category::process_user_mode_time>::value,std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_kernel_mode_time>::value, tid, "{}" });
+        { trait::name<category::process_kernel_mode_time>::value,std::nullopt, "{}" });
 }
 
 void
@@ -263,10 +256,8 @@ setup()
     }
 
     metadata_initialize_cpu_freq_category();
-    auto thread_id = gettid();
-    metadata_initialize_thread_info(thread_id);
-    metadata_initialize_cpu_usage_tracks(thread_id);
-    metadata_initialize_cpu_freq_tracks(thread_id);
+    metadata_initialize_cpu_usage_tracks();
+    metadata_initialize_cpu_freq_tracks();
 
     // `get_enabled_cpus()` returns the number of cores enabled for monitoring but
     // the actuall device_id is 0, since there is a single device avaliable. And

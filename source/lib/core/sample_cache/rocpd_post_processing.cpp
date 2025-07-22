@@ -420,9 +420,13 @@ rocpd_post_processing::post_process_metadata()
     auto _track_info_list = m_metadata.get_track_info_list();
     for(auto& track : _track_info_list)
     {
+        std::optional<size_t> thread_id = std::nullopt;
+        if(track.thread_id.has_value())
+        {
+            thread_id = data_processor.map_thread_id_to_primary_key(track.thread_id.value());
+        }
         data_processor.insert_track(
-            track.track_name.c_str(), n_info.id, process_info.pid,
-            data_processor.map_thread_id_to_primary_key(track.thread_id));
+            track.track_name.c_str(), n_info.id, process_info.pid, thread_id);
     }
 
     auto _code_object_list = m_metadata.get_code_object_list();

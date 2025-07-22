@@ -91,7 +91,7 @@ struct thread
 struct track
 {
     std::string track_name;  // < Unique
-    size_t      thread_id;
+    std::optional<size_t>      thread_id;
     std::string extdata;
 
     friend bool operator<(const track& lhs, const track& rhs)
