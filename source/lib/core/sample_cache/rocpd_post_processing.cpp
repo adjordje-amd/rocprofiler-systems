@@ -162,7 +162,7 @@ postprocessing_callback
 rocpd_post_processing::get_memory_allocate_callback() const
 {
     auto memtype_to_db = [](std::string_view memory_type)
-        -> std::pair<std::string_view, std::string_view> {
+        -> std::pair<std::string, std::string> {
         constexpr auto MEMORY_PREFIX  = std::string_view{ "MEMORY_ALLOCATION_" };
         constexpr auto SCRATCH_PREFIX = std::string_view{ "SCRATCH_MEMORY_" };
         constexpr auto VMEM_PREFIX    = std::string_view{ "VMEM_" };
@@ -228,8 +228,8 @@ rocpd_post_processing::get_memory_allocate_callback() const
             category_primary_key, stack_id, parent_stack_id, correlation_id);
 
         data_processor.insert_memory_alloc(
-            n_info.id, process.pid, thread_primary_key, agent_primary_key, type.data(),
-            level.data(), _mas.record.start_timestamp, _mas.record.end_timestamp,
+            n_info.id, process.pid, thread_primary_key, agent_primary_key, type.c_str(),
+            level.c_str(), _mas.record.start_timestamp, _mas.record.end_timestamp,
             _mas.record.address.value, _mas.record.allocation_size, queue_id,
             _mas.stream_handle, event_primary_key);
     };
