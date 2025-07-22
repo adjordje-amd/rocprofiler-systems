@@ -46,7 +46,7 @@ cache_manager::cache_manager()
 void
 cache_manager::post_process()
 {
-    if(!m_storage.is_shutdown())
+    if(m_storage.is_running())
     {
         ROCPROFSYS_WARNING(2, "Postprocessing called without previously shutting down "
                               "cache storage. Calling shutdown explicitly..");

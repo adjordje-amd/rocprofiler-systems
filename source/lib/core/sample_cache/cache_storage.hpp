@@ -84,7 +84,7 @@ private:
     friend class cache_manager;
     cache_storage();
     void     shutdown();
-    bool     is_shutdown() const;
+    bool     is_running() const;
     void     fragment_memory();
     uint8_t* reserve_memory_space(size_t len);
 
@@ -112,7 +112,7 @@ private:
     std::mutex                      m_mutex;
     std::condition_variable         m_exit_condition;
     bool                            m_exit_finished{ false };
-    bool                            m_shutdown{ false };
+    bool                            m_running{ true };
     std::condition_variable         m_shutdown_condition;
     std::thread                     m_flushing_thread;
     size_t                          m_head{ 0 };

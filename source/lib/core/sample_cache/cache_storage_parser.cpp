@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include "cache_storage_parser.hpp"
+#include "debug.hpp"
 #include "sample_cache/sample_type.hpp"
 #include <cstdio>
 #include <fstream>
@@ -156,13 +157,16 @@ storage_parser::consume_storage()
 void
 storage_parser::invoke_callbacks(entry_type type, const storage_parsed_type_base& parsed)
 {
-    if(m_callbacks.count(type) > 0)
+    auto _callback_list = m_callbacks.find(type);
+    if(_callback_list == m_callbacks.end())
     {
-        auto _callbacks = m_callbacks.at(type);
-        for(auto& cb : _callbacks)
-        {
-            cb(parsed);
-        }
+        ROCPROFSYS_VERBOSE(1, "Callback not found for cache postprocessing");
+        return;
+    }
+
+    for(auto& cb : _callback_list->second)
+    {
+        cb(parsed);
     }
 }
 }  // namespace sample_cache

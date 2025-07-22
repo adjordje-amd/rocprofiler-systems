@@ -77,12 +77,12 @@ cache_storage::cache_storage()
         };
 
         std::mutex _shutdown_condition_mutex;
-        while(!m_shutdown)
+        while(m_running)
         {
             execute_flush(_ofs);
             std::unique_lock _lock{ _shutdown_condition_mutex };
             m_shutdown_condition.wait_for(_lock, std::chrono::milliseconds(30),
-                                          [&]() { return m_shutdown; });
+                                          [&]() { return !m_running; });
         }
 
         execute_flush(_ofs, true);
@@ -95,7 +95,7 @@ cache_storage::cache_storage()
 void
 cache_storage::shutdown()
 {
-    m_shutdown = true;
+    m_running = false;
     m_shutdown_condition.notify_all();
     std::mutex       _exit_mutex;
     std::unique_lock _exit_lock{ _exit_mutex };
@@ -135,9 +135,9 @@ cache_storage::reserve_memory_space(size_t len)
 };
 
 bool
-cache_storage::is_shutdown() const
+cache_storage::is_running() const
 {
-    return m_shutdown;
+    return m_running;
 }
 
 }  // namespace sample_cache
