@@ -109,8 +109,8 @@ cache_storage::fragment_memory()
     memset(_data + m_head, 0xFFFF, buffer_size - m_head);
     *reinterpret_cast<entry_type*>(_data + m_head) = entry_type::fragmented_space;
 
-    size_t remining_bytes = buffer_size - m_head - minimal_fragmented_memory_size;
-    *reinterpret_cast<size_t*>(_data + m_head + sizeof(entry_type)) = remining_bytes;
+    size_t remaining_bytes = buffer_size - m_head - minimal_fragmented_memory_size;
+    *reinterpret_cast<size_t*>(_data + m_head + sizeof(entry_type)) = remaining_bytes;
     m_head                                                          = 0;
 }
 
