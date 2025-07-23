@@ -24,6 +24,7 @@
 #include "common/md5sum.hpp"
 #include "debug.hpp"
 #include "node_info.hpp"
+#include "timemory/utility/filepath.hpp"
 
 #include <config.hpp>
 #include <fstream>
@@ -82,7 +83,7 @@ database::initialize_schema()
         auto _rocprofsys_root = tim::get_env<std::string>(
             "rocprofiler_systems_ROOT", tim::get_env<std::string>("ROCPROFSYS_ROOT", ""));
         if(!_rocprofsys_root.empty() &&
-           tim::filepath::exists(std::string(_rocprofsys_root)))
+           tim::filepath::direxists(std::string(_rocprofsys_root)))
         {
             auto new_file_path = std::string(_rocprofsys_root)
                                      .append("/share/rocprofiler-systems/")

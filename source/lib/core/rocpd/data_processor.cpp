@@ -273,8 +273,8 @@ data_processor::initialize_event_stmt()
                      .get_query_string();
     _insert_event_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<const char*, size_t, size_t, size_t, size_t,
-                                      const char*, const char*, const char*>(query);
+            .create_statement_executor<const char*, size_t, size_t, size_t, size_t,
+                                       const char*, const char*, const char*>(query);
 }
 
 void
@@ -287,7 +287,7 @@ data_processor::initialize_pmc_event_stmt()
                      .get_query_string();
     _insert_pmc_event_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<const char*, size_t, size_t, double, const char*>(
+            .create_statement_executor<const char*, size_t, size_t, double, const char*>(
                 query);
 }
 
@@ -301,8 +301,8 @@ data_processor::initialize_sample_stmt()
                      .get_query_string();
     _insert_sample_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<const char*, size_t, uint64_t, size_t, const char*>(
-                query);
+            .create_statement_executor<const char*, size_t, uint64_t, size_t,
+                                       const char*>(query);
 }
 
 void
@@ -316,8 +316,8 @@ data_processor::initialize_region_stmt()
                      .get_query_string();
     _insert_region_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<const char*, size_t, size_t, size_t, uint64_t,
-                                      uint64_t, size_t, size_t, const char*>(query);
+            .create_statement_executor<const char*, size_t, size_t, size_t, uint64_t,
+                                       uint64_t, size_t, size_t, const char*>(query);
 }
 
 void
@@ -336,10 +336,11 @@ data_processor::initialize_kernel_dispatch_stmt()
                      .get_query_string();
     _insert_kernel_dispatch_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<const char*, size_t, size_t, size_t, size_t, size_t,
-                                      size_t, size_t, size_t, uint64_t, uint64_t, size_t,
-                                      size_t, size_t, size_t, size_t, size_t, size_t,
-                                      size_t, size_t, size_t, const char*>(query);
+            .create_statement_executor<const char*, size_t, size_t, size_t, size_t,
+                                       size_t, size_t, size_t, size_t, uint64_t, uint64_t,
+                                       size_t, size_t, size_t, size_t, size_t, size_t,
+                                       size_t, size_t, size_t, size_t, const char*>(
+                query);
 }
 
 void
@@ -356,10 +357,10 @@ data_processor::initialize_memory_copy_stmt()
                      .get_query_string();
     _insert_memory_copy_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<const char*, size_t, size_t, size_t, uint64_t,
-                                      uint64_t, size_t, size_t, size_t, size_t, size_t,
-                                      size_t, size_t, size_t, size_t, size_t,
-                                      const char*>(query);
+            .create_statement_executor<const char*, size_t, size_t, size_t, uint64_t,
+                                       uint64_t, size_t, size_t, size_t, size_t, size_t,
+                                       size_t, size_t, size_t, size_t, size_t,
+                                       const char*>(query);
 }
 
 void
@@ -378,10 +379,10 @@ data_processor::initialize_kernel_symbol_stmt()
             .get_query_string();
     _insert_kernel_symbol_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<size_t, const char*, size_t, size_t, uint64_t,
-                                      const char*, const char*, uint64_t, uint32_t,
-                                      uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
-                                      uint32_t, const char*>(query);
+            .create_statement_executor<size_t, const char*, size_t, size_t, uint64_t,
+                                       const char*, const char*, uint64_t, uint32_t,
+                                       uint32_t, uint32_t, uint32_t, uint32_t, uint32_t,
+                                       uint32_t, const char*>(query);
 }
 
 void
@@ -396,9 +397,9 @@ data_processor::initialize_code_object_stmt()
             .get_query_string();
     _insert_code_object_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<size_t, const char*, size_t, size_t, size_t,
-                                      const char*, uint64_t, uint64_t, uint64_t,
-                                      const char*, const char*>(query);
+            .create_statement_executor<size_t, const char*, size_t, size_t, size_t,
+                                       const char*, uint64_t, uint64_t, uint64_t,
+                                       const char*, const char*>(query);
 }
 
 void
@@ -412,8 +413,8 @@ data_processor::initialize_args_stmt()
                      .get_query_string();
     _insert_args_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<const char*, size_t, size_t, const char*,
-                                      const char*, const char*, const char*>(query);
+            .create_statement_executor<const char*, size_t, size_t, const char*,
+                                       const char*, const char*, const char*>(query);
 }
 
 void
@@ -429,7 +430,7 @@ data_processor::initialize_memory_alloc_stmt()
                      .get_query_string();
     _insert_memory_alloc_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<
+            .create_statement_executor<
                 const char*, size_t, size_t, size_t, size_t, const char*, const char*,
                 uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, const char*>(
                 query);
@@ -444,9 +445,9 @@ data_processor::initialize_memory_alloc_stmt()
                 .get_query_string();
     _insert_memory_alloc_no_agent_statement =
         data_storage::database::get_instance()
-            .create_statment_executor<const char*, size_t, size_t, size_t, const char*,
-                                      const char*, uint64_t, uint64_t, size_t, size_t,
-                                      size_t, size_t, size_t, const char*>(query);
+            .create_statement_executor<const char*, size_t, size_t, size_t, const char*,
+                                       const char*, uint64_t, uint64_t, size_t, size_t,
+                                       size_t, size_t, size_t, const char*>(query);
 }
 
 void

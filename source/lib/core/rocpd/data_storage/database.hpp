@@ -35,7 +35,6 @@ namespace rocpd
 namespace data_storage
 {
 static std::mutex _mutex;
-
 class database
 {
 public:
@@ -104,6 +103,62 @@ private:
         throw std::runtime_error(ss.str());
     }
 
+    template <typename T, std::enable_if_t<!(common::traits::is_string_literal<T>() ||
+                                             std::is_floating_point_v<std::decay_t<T>> ||
+                                             std::is_same_v<std::decay_t<T>, int64_t> ||
+                                             std::is_same_v<std::decay_t<T>, uint64_t> ||
+                                             std::is_same_v<std::decay_t<T>, int32_t> ||
+                                             std::is_same_v<std::decay_t<T>, uint32_t>),
+                                           int> = 0>
+    inline void bind_value([[maybe_unused]] sqlite3_stmt* stmt,
+                           [[maybe_unused]] int position, [[maybe_unused]] T& _value,
+                           [[maybe_unused]] const std::string& query)
+    {
+        throw std::runtime_error("Unsupported type for binding!");
+    }
+
+    template <typename T,
+              std::enable_if_t<common::traits::is_string_literal<T>(), int> = 0>
+    inline void bind_value(sqlite3_stmt* stmt, int position, T&& _value,
+                           const std::string& query)
+    {
+        validate_sqlite3_result(
+            sqlite3_bind_text(stmt, position, _value, -1, SQLITE_STATIC), query.c_str(),
+            "Failed to bind text! Position: ", position, ", Value: ", _value);
+    }
+
+    template <typename T,
+              std::enable_if_t<std::is_floating_point_v<std::decay_t<T>>, int> = 0>
+    inline void bind_value(sqlite3_stmt* stmt, int position, T&& _value,
+                           const std::string& query)
+    {
+        validate_sqlite3_result(
+            sqlite3_bind_double(stmt, position, _value), query.c_str(),
+            "Failed to bind double! Position: ", position, ", Value: ", _value);
+    }
+
+    template <typename T, std::enable_if_t<std::is_same_v<std::decay_t<T>, int64_t> ||
+                                               std::is_same_v<std::decay_t<T>, uint64_t>,
+                                           int> = 0>
+    inline void bind_value(sqlite3_stmt* stmt, int position, T&& _value,
+                           const std::string& query)
+    {
+        validate_sqlite3_result(sqlite3_bind_int64(stmt, position, _value), query.c_str(),
+                                "Failed to bind int64_t/uint64_t! Position: ", position,
+                                ", Value: ", _value);
+    }
+
+    template <typename T, std::enable_if_t<std::is_same_v<std::decay_t<T>, int32_t> ||
+                                               std::is_same_v<std::decay_t<T>, uint32_t>,
+                                           int> = 0>
+    inline void bind_value(sqlite3_stmt* stmt, int position, T&& _value,
+                           const std::string& query)
+    {
+        validate_sqlite3_result(sqlite3_bind_int(stmt, position, _value), query.c_str(),
+                                "Failed to bind int32_t/uint32_t! Position: ", position,
+                                ", Value: ", _value);
+    }
+
 public:
     void initialize_schema();
 
@@ -117,7 +172,7 @@ public:
      * values to the respective placeholders in the query.
      */
     template <typename... Values>
-    auto create_statment_executor(const std::string& query)
+    auto create_statement_executor(const std::string& query)
     {
         sqlite3_stmt* p_stmt;
         validate_sqlite3_result(
@@ -127,47 +182,9 @@ public:
 
         return [stmt, query, this](Values... value) {
             std::lock_guard lock{ _mutex };
-            int             position   = 1;
-            auto            bind_value = [&](auto _value) {
-                using T = decltype(_value);
-                if constexpr(std::is_same_v<T, int32_t> || std::is_same_v<T, uint32_t>)
-                {
-                    validate_sqlite3_result(
-                        sqlite3_bind_int(stmt.get(), position, _value), query.c_str(),
-                        "Failed to bind int32_t/uint32_t! Position: ", position,
-                        ", Value: ", _value);
-                }
-                else if constexpr(std::is_same_v<T, int64_t> ||
-                                  std::is_same_v<T, uint64_t>)
-                {
-                    validate_sqlite3_result(
-                        sqlite3_bind_int64(stmt.get(), position, _value), query.c_str(),
-                        "Failed to bind int64_t/uint64_t! Position: ", position,
-                        ", Value: ", _value);
-                }
-                else if constexpr(std::is_floating_point_v<T>)
-                {
-                    validate_sqlite3_result(
-                        sqlite3_bind_double(stmt.get(), position, _value), query.c_str(),
-                        "Failed to bind double! Position: ", position,
-                        ", Value: ", _value);
-                }
-                else if constexpr(common::traits::is_string_literal_v<std::decay_t<T>>)
-                {
-                    validate_sqlite3_result(sqlite3_bind_text(stmt.get(), position,
-                                                                         _value, -1, SQLITE_STATIC),
-                                                       query.c_str(),
-                                                       "Failed to bind text! Position: ", position,
-                                                       ", Value: ", _value);
-                }
-                else
-                {
-                    throw std::runtime_error("Unsupported type for binding!");
-                }
-                position++;
-            };
+            int             position = 1;
 
-            (bind_value(value), ...);
+            ((bind_value(stmt.get(), position++, value, query)), ...);
 
             validate_sqlite3_result(sqlite3_step(stmt.get()), query.c_str(),
                                     "Failed to execute step!\n", "Values: ", value...);

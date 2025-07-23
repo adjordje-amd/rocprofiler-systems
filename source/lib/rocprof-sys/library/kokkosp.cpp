@@ -172,7 +172,7 @@ rocpd_initialize_kokkos_category()
 }
 
 void
-rocpd_initialize_kokos_track()
+rocpd_initialize_kokkos_track()
 {
     auto& data_processor = get_data_processor();
     auto& n_info         = rocprofsys::node_info::get_instance();
@@ -311,7 +311,7 @@ extern "C"
             if(rocprofsys::get_use_rocpd())
             {
                 rocpd_initialize_kokkos_category();
-                rocpd_initialize_kokos_track();
+                rocpd_initialize_kokkos_track();
             }
         }
 
