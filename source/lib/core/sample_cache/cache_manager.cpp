@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #include "cache_manager.hpp"
+#include "core/config.hpp"
 #include "core/sample_cache/cache_storage_parser.hpp"
 #include "debug.hpp"
 #include "sample_cache/rocpd_post_processing.hpp"
@@ -49,10 +50,14 @@ cache_manager::post_process()
     if(m_storage.is_running())
     {
         ROCPROFSYS_WARNING(2, "Postprocessing called without previously shutting down "
-                              "cache storage. Calling shutdown explicitly..");
+                              "cache storage. Calling shutdown explicitly..\n");
         shutdown();
     }
 
+    if(get_use_rocpd())
+    {
+        ROCPROFSYS_PRINT("Generating rocpd with collected data. This may take a while..\n");
+    }
     post_process_metadata();
     m_parser.consume_storage();
 }

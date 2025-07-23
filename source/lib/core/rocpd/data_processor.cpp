@@ -70,8 +70,7 @@ data_processor::initialize_metadata()
 size_t
 data_processor::insert_string(const char* str)
 {
-    std::lock_guard<std::mutex> lock(_data_mutex);
-    auto                        it = _string_map.find(str);
+    auto it = _string_map.find(str);
     if(it != _string_map.end()) return _string_map.at(str);
 
     data_storage::queries::table_insert_query query;
@@ -246,8 +245,6 @@ data_processor::insert_event(size_t string_primary_key, size_t stack_id,
                              const char* call_stack, const char* line_info,
                              const char* extdata)
 {
-    std::lock_guard<std::mutex> lock(_data_mutex);
-
     _insert_event_statement(_upid.c_str(), string_primary_key, stack_id, parent_stack_id,
                             correlation_id, call_stack, line_info, extdata);
     return data_storage::database::get_instance().get_last_insert_id();
@@ -444,7 +441,6 @@ void
 data_processor::insert_args(size_t event_id, size_t position, const char* type,
                             const char* name, const char* value, const char* extdata)
 {
-    std::lock_guard<std::mutex> lock(_data_mutex);
     _insert_args_statement(_upid.c_str(), event_id, position, type, name, value, extdata);
 }
 
@@ -503,7 +499,6 @@ data_processor::insert_code_object(size_t id, size_t node_id, size_t process_id,
         return;
     }
     ROCPROFSYS_VERBOSE(2, "Insert code object with ID: %ld\n", id);
-    std::lock_guard<std::mutex> lock(_data_mutex);
     _insert_code_object_statement(id, _upid.c_str(), node_id, process_id, agent_id, uri,
                                   ld_base, ld_size, ld_delta, storage_type, extdata);
 
@@ -528,7 +523,6 @@ data_processor::insert_kernel_symbol(
     }
 
     ROCPROFSYS_VERBOSE(2, "Insert kernel symbol: %s with ID: %ld\n", name, id);
-    std::lock_guard<std::mutex> lock(_data_mutex);
     _insert_kernel_symbol_statement(
         id, _upid.c_str(), node_id, process_id, code_obj_id, name, display_name,
         kernel_obj, kernarg_segmnt_size, kernarg_segment_alignment, group_segment_size,
@@ -547,8 +541,7 @@ data_processor::insert_category(size_t category_id, const char* name)
         //     1, "Insert category failed! Error: Category %s already exist!\n", name);
         return;
     }
-    auto                        name_id = insert_string(name);
-    std::lock_guard<std::mutex> lock(_data_mutex);
+    auto name_id = insert_string(name);
     ROCPROFSYS_VERBOSE(2, "Insert category: name: %s, id: %ld, name id: %ld\n", name,
                        category_id, name_id);
     _category_map.emplace(category_id, name_id);
@@ -559,7 +552,6 @@ data_processor::insert_region(size_t node_id, size_t process_id, size_t thread_i
                               uint64_t start, uint64_t end, size_t name_id,
                               size_t event_id, const char* extdata)
 {
-    std::lock_guard<std::mutex> lock(_data_mutex);
     ROCPROFSYS_VERBOSE(2, "Insert region for event id: %ld\n", event_id);
 
     _insert_region_statement(_upid.c_str(), node_id, process_id, thread_id, start, end,
@@ -575,8 +567,6 @@ data_processor::insert_kernel_dispatch(
     size_t grid_size_x, size_t grid_size_y, size_t grid_size_z, size_t region_name_id,
     size_t event_id, const char* extdata)
 {
-    std::lock_guard<std::mutex> lock(_data_mutex);
-
     ROCPROFSYS_VERBOSE(2, "Insert kernel dispatch for event id: %ld\n", event_id);
 
     _insert_kernel_dispatch_statement(
@@ -595,8 +585,6 @@ data_processor::insert_memory_copy(size_t node_id, size_t process_id, size_t thr
                                    size_t region_name_id, size_t event_id,
                                    const char* extdata)
 {
-    std::lock_guard<std::mutex> lock(_data_mutex);
-
     _insert_memory_copy_statement(_upid.c_str(), node_id, process_id, thread_id, start,
                                   end, name_id, dst_agent_id, dst_addr, src_agent_id,
                                   src_addr, size, queue_id, stream_id, region_name_id,

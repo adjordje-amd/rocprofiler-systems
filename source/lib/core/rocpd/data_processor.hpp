@@ -247,8 +247,6 @@ private:
     insert_memory_alloc_no_agent_stmt _insert_memory_alloc_no_agent_statement;
 
     std::string _upid{};
-
-    std::mutex _data_mutex;
 };
 
 }  // namespace rocpd
