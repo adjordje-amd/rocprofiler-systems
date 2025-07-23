@@ -156,7 +156,7 @@ struct metadata
                              get_kernel_symbol_list() const;
     std::vector<uint64_t>    get_queue_list() const;
     std::vector<uint64_t>    get_stream_list() const;
-    std::vector<std::string> get_string_list() const;
+    std::vector<std::string_view> get_string_list() const;
 
     rocprofiler::sdk::buffer_name_info_t<const char*>   get_buffer_name_info() const;
     rocprofiler::sdk::callback_name_info_t<const char*> get_callback_tracing_info() const;

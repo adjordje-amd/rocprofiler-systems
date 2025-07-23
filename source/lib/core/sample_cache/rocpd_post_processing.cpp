@@ -31,6 +31,7 @@
 #include "sample_cache/cache_storage_parser.hpp"
 #include "sample_cache/metadata_storage.hpp"
 #include "sample_cache/sample_type.hpp"
+#include <cstdint>
 #include <stdexcept>
 #include <string>
 #include <timemory/utility/demangle.hpp>
@@ -210,7 +211,7 @@ rocpd_post_processing::get_memory_allocate_callback() const
         auto  thread_primary_key =
             data_processor.map_thread_id_to_primary_key(_mas.record.thread_id);
         auto agent_primary_key = std::optional<uint64_t>{};
-        if(_mas.record.agent_id.handle != static_cast<uint64_t>(-1))
+        if(_mas.record.agent_id.handle != std::numeric_limits<uint64_t>::max())
         {
             agent_primary_key =
             agent_manager.get_agent_by_handle(_mas.record.agent_id.handle).base_id;
@@ -412,7 +413,7 @@ rocpd_post_processing::post_process_metadata()
     auto _string_list = m_metadata.get_string_list();
     for(auto& _string : _string_list)
     {
-        data_processor.insert_string(_string.c_str());
+        data_processor.insert_string(std::string(_string).c_str());
     }
 
     auto _thread_info_list = m_metadata.get_thread_info_list();

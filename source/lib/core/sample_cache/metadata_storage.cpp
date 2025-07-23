@@ -33,6 +33,16 @@ namespace sample_cache
 namespace
 {
 
+template <typename ReturnType, typename DataType, typename Filter>
+std::optional<ReturnType> get_type_info(const DataType& data, const Filter& filter) {
+    std::optional<ReturnType> result = std::nullopt;
+    data.rlock([&filter, &result](const auto& _data) {
+        auto it = std::find_if(_data.begin(), _data.end(), filter);
+        result = it == _data.end() ? std::nullopt : std::optional<ReturnType>(*it);
+    });
+    return result;
+}
+
 template <typename T>
 auto
 assign_set_to_vector(T& result)
@@ -156,101 +166,44 @@ metadata::get_process_info() const
 std::optional<info::pmc>
 metadata::get_pmc_info(const std::string_view& unique_name) const
 {
-    std::optional<info::pmc> result = std::nullopt;
-    m_pmc_infos.rlock([&unique_name, &result](const auto& data) {
-        auto it =
-            std::find_if(data.begin(), data.end(), [&unique_name](const info::pmc& val) {
-                return val.name == unique_name;
-            });
-        if(it == data.end())
-        {
-            result = std::nullopt;
-            return;
-        }
-        result = *it;
-    });
-    return result;
+    return get_type_info<info::pmc>(m_pmc_infos, [&unique_name](const info::pmc& val) { return val.name == unique_name;});
 }
 
 std::optional<info::thread>
 metadata::get_thread_info(const uint32_t& thread_id) const
 {
-    std::optional<info::thread> result = std::nullopt;
-    m_threads.rlock([&thread_id, &result](const auto& data) {
-        auto it =
-            std::find_if(data.begin(), data.end(), [&thread_id](const info::thread& val) {
+    return get_type_info<info::thread>(m_threads,
+             [&thread_id](const info::thread& val) {
                 return val.thread_id == thread_id;
             });
-        if(it == data.end())
-        {
-            result = std::nullopt;
-            return;
-        }
-        result = *it;
-    });
-    return result;
 }
 
 std::optional<rocprofiler_callback_tracing_code_object_load_data_t>
 metadata::get_code_object(uint64_t code_object_id) const
 {
-    std::optional<rocprofiler_callback_tracing_code_object_load_data_t> result =
-        std::nullopt;
-    m_code_objects.rlock([&code_object_id, &result](const auto& data) {
-        auto it = std::find_if(
-            data.begin(), data.end(),
+    return get_type_info<rocprofiler_callback_tracing_code_object_load_data_t>(m_code_objects,
             [&code_object_id](
                 const rocprofiler_callback_tracing_code_object_load_data_t& val) {
                 return val.code_object_id == code_object_id;
             });
-        if(it == data.end())
-        {
-            result = std::nullopt;
-            return;
-        }
-        result = *it;
-    });
-    return result;
 }
 
 std::optional<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
 metadata::get_kernel_symbol(uint64_t kernel_id) const
 {
-    std::optional<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>
-        result = std::nullopt;
-    m_kernel_symbols.rlock([&kernel_id, &result](const auto& data) {
-        auto it = std::find_if(
-            data.begin(), data.end(),
+    return get_type_info<rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t>(m_kernel_symbols,
             [&kernel_id](
                 const rocprofiler_callback_tracing_code_object_kernel_symbol_register_data_t&
                     val) { return val.kernel_id == kernel_id; });
-        if(it == data.end())
-        {
-            result = std::nullopt;
-            return;
-        }
-        result = *it;
-    });
-    return result;
 }
 
 std::optional<info::track>
 metadata::get_track_info(const std::string_view& track_name) const
 {
-    std::optional<info::track> result = std::nullopt;
-    m_tracks.rlock([&track_name, &result](const auto& data) {
-        auto it =
-            std::find_if(data.begin(), data.end(), [&track_name](const info::track& val) {
+    return get_type_info<info::track>(m_tracks,
+            [&track_name](const info::track& val) {
                 return val.track_name == track_name;
             });
-        if(it == data.end())
-        {
-            result = std::nullopt;
-            return;
-        }
-        result = *it;
-    });
-    return result;
 }
 
 std::vector<info::pmc>
@@ -310,10 +263,10 @@ metadata::get_stream_list() const
     return result;
 }
 
-std::vector<std::string>
+std::vector<std::string_view>
 metadata::get_string_list() const
 {
-    std::vector<std::string> result;
+    std::vector<std::string_view> result;
     m_strings.rlock(assign_set_to_vector(result));
     return result;
 }
