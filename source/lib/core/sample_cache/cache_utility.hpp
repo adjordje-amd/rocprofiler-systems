@@ -33,7 +33,7 @@ namespace sample_cache
 constexpr size_t MByte           = 1024 * 1024;
 constexpr size_t GByte           = 1024 * 1024 * 1024;
 constexpr size_t buffer_size     = 15 * MByte;
-constexpr size_t flush_treshhold = 12 * MByte;
+constexpr size_t flush_threshold = 12 * MByte;
 const auto       filename = "/tmp/buffered_storage_" + std::to_string(getpid()) + ".bin";
 
 constexpr size_t minimal_fragmented_memory_size = sizeof(entry_type) + sizeof(size_t);

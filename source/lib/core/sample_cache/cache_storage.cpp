@@ -56,7 +56,7 @@ cache_storage::cache_storage()
 
                 auto used_space =
                     m_head > m_tail ? (m_head - m_tail) : (buffer_size - m_tail + m_head);
-                if(!force && used_space < flush_treshhold)
+                if(!force && used_space < flush_threshold)
                 {
                     return;
                 }
