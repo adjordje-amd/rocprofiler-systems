@@ -66,7 +66,7 @@ public:
             }
             else
             {
-                using ClearType = std::decay_t<decltype(val)>>;
+                using ClearType                     = std::decay_t<decltype(val)>;
                 len                                 = sizeof(ClearType);
                 *reinterpret_cast<ClearType*>(dest) = val;
             }
