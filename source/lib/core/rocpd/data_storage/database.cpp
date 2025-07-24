@@ -29,6 +29,7 @@
 #include <fstream>
 #include <regex>
 #include <timemory/environment/types.hpp>
+#include <timemory/utility/filepath.hpp>
 #include <unistd.h>
 
 namespace
@@ -83,7 +84,7 @@ database::initialize_schema()
             "rocprofiler_systems_ROOT", tim::get_env<std::string>("ROCPROFSYS_ROOT", ""));
         auto dir_exists = tim::filepath::direxists(std::string(_rocprofsys_root));
         if(!_rocprofsys_root.empty() &&
-           dir_exists)
+           tim::filepath::direxists(std::string(_rocprofsys_root)))
         {
             auto new_file_path = std::string(_rocprofsys_root)
                                      .append("/share/rocprofiler-systems/")
@@ -93,9 +94,7 @@ database::initialize_schema()
                 return new_file_path;
             }
         }
-        return std::string(
-                   "source/lib/core/rocpd/data_storage/schema/")
-            .append(filename);
+        return std::string("source/lib/core/rocpd/data_storage/schema/").append(filename);
     };
 
     std::vector<std::string_view> schema_files = { "rocpd_tables.sql", "rocpd_views.sql",
