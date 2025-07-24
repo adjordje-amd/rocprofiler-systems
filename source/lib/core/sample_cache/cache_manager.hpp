@@ -20,53 +20,48 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include "node_info.hpp"
-#include "debug.hpp"
+#pragma once
 
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <sys/utsname.h>
+#include "cache_storage.hpp"
+#include "cache_storage_parser.hpp"
+#include "core/sample_cache/rocpd_post_processing.hpp"
+#include "metadata_storage.hpp"
 
 namespace rocprofsys
 {
-
-node_info::node_info()
+namespace sample_cache
 {
-    auto ifs = std::ifstream{ "/etc/machine-id" };
-    if(!ifs.is_open())
-    {
-        ROCPROFSYS_WARNING(0, "Error: Unable to open /etc/machine-id!");
-        return;
-    }
-    if(!(ifs >> machine_id) || machine_id.empty())
-    {
-        ROCPROFSYS_WARNING(0, "Error: Unable to read machine ID from /etc/machine-id!");
-    }
 
-    hash = std::hash<std::string>{}(machine_id) % std::numeric_limits<int64_t>::max();
-    id   = hash % std::numeric_limits<size_t>::max();
+class cache_manager
+{
+public:
+    static cache_manager& get_instance();
+    cache_storage&        get_cache() { return m_storage; }
+    metadata&             get_metadata() { return m_metadata; }
+    void                  shutdown();
+    void                  post_process();
 
-    struct utsname _sys_info;
-    if(uname(&_sys_info))
-    {
-        ROCPROFSYS_WARNING(0, "Error: Unable to get system information!");
-        return;
-    }
+private:
+    void post_process_metadata();
+    cache_manager();
 
-    system_name = _sys_info.sysname;
-    node_name   = _sys_info.nodename;
-    release     = _sys_info.release;
-    version     = _sys_info.version;
-    machine     = _sys_info.machine;
-    domain_name = _sys_info.domainname;
+    cache_storage         m_storage;
+    metadata              m_metadata;
+    storage_parser        m_parser;
+    rocpd_post_processing m_postprocessing;
+};
+
+inline metadata&
+get_cache_metadata()
+{
+    return cache_manager::get_instance().get_metadata();
 }
 
-node_info&
-node_info::get_instance()
+inline cache_storage&
+get_cache_storage()
 {
-    static node_info instance;
-    return instance;
+    return cache_manager::get_instance().get_cache();
 }
 
+}  // namespace sample_cache
 }  // namespace rocprofsys

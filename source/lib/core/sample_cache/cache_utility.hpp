@@ -21,38 +21,23 @@
 // SOFTWARE.
 
 #pragma once
-
-#include <cstdint>
+#include "sample_type.hpp"
+#include <array>
 #include <string>
+#include <unistd.h>
 
 namespace rocprofsys
 {
-
-struct node_info
+namespace sample_cache
 {
-private:
-    node_info();
+constexpr size_t MByte           = 1024 * 1024;
+constexpr size_t GByte           = 1024 * 1024 * 1024;
+constexpr size_t buffer_size     = 15 * MByte;
+constexpr size_t flush_threshold = 12 * MByte;
+const auto       filename = "/tmp/buffered_storage_" + std::to_string(getpid()) + ".bin";
 
-public:
-    ~node_info()                               = default;
-    node_info(const node_info&)                = default;
-    node_info(node_info&&) noexcept            = default;
-    node_info& operator=(const node_info&)     = default;
-    node_info& operator=(node_info&&) noexcept = default;
+constexpr size_t minimal_fragmented_memory_size = sizeof(entry_type) + sizeof(size_t);
+using buffer_array_t                            = std::array<uint8_t, buffer_size>;
 
-    static node_info& get_instance();
-
-    uint64_t    id          = 0;
-    uint64_t    hash        = 0;
-    std::string machine_id  = {};
-    std::string system_name = {};
-    std::string node_name   = {};
-    std::string release     = {};
-    std::string version     = {};
-    std::string machine     = {};
-    std::string domain_name = {};
-};
-
-const node_info&
-get_node_info();
+}  // namespace sample_cache
 }  // namespace rocprofsys
