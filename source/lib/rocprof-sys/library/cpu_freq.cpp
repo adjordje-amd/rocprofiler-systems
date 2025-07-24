@@ -29,7 +29,6 @@
 #include "core/node_info.hpp"
 #include "core/perfetto.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
 #include "core/timemory.hpp"
 #include "library/components/cpu_freq.hpp"
@@ -104,7 +103,8 @@ metadata_initialize_cpu_freq_tracks()
 {
     do_for_enabled_cpus([&](size_t cpu_id) {
         sample_cache::get_cache_metadata().add_track(
-            { get_cpu_freq_track_name<category::cpu_freq>(cpu_id).c_str(),std::nullopt, "{}" });
+            { get_cpu_freq_track_name<category::cpu_freq>(cpu_id).c_str(), std::nullopt,
+              "{}" });
     });
 }
 
@@ -112,19 +112,19 @@ void
 metadata_initialize_cpu_usage_tracks()
 {
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_page>::value,std::nullopt, "{}" });
+        { trait::name<category::process_page>::value, std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_virt>::value,std::nullopt, "{}" });
+        { trait::name<category::process_virt>::value, std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_peak>::value,std::nullopt, "{}" });
+        { trait::name<category::process_peak>::value, std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_context_switch>::value,std::nullopt, "{}" });
+        { trait::name<category::process_context_switch>::value, std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_page_fault>::value,std::nullopt, "{}" });
+        { trait::name<category::process_page_fault>::value, std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_user_mode_time>::value,std::nullopt, "{}" });
+        { trait::name<category::process_user_mode_time>::value, std::nullopt, "{}" });
     sample_cache::get_cache_metadata().add_track(
-        { trait::name<category::process_kernel_mode_time>::value,std::nullopt, "{}" });
+        { trait::name<category::process_kernel_mode_time>::value, std::nullopt, "{}" });
 }
 
 void
@@ -205,13 +205,13 @@ rocpd_process_cpu_usage_events(const uint32_t device_id, uint64_t timestamp,
                                double context_switch, double page_fault, double user_time,
                                double kernel_time)
 {
-    auto& data_processor   = get_data_processor();
-    auto  _name            = trait::name<category::cpu_freq>::value;
-    auto  name_primary_key = data_processor.insert_string(_name);
-    auto  event_id         = data_processor.insert_event(name_primary_key, 0, 0, 0);
+    auto&       data_processor   = get_data_processor();
+    const auto* _name            = trait::name<category::cpu_freq>::value;
+    auto        name_primary_key = data_processor.insert_string(_name);
+    auto        event_id         = data_processor.insert_event(name_primary_key, 0, 0, 0);
 
     auto& agent_mngr = agent_manager::get_instance();
-    auto  base_id    = agent_mngr.get_agent_by_type_index(device_id, agent_type::CPU).base_id;
+    auto base_id = agent_mngr.get_agent_by_type_index(device_id, agent_type::CPU).base_id;
 
     auto insert_event_and_sample = [&](const char* name, double value) {
         data_processor.insert_pmc_event(event_id, base_id, name, value);
@@ -260,12 +260,11 @@ setup()
     metadata_initialize_cpu_freq_tracks();
 
     // `get_enabled_cpus()` returns the number of cores enabled for monitoring but
-    // the actuall device_id is 0, since there is a single device avaliable. And
+    // the actual device_id is 0, since there is a single device available. And
     // the agents seems to be assigned per device basis not per core.
     // TODO: `get_enabled_cpus()` should be fixed in the future to align with GPU
     // implementation.
-    auto cpu_agents = agent_manager::get_instance().get_agents_by_type(
-        agent_type::CPU);
+    auto cpu_agents = agent_manager::get_instance().get_agents_by_type(agent_type::CPU);
     for(auto& agent : cpu_agents)
     {
         metadata_initialize_cpu_freq_pmc(agent->device_id);

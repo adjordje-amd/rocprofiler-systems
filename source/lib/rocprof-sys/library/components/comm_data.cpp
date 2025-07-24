@@ -26,9 +26,6 @@
 #include "core/config.hpp"
 #include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/data_processor.hpp"
-#include "core/rocpd/json.hpp"
-#include "core/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
 #include "core/sample_cache/sample_type.hpp"
 #include "library/tracing.hpp"
@@ -123,7 +120,7 @@ metadata_initialize_comm_data_pmc()
 
     auto&                 agent_mngr = agent_manager::get_instance();
     [[maybe_unused]] auto agent_handle =
-        agent_mngr.get_agent_by_type_index(DEVICE_ID,  agent_type::CPU).handle;
+        agent_mngr.get_agent_by_type_index(DEVICE_ID, agent_type::CPU).handle;
 
 #if defined(ROCPROFSYS_USE_MPI)
     sample_cache::get_cache_metadata().add_pmc_info(

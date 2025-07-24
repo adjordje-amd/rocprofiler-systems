@@ -26,8 +26,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS WITH
 // THE SOFTWARE.
 
-#include "core/sample_cache/cache_manager.hpp"
 #include "core/agent.hpp"
+#include "core/sample_cache/cache_manager.hpp"
 #if defined(NDEBUG)
 #    undef NDEBUG
 #endif
@@ -38,9 +38,9 @@
 #include "core/config.hpp"
 #include "core/debug.hpp"
 #include "core/gpu.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
 #include "core/rocpd/data_processor.hpp"
-#include "core/node_info.hpp"
 #include "core/sample_cache/metadata_storage.hpp"
 #include "core/state.hpp"
 #include "library/amd_smi.hpp"
@@ -172,7 +172,8 @@ rocpd_process_smi_pmc_events(const uint32_t device_id, const amd_smi::settings& 
     auto        event_id         = data_processor.insert_event(name_primary_key, 0, 0, 0);
 
     auto& _agent_manager = agent_manager::get_instance();
-    auto  base_id = _agent_manager.get_agent_by_type_index(device_id, agent_type::GPU).base_id;
+    auto  base_id =
+        _agent_manager.get_agent_by_type_index(device_id, agent_type::GPU).base_id;
 
     auto insert_event_and_sample = [&](bool enabled, const char* name, double value) {
         if(!enabled) return;
@@ -296,7 +297,7 @@ data::sample(uint32_t _dev_id)
     ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).temp, amdsmi_get_temp_metric,
                           sample_handle, AMDSMI_TEMPERATURE_TYPE_JUNCTION,
                           AMDSMI_TEMP_CURRENT, &m_temp);
-#if(AMDSMI_LIB_VERSION_MAJOR == 2 && AMDSMI_LIB_VERSION_MINOR == 0) ||                   \
+#if (AMDSMI_LIB_VERSION_MAJOR == 2 && AMDSMI_LIB_VERSION_MINOR == 0) ||                  \
     (AMDSMI_LIB_VERSION_MAJOR == 25 && AMDSMI_LIB_VERSION_MINOR == 2)
     // This was a transient change in the AMD SMI API. It was never officially released.
     ROCPROFSYS_AMDSMI_GET(get_settings(m_dev_id).power, amdsmi_get_power_info,

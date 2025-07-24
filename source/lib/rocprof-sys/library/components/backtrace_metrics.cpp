@@ -21,9 +21,9 @@
 // SOFTWARE.
 
 #include "library/components/backtrace_metrics.hpp"
-#include "core/common.hpp"
 #include "core/agent.hpp"
 #include "core/agent_manager.hpp"
+#include "core/common.hpp"
 #include "core/components/fwd.hpp"
 #include "core/config.hpp"
 #include "core/debug.hpp"
@@ -175,21 +175,13 @@ rocpd_init_categories()
     static bool _is_initialized = false;
     if(_is_initialized) return;
 
-    get_data_processor().insert_category(
-        category_enum_id<category::thread_cpu_time>::value,
-        trait::name<category::thread_cpu_time>::value);
-    get_data_processor().insert_category(
-        category_enum_id<category::thread_peak_memory>::value,
-        trait::name<category::thread_peak_memory>::value);
-    get_data_processor().insert_category(
-        category_enum_id<category::thread_context_switch>::value,
-        trait::name<category::thread_context_switch>::value);
-    get_data_processor().insert_category(
-        category_enum_id<category::thread_page_fault>::value,
-        trait::name<category::thread_page_fault>::value);
-    get_data_processor().insert_category(
-        category_enum_id<category::thread_hardware_counter>::value,
-        trait::name<category::thread_hardware_counter>::value);
+    auto& data_processor = get_data_processor();
+
+    data_processor.insert_string(trait::name<category::thread_cpu_time>::value);
+    data_processor.insert_string(trait::name<category::thread_peak_memory>::value);
+    data_processor.insert_string(trait::name<category::thread_context_switch>::value);
+    data_processor.insert_string(trait::name<category::thread_page_fault>::value);
+    data_processor.insert_string(trait::name<category::thread_hardware_counter>::value);
 
     _is_initialized = true;
 }
@@ -245,7 +237,7 @@ rocpd_initialize_backtrace_metrics_pmc(size_t dev_id, const char* units, int64_t
     const auto  TARGET_ARCH      = "CPU";
 
     auto& agent_mngr = agent_manager::get_instance();
-    auto base_id = agent_mngr.get_agent_by_id(dev_id, agent_type::CPU).base_id;
+    auto  base_id    = agent_mngr.get_agent_by_id(dev_id, agent_type::CPU).base_id;
 
     if constexpr(std::is_same_v<Category, category::thread_hardware_counter>)
     {
@@ -280,11 +272,11 @@ rocpd_process_backtrace_metrics_events(const uint32_t device_id, uint64_t timest
 {
     auto& data_processor = get_data_processor();
     auto  _tid_name      = JOIN("", '[', _tid, ']');
-    auto  event_id =
-        data_processor.insert_event(category_enum_id<Category>::value, 0, 0, 0);
-    auto& agent_mngr = agent_manager::get_instance();
-    auto  base_id =
-        agent_mngr.get_agent_by_id(device_id, agent_type::CPU).base_id;
+
+    auto  string_primary_key = data_processor.insert_string(trait::name<Category>::value);
+    auto  event_id           = data_processor.insert_event(string_primary_key, 0, 0, 0);
+    auto& agent_mngr         = agent_manager::get_instance();
+    auto  base_id = agent_mngr.get_agent_by_id(device_id, agent_type::CPU).base_id;
 
     auto insert_event_and_sample = [&](const char* name, double value) {
         data_processor.insert_pmc_event(event_id, base_id, name, value);

@@ -30,7 +30,6 @@
 #include "core/perf.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
-#include "core/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
 #include "core/state.hpp"
 #include "core/utility.hpp"
@@ -39,7 +38,6 @@
 #include "library/components/backtrace_timestamp.hpp"
 #include "library/components/callchain.hpp"
 #include "library/perf.hpp"
-#include "library/ptl.hpp"
 #include "library/runtime.hpp"
 #include "library/thread_data.hpp"
 #include "library/thread_info.hpp"
@@ -239,7 +237,6 @@ get_track_name(const thread_info& _thread_info)
     return JOIN(" ", "Thread", sequent_value, "Overflow", "(S)", thread_id);
 }
 
-// preprocess
 void
 rocpd_initialize_sampling_category()
 {
@@ -255,9 +252,8 @@ rocpd_initialize_sampling_category()
     _is_initialized = true;
 }
 
-// preprocess
 void
-rocpd_initilaize_thread_info(size_t tid)
+rocpd_initialize_thread_info(size_t tid)
 {
     const auto& _thread_info = thread_info::get(tid, SequentTID);
     ROCPROFSYS_CI_THROW(!_thread_info, "No valid thread info for tid=%li\n", tid);
@@ -270,7 +266,6 @@ rocpd_initilaize_thread_info(size_t tid)
           static_cast<uint32_t>(_thread_info->get_stop()), "{}" });
 }
 
-// preprocess
 void
 rocpd_init_track(int64_t tid)
 {
@@ -285,18 +280,18 @@ rocpd_init_track(int64_t tid)
     sample_cache::get_cache_metadata().add_track({ _track_name, thread_id, "{}" });
 }
 
-// postprocess
 template <typename Category>
 void
 rocpd_insert_region(size_t thread_id, size_t start_time, size_t end_time, size_t name_id,
                     const char* track, const char* call_stack = "{}",
                     const char* line_info = "{}", const char* extdata = "{}")
 {
-    auto& data_processor = get_data_processor();
-    auto& n_info         = node_info::get_instance();
+    auto& data_processor     = get_data_processor();
+    auto& n_info             = node_info::get_instance();
+    auto  string_primary_key = data_processor.insert_string(trait::name<Category>::value);
 
-    auto event_id = data_processor.insert_event(category_enum_id<Category>::value, 0, 0,
-                                                0, call_stack, line_info, extdata);
+    auto event_id = data_processor.insert_event(string_primary_key, 0, 0, 0, call_stack,
+                                                line_info, extdata);
 
     data_processor.insert_region(n_info.id, getpid(), thread_id, start_time, end_time,
                                  name_id, event_id);
@@ -867,7 +862,7 @@ configure(bool _setup, int64_t _tid)
             }
         }
         rocpd_initialize_sampling_category();
-        rocpd_initilaize_thread_info(_tid);
+        rocpd_initialize_thread_info(_tid);
         rocpd_init_track(_tid);
 
         *_running = true;

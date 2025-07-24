@@ -28,15 +28,12 @@
 #include "core/config.hpp"
 #include "core/debug.hpp"
 #include "core/defines.hpp"
-#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
-#include "core/rocpd/data_processor.hpp"
 #include "core/rocpd/json.hpp"
-#include "core/node_info.hpp"
 #include "core/sample_cache/cache_manager.hpp"
+#include "core/sample_cache/sample_type.hpp"
 #include "library/components/category_region.hpp"
 #include "library/runtime.hpp"
-#include "core/sample_cache/sample_type.hpp"
 #include <optional>
 
 #include <timemory/api/kokkosp.hpp>
