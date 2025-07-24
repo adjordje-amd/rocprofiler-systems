@@ -224,6 +224,9 @@ rocprofiler_systems_add_option(ROCPROFSYS_INSTALL_PERFETTO_TOOLS
 rocprofiler_systems_add_option(ROCPROFILER_BUILD_SQLITE3
                                "Enable building sqlite3 library internally" OFF
 )
+rocprofiler_systems_add_option(ROCPROFSYS_ENABLE_BENCHMARK
+                               "Enable performance benchmarking capabilities for the project" OFF
+)
 
 if(ROCPROFSYS_USE_PAPI)
     rocprofiler_systems_add_option(ROCPROFSYS_BUILD_PAPI "Build PAPI from submodule" ON)
