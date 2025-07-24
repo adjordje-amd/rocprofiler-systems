@@ -32,48 +32,40 @@ inline namespace common
 namespace traits
 {
 
+namespace
+{
 template <typename T>
-struct is_string_literal : std::false_type
-{};
-
-template <std::size_t N>
-struct is_string_literal<char[N]> : std::true_type
-{};
-
-template <std::size_t N>
-struct is_string_literal<const char[N]> : std::true_type
+struct is_string_literal_impl : std::false_type
 {};
 
 template <>
-struct is_string_literal<std::string_view> : std::true_type
+struct is_string_literal_impl<std::string_view> : std::true_type
 {};
 
 template <>
-struct is_string_literal<const char*> : std::true_type
+struct is_string_literal_impl<const char*> : std::true_type
 {};
 
 template <>
-struct is_string_literal<char*> : std::true_type
+struct is_string_literal_impl<char*> : std::true_type
 {};
 
 template <>
-struct is_string_literal<std::string> : std::true_type
-{};
-
-template <>
-struct is_string_literal<const std::string> : std::true_type
-{};
-
-template <>
-struct is_string_literal<const char* const> : std::true_type
-{};
-
-template <>
-struct is_string_literal<char* const> : std::true_type
+struct is_string_literal_impl<std::string> : std::true_type
 {};
 
 template <typename T>
-inline constexpr bool is_string_literal_v = is_string_literal<T>::value;
+inline constexpr bool is_string_literal_impl_v = is_string_literal_impl<T>::value;
+
+}  // namespace
+
+template <typename T>
+constexpr bool
+is_string_literal()
+{
+    using Tp = std::decay_t<T>;
+    return is_string_literal_impl_v<Tp>;
+}
 
 template <typename T>
 struct is_optional : std::false_type

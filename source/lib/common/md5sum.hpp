@@ -108,7 +108,7 @@ template <template <typename, typename...> class ContainerT, typename Tp,
           typename... TailT>
 std::string
 compute_md5sum(const ContainerT<Tp, TailT...>& inp,
-               std::enable_if_t<traits::is_string_literal_v<Tp>, int>)
+               std::enable_if_t<traits::is_string_literal<Tp>(), int>)
 {
     auto _val = md5sum{};
     for(const auto& itr : inp)

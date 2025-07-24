@@ -60,7 +60,7 @@ struct query_value_builder
 
 private:
     template <typename T>
-    std::enable_if_t<common::traits::is_string_literal_v<T>, std::stringstream&>
+    std::enable_if_t<common::traits::is_string_literal<T>(), std::stringstream&>
     process_value(T& value)
     {
         _ss << "\"" << value << "\"";
@@ -83,7 +83,7 @@ private:
     }
 
     template <typename T>
-    std::enable_if_t<!common::traits::is_string_literal_v<T> &&
+    std::enable_if_t<!common::traits::is_string_literal<T>() &&
                          !common::traits::is_optional_v<std::decay_t<T>>,
                      std::stringstream&>
     process_value(T& value)
@@ -104,8 +104,8 @@ struct query_columns_builder
     {}
 
     template <typename... Columns,
-              typename = std::enable_if_t<
-                  (common::traits::is_string_literal<Columns>::value && ...)>>
+              typename =
+                  std::enable_if_t<(common::traits::is_string_literal<Columns>() && ...)>>
     query_value_builder& set_columns(Columns&... columns)
     {
         auto i = sizeof...(columns);
