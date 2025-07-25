@@ -22,13 +22,21 @@
 
 #include "cache_storage.hpp"
 #include "library/ptl.hpp"
+#include <chrono>
 #include <mutex>
 #include <stdexcept>
+
+using namespace std::chrono_literals;
 
 namespace rocprofsys
 {
 namespace sample_cache
 {
+
+namespace
+{
+constexpr auto CACHE_FILE_FLUSH_TIMEOUT = 10ms;
+}  // namespace
 
 cache_storage::cache_storage()
 {
@@ -81,8 +89,9 @@ cache_storage::cache_storage()
         {
             execute_flush(_ofs);
             std::unique_lock _lock{ _shutdown_condition_mutex };
-            m_shutdown_condition.wait_for(_lock, std::chrono::milliseconds(30),
-                                          [&]() { return !m_running; });
+            m_shutdown_condition.wait_for(
+                _lock, std::chrono::milliseconds(CACHE_FILE_FLUSH_TIMEOUT),
+                [&]() { return !m_running; });
         }
 
         execute_flush(_ofs, true);
