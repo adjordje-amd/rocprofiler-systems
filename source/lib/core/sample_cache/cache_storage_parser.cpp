@@ -24,14 +24,19 @@
 #include "debug.hpp"
 #include "sample_cache/sample_type.hpp"
 #include <cstdio>
+#include <fcntl.h>
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <sys/mman.h>
+#include <sys/stat.h>
 
 namespace rocprofsys
 {
 namespace sample_cache
 {
+
+constexpr auto file_descriptor_error_code = -1;
 
 void
 storage_parser::register_type_callback(
@@ -44,14 +49,36 @@ storage_parser::register_type_callback(
 void
 storage_parser::consume_storage()
 {
-    std::ifstream ifs(filename, std::ios::binary);
-    if(!ifs)
+    struct stat file_stat;
+    int         fd = open(filename.c_str(), O_RDONLY);
+
+    if(fd == file_descriptor_error_code)
+    {
+        std::stringstream ss;
+        ss << "Error opening file descriptor for reading: " << filename << "\n";
+        throw std::runtime_error(ss.str());
+    }
+
+    auto fstat_error_code = fstat(fd, &file_stat);
+
+    if(fstat_error_code == file_descriptor_error_code)
+    {
+        std::stringstream ss;
+        ss << "Error opening file descriptor for reading: " << filename << "\n";
+        throw std::runtime_error(ss.str());
+    }
+
+    auto* mmap_buffer =
+        (uint8_t*) mmap(nullptr, file_stat.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+
+    if(mmap_buffer == MAP_FAILED)
     {
         std::stringstream ss;
         ss << "Error opening file for reading: " << filename << "\n";
         throw std::runtime_error(ss.str());
     }
 
+    close(fd);
     bool _parsing_needed = !m_callbacks.empty();
 
     struct __attribute__((packed)) sample_header
@@ -62,30 +89,34 @@ storage_parser::consume_storage()
 
     sample_header header;
 
-    while(!ifs.eof() && _parsing_needed)
+    decltype(file_stat.st_size) file_offset = 0;
+
+    auto is_eof = [&offset = file_offset, &size = file_stat.st_size]() {
+        return offset >= size;
+    };
+
+    while(!is_eof() && _parsing_needed)
     {
-        ifs.read(reinterpret_cast<char*>(&header), sizeof(header));
+        header = *reinterpret_cast<sample_header*>(mmap_buffer + file_offset);
+        file_offset += sizeof(header);
 
-        if(header.sample_size == 0 || ifs.eof())
+        if(header.sample_size == 0 || is_eof())
         {
             continue;
         }
 
-        std::vector<uint8_t> sample;
-        sample.reserve(header.sample_size);
-        ifs.read(reinterpret_cast<char*>(sample.data()), header.sample_size);
-
-        if(ifs.bad())
-        {
-            continue;
-        }
+        // std::vector<uint8_t> sample;
+        // sample.reserve(header.sample_size);
+        // std::memcpy(sample.data(), mmap_buffer + file_offset, header.sample_size);
+        auto* sample_buffer = mmap_buffer + file_offset;
+        file_offset += header.sample_size;
 
         switch(header.type)
         {
             case entry_type::kernel_dispatch:
             {
                 kernel_dispatch_sample _kernel_dispatch_sample;
-                parse_data(sample.data(), _kernel_dispatch_sample.record,
+                parse_data(sample_buffer, _kernel_dispatch_sample.record,
                            _kernel_dispatch_sample.stream_handle);
 
                 invoke_callbacks(header.type, _kernel_dispatch_sample);
@@ -94,7 +125,7 @@ storage_parser::consume_storage()
             case entry_type::memory_copy:
             {
                 memory_copy_sample _memory_copy_sample;
-                parse_data(sample.data(), _memory_copy_sample.record,
+                parse_data(sample_buffer, _memory_copy_sample.record,
                            _memory_copy_sample.stream_handle);
                 invoke_callbacks(header.type, _memory_copy_sample);
                 break;
@@ -102,7 +133,7 @@ storage_parser::consume_storage()
             case entry_type::memory_alloc:
             {
                 memory_allocate_sample _memory_allocate_sample;
-                parse_data(sample.data(), _memory_allocate_sample.record,
+                parse_data(sample_buffer, _memory_allocate_sample.record,
                            _memory_allocate_sample.stream_handle);
 
                 invoke_callbacks(header.type, _memory_allocate_sample);
@@ -111,7 +142,7 @@ storage_parser::consume_storage()
             case entry_type::region:
             {
                 region_sample _region_sample;
-                parse_data(sample.data(), _region_sample.record,
+                parse_data(sample_buffer, _region_sample.record,
                            _region_sample.start_timestamp, _region_sample.end_timestamp,
                            _region_sample.call_stack, _region_sample.args_str,
                            _region_sample.category);
@@ -122,7 +153,7 @@ storage_parser::consume_storage()
             case entry_type::in_time_sample:
             {
                 in_time_sample _in_time_sample;
-                parse_data(sample.data(), _in_time_sample.track_name,
+                parse_data(sample_buffer, _in_time_sample.track_name,
                            _in_time_sample.timestamp_ns, _in_time_sample.event_metadata,
                            _in_time_sample.stack_id, _in_time_sample.parent_stack_id,
                            _in_time_sample.correlation_id, _in_time_sample.call_stack,
@@ -134,7 +165,7 @@ storage_parser::consume_storage()
             {
                 pmc_event_with_sample _pmc_event_with_sample;
                 parse_data(
-                    sample.data(), _pmc_event_with_sample.track_name,
+                    sample_buffer, _pmc_event_with_sample.track_name,
                     _pmc_event_with_sample.timestamp_ns,
                     _pmc_event_with_sample.event_metadata,
                     _pmc_event_with_sample.stack_id,
@@ -150,7 +181,7 @@ storage_parser::consume_storage()
         }
     }
 
-    ifs.close();
+    munmap(mmap_buffer, file_stat.st_size);
     std::remove(filename.c_str());
 }
 
