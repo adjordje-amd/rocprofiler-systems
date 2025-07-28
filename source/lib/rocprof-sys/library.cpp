@@ -606,7 +606,6 @@ rocprofsys_init_tooling_hidden(void)
     if(get_use_ompt())
     {
         ROCPROFSYS_VERBOSE_F(1, "Setting up OMPT...\n");
-        std::cout << "############# USING OMPT ##################" << "\n";
         ompt::setup();
     }
 

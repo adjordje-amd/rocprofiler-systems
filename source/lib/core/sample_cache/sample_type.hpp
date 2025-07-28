@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #pragma once
+#include <cstddef>
 #include <cstdint>
 #include <rocprofiler-sdk/buffer_tracing.h>
 #include <rocprofiler-sdk/fwd.h>
@@ -82,7 +83,7 @@ struct region_sample : storage_parsed_type_base
 struct ompt_region_sample : storage_parsed_type_base
 {
     ompt_region_sample() = default;
-    ompt_region_sample(std::string _name, uint64_t _thread_id, uint64_t _correlation_id,
+    ompt_region_sample(std::string _name, size_t _thread_id, uint64_t _correlation_id,
                        rocprofiler_timestamp_t _start_timestamp,
                        rocprofiler_timestamp_t _end_timestamp, std::string _call_stack,
                        std::string _args_str, std::string _extdata)
@@ -96,8 +97,8 @@ struct ompt_region_sample : storage_parsed_type_base
     , extdata(std::move(_extdata))
     {}
     std::string             name;
-    uint64_t                thread_id;
-    uint64_t                correlation_id;
+    size_t                  thread_id;
+    size_t                  correlation_id;
     rocprofiler_timestamp_t start_timestamp;
     rocprofiler_timestamp_t end_timestamp;
     std::string             call_stack;
