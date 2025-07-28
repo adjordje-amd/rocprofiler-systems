@@ -21,6 +21,7 @@
 // SOFTWARE.
 
 #pragma once
+#include <cstdint>
 #include <rocprofiler-sdk/buffer_tracing.h>
 #include <rocprofiler-sdk/fwd.h>
 #include <stdint.h>
@@ -48,7 +49,7 @@ struct memory_copy_sample : storage_parsed_type_base
     size_t                                          stream_handle;
 };
 
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
 struct memory_allocate_sample : storage_parsed_type_base
 {
     rocprofiler_buffer_tracing_memory_allocation_record_t record;
@@ -78,6 +79,32 @@ struct region_sample : storage_parsed_type_base
     std::string                           category;
 };
 
+struct ompt_region_sample : storage_parsed_type_base
+{
+    ompt_region_sample() = default;
+    ompt_region_sample(std::string _name, uint64_t _thread_id, uint64_t _correlation_id,
+                       rocprofiler_timestamp_t _start_timestamp,
+                       rocprofiler_timestamp_t _end_timestamp, std::string _call_stack,
+                       std::string _args_str, std::string _extdata)
+    : name(std::move(_name))
+    , thread_id(_thread_id)
+    , correlation_id(_correlation_id)
+    , start_timestamp(_start_timestamp)
+    , end_timestamp(_end_timestamp)
+    , call_stack(std::move(_call_stack))
+    , args_str(std::move(_args_str))
+    , extdata(std::move(_extdata))
+    {}
+    std::string             name;
+    uint64_t                thread_id;
+    uint64_t                correlation_id;
+    rocprofiler_timestamp_t start_timestamp;
+    rocprofiler_timestamp_t end_timestamp;
+    std::string             call_stack;
+    std::string             args_str;
+    std::string             extdata;
+};
+
 struct in_time_sample : storage_parsed_type_base
 {
     std::string track_name;
@@ -104,9 +131,10 @@ enum class entry_type : uint32_t
     region                = 0x0002,
     kernel_dispatch       = 0x0003,
     memory_copy           = 0x0004,
-#if (ROCPROFILER_VERSION >= 600)
+#if(ROCPROFILER_VERSION >= 600)
     memory_alloc = 0x0005,
 #endif
+    ompt             = 0x0006,
     fragmented_space = 0xFFFF
 };
 }  // namespace sample_cache

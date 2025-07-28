@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <iostream>
 #include <timemory/log/color.hpp>
 //
 //  above should always be included first
@@ -605,6 +606,7 @@ rocprofsys_init_tooling_hidden(void)
     if(get_use_ompt())
     {
         ROCPROFSYS_VERBOSE_F(1, "Setting up OMPT...\n");
+        std::cout << "############# USING OMPT ##################" << "\n";
         ompt::setup();
     }
 

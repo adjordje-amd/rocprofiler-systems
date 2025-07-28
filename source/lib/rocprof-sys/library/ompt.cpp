@@ -26,12 +26,17 @@
 #include "core/debug.hpp"
 #include "core/defines.hpp"
 
+#include <cstddef>
+#include <cstdint>
+#include <string>
 #include <timemory/defines.h>
 
 #if defined(ROCPROFSYS_USE_OMPT) && ROCPROFSYS_USE_OMPT > 0
 
 #    include "binary/link_map.hpp"
 #    include "core/components/fwd.hpp"
+#    include "core/rocpd/data_processor.hpp"
+#    include "core/sample_cache/cache_manager.hpp"
 #    include "library/components/category_region.hpp"
 #    include "library/tracing.hpp"
 
@@ -58,6 +63,76 @@ using api_t = tim::project::rocprofsys;
 
 namespace rocprofsys
 {
+namespace
+{
+void
+cache_category()
+{
+    sample_cache::get_cache_metadata().add_string(trait::name<category::ompt>::value);
+}
+
+void
+cache_thread_info(size_t tid)
+{
+    const auto& _thread_info = thread_info::get(tid, SequentTID);
+    ROCPROFSYS_CI_THROW(!_thread_info, "No valid thread info for tid=%li\n", tid);
+    if(!_thread_info) return;
+
+    sample_cache::get_cache_metadata().add_thread_info(
+        { getppid(), getpid(),
+          static_cast<size_t>(_thread_info->index_data->system_value),
+          static_cast<uint32_t>(_thread_info->get_start()),
+          static_cast<uint32_t>(_thread_info->get_stop()), "{}" });
+}
+
+void
+cache_track(int64_t tid, const std::string& track_name)
+{
+    const auto& _thread_info = thread_info::get(tid, SequentTID);
+    ROCPROFSYS_CI_THROW(!_thread_info, "No valid thread info for tid=%li\n", tid);
+    if(!_thread_info) return;
+
+    size_t thread_id = _thread_info->index_data->system_value;
+
+    sample_cache::get_cache_metadata().add_track({ track_name, thread_id, "{}" });
+}
+
+const std::string
+format_event_args(const tim::openmp::argument_array_t& args)
+{
+    std::string args_str;
+    if(args.empty())
+    {
+        return args_str;
+    }
+
+    auto pos{ 0 };
+    std::for_each(args.begin(), args.end(),
+                  [&](const tim::openmp::labeled_argument& arg) {
+                      const auto*       delimiter = ";;";
+                      std::stringstream ss;
+                      ss << pos++ << delimiter << arg.type << delimiter
+                         << std::string(arg.label) << delimiter << arg.value << delimiter;
+                      args_str.append(ss.str());
+                  });
+
+    return args_str;
+}
+
+void
+cache_ompt_region(std::string name, uint64_t thread_id, uint64_t correlation_id,
+                  rocprofiler_timestamp_t start_timestamp,
+                  rocprofiler_timestamp_t end_timestamp, std::string call_stack,
+                  std::string args_str, std::string extdata)
+
+{
+    sample_cache::get_cache_storage().store(
+        sample_cache::entry_type::ompt, name, thread_id, correlation_id, start_timestamp,
+        end_timestamp, call_stack.c_str(), args_str.c_str(), extdata.c_str());
+}
+
+}  // namespace
+
 namespace component
 {
 struct ompt : comp::base<ompt, void>
@@ -85,6 +160,14 @@ struct ompt : comp::base<ompt, void>
         auto     _ts = tracing::now();
         uint64_t _cid =
             (_ctx_info.target_arguments) ? _ctx_info.target_arguments->host_op_id : 0;
+
+        for(const auto& arg : _ctx_info.arguments)
+        {
+            if(arg.label == "thread_num")
+            {
+                // cache_thread_info(static_cast<size_t>(std::stoul(arg.value)));
+            }
+        }
         auto _annotate = [&](::perfetto::EventContext ctx) {
             if(config::get_perfetto_annotations())
             {
@@ -153,6 +236,8 @@ struct ompt : comp::base<ompt, void>
         (void) thrd_id;
         (void) targ_id;
 
+        std::cout << "####### RECORDING OMPT TRACE ########" << "\n";
+
         auto _annotate = [&](::perfetto::EventContext ctx) {
             if(config::get_perfetto_annotations())
             {
@@ -177,6 +262,18 @@ struct ompt : comp::base<ompt, void>
 
 private:
     std::string_view m_prefix = {};
+
+    struct ompt_region_state
+    {
+        uint64_t                  start_timestamp = 0;
+        uint64_t                  correlation_id  = 0;
+        uint64_t                  thread_id       = 0;
+        tim::openmp::context_info context;
+        std::string_view          prefix;
+    };
+
+    mutable std::stack<ompt_region_state>                   m_region_stack;
+    mutable std::unordered_map<uint64_t, ompt_region_state> m_pending_regions;
 };
 }  // namespace component
 }  // namespace rocprofsys
@@ -208,12 +305,14 @@ std::unique_ptr<ompt_bundle_t> f_bundle = {};
 bool _init_toolset_off = (trait::runtime_enabled<ompt_toolset_t>::set(false),
                           trait::runtime_enabled<ompt_context_t>::set(false), true);
 tim::ompt::finalize_tool_func_t f_finalize = nullptr;
+
 }  // namespace
 
 void
 setup()
 {
     if(!tim::settings::enabled()) return;
+    std::cout << "####### SETUP OMPT TRACING ########" << "\n";
     trait::runtime_enabled<ompt_toolset_t>::set(true);
     trait::runtime_enabled<ompt_context_t>::set(true);
     tim::auto_lock_t lk{ tim::type_mutex<ompt_handle_t>() };
@@ -224,6 +323,7 @@ setup()
 void
 shutdown()
 {
+    std::cout << "####### SHUTDOWN OMPT TRACING ########" << "\n";
     static bool _protect = false;
     if(_protect) return;
     _protect = true;
@@ -363,6 +463,7 @@ tool_initialize(ompt_function_lookup_t lookup, int initial_device_num,
             api_t>() = [](ompt_function_lookup_t,
                           const std::optional<tim::openmp::function_lookup_params>&
                               params) {
+            std::cout << "configuring device " << params->device_num << "\n";
             if(!params) return;
 
             ROCPROFSYS_VERBOSE(3, "[ompt] configuring device %i...\n",
@@ -376,6 +477,7 @@ tool_initialize(ompt_function_lookup_t lookup, int initial_device_num,
 
             static ompt_callback_buffer_request_t request =
                 [](int device_num, ompt_buffer_t** buffer, size_t* bytes) {
+                    std::cout << "[ompt] buffer request... " << "\n";
                     ROCPROFSYS_VERBOSE(3, "[ompt] buffer request...\n");
                     *bytes  = ::tim::units::get_page_size();
                     *buffer = mmap(nullptr, *bytes, PROT_READ | PROT_WRITE,
@@ -389,6 +491,7 @@ tool_initialize(ompt_function_lookup_t lookup, int initial_device_num,
                                                                  ompt_buffer_cursor_t
                                                                      begin,
                                                                  int buffer_owned) {
+                std::cout << "[ompt] buffer complete... " << "\n";
                 ROCPROFSYS_VERBOSE(3, "[ompt] buffer complete...\n");
                 tim::consume_parameters(device_num, buffer, bytes, begin, buffer_owned);
 
@@ -397,6 +500,8 @@ tool_initialize(ompt_function_lookup_t lookup, int initial_device_num,
                 auto _skew = rocprofsys::tracing::get_clock_skew(
                     [&_funcs]() { return _funcs.get_device_time(_funcs.device); });
 
+                ROCPROFSYS_VERBOSE(
+                    0, "######################## [ompt] buffer complete...\n");
                 ompt_buffer_cursor_t _cursor   = begin;
                 size_t               _nrecords = 0;
                 do
@@ -409,6 +514,8 @@ tool_initialize(ompt_function_lookup_t lookup, int initial_device_num,
                         const char* _type    = tim::openmp::get_enum_label(_record->type);
                         auto        _thrd_id = _record->thread_id;
                         auto        _targ_id = _record->target_id;
+
+                        std::cout << "OMPT Record Thread ID = " << _thrd_id << "\n";
 
                         unsigned long beg_time = _record->time + _skew;
                         unsigned long end_time = 0;
@@ -435,6 +542,17 @@ tool_initialize(ompt_function_lookup_t lookup, int initial_device_num,
                             component::ompt::record(
                                 _name, id, beg_time, end_time, _thrd_id, _targ_id,
                                 tim::openmp::context_info{ _name, nullptr, _ctx_info });
+
+                            if(get_use_rocpd())
+                            {
+                                cache_thread_info(_thrd_id);
+                                cache_track(_thrd_id,
+                                            JOIN("", "OMPT Kernel Submit - Thread [ ",
+                                                 _thrd_id, " ]")
+                                                .c_str());
+                                cache_ompt_region(_name, _thrd_id, id, beg_time, end_time,
+                                                  "", format_event_args(_ctx_info), "");
+                            }
                         }
                         else if(_record->type == ompt_callback_target_data_op)
                         {
@@ -462,6 +580,17 @@ tool_initialize(ompt_function_lookup_t lookup, int initial_device_num,
                             component::ompt::record(
                                 _opname, id, beg_time, end_time, _thrd_id, _targ_id,
                                 tim::openmp::context_info{ _name, nullptr, _ctx_info });
+
+                            if(get_use_rocpd())
+                            {
+                                cache_thread_info(_thrd_id);
+                                cache_track(_thrd_id,
+                                            JOIN("", "OMPT Target Data Op - Thread [ ",
+                                                 _thrd_id, " ]")
+                                                .c_str());
+                                cache_ompt_region(_name, _thrd_id, id, beg_time, end_time,
+                                                  "", format_event_args(_ctx_info), "");
+                            }
                         }
 
                         ROCPROFSYS_VERBOSE(
@@ -484,7 +613,9 @@ tool_initialize(ompt_function_lookup_t lookup, int initial_device_num,
                     ::munmap(buffer, bytes);
                 }
             };
-
+            ROCPROFSYS_VERBOSE(
+                0,
+                "######################## [ompt] buffer complete... starting traces\n");
             device_funcs.start_trace(params->device, request, complete);
         };
 
@@ -496,6 +627,7 @@ tool_initialize(ompt_function_lookup_t lookup, int initial_device_num,
 void
 tool_finalize(ompt_data_t*)
 {
+    std::cout << "####### FINALIZE OMPT TRACING TOOL ########" << "\n";
     shutdown();
 }
 }  // namespace
