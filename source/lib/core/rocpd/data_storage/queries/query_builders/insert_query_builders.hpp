@@ -58,6 +58,25 @@ struct query_value_builder
 
     std::string get_query_string() { return _ss.str(); }
 
+    template <typename... Values>
+    query_value_builder& set_bulk_values(size_t times, Values&&... values)
+    {
+        auto count = sizeof...(values);
+
+        std::stringstream placeholder_ss;
+        for(size_t ind = 0; ind < count; ++ind)
+        {
+            placeholder_ss << ((ind != count - 1) ? "?," : "?");
+        }
+
+        for(size_t ind = 0; ind < times; ++ind)
+        {
+            _ss << "(";
+            _ss << placeholder_ss.str();
+            _ss << ((ind != times - 1) ? "), " : ")");
+        }
+    }
+
 private:
     template <typename T>
     std::enable_if_t<common::traits::is_string_literal<T>(), std::stringstream&>

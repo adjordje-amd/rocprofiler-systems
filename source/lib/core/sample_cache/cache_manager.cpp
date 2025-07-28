@@ -24,7 +24,9 @@
 #include "core/config.hpp"
 #include "core/sample_cache/cache_storage_parser.hpp"
 #include "debug.hpp"
+#include "rocpd/data_storage/database.hpp"
 #include "sample_cache/rocpd_post_processing.hpp"
+#include <chrono>
 
 namespace rocprofsys
 {
@@ -47,6 +49,7 @@ cache_manager::cache_manager()
 void
 cache_manager::post_process()
 {
+    using clock = std::chrono::high_resolution_clock;
     if(m_storage.is_running())
     {
         ROCPROFSYS_WARNING(2, "Postprocessing called without previously shutting down "
@@ -56,10 +59,45 @@ cache_manager::post_process()
 
     if(get_use_rocpd())
     {
-        ROCPROFSYS_PRINT("Generating rocpd with collected data. This may take a while..\n");
+        ROCPROFSYS_PRINT(
+            "Generating rocpd with collected data. This may take a while..\n");
     }
-    post_process_metadata();
-    m_parser.consume_storage();
+
+    long metadata_time = 0;
+    long cache_time    = 0;
+
+    {
+        auto start = clock::now();
+        post_process_metadata();
+        auto end = clock::now();
+        metadata_time =
+            std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    }
+
+    // rocpd::data_storage::database::get_instance().execute_query(
+    //     "PRAGMA journal_mode = OFF;");
+    // rocpd::data_storage::database::get_instance().execute_query(
+    //     "PRAGMA temp_store = MEMORY;");
+    // rocpd::data_storage::database::get_instance().execute_query(
+    //     "PRAGMA foreign_keys = OFF;");
+    // rocpd::data_storage::database::get_instance().execute_query(
+    //     "PRAGMA synchronous = OFF;");
+    // rocpd::data_storage::database::get_instance().execute_query(
+    //     "PRAGMA auto_vacuum = OFF;");
+
+    {
+        auto start = clock::now();
+        rocpd::data_storage::database::get_instance().execute_query("BEGIN TRANSACTION;");
+        m_parser.consume_storage();
+        rocpd::data_storage::database::get_instance().execute_query("COMMIT;");
+        auto end = clock::now();
+        cache_time =
+            std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+    }
+
+    std::cout << "Metadata time: " << metadata_time
+              << " milliseconds Cache time: " << cache_time << " milliseconds"
+              << std::endl;
 }
 
 void

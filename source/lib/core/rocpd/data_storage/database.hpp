@@ -192,6 +192,52 @@ public:
         };
     }
 
+    template <typename... SingleRowValues>
+    struct bulk_executor
+    {
+        bulk_executor(const std::shared_ptr<sqlite3_stmt>& _stmt, std::string _query,
+                      database* _db_instance)
+        : stmt(_stmt)
+        , query(std::move(_query))
+        , db_instance(_db_instance)
+        , position{ 1 }
+        {}
+
+        void bind_row_values(SingleRowValues... values)
+        {
+            std::lock_guard lock{ _mutex };
+            ((db_instance->bind_value(stmt.get(), position++, values, query)), ...);
+        }
+
+        void execute_bulk_insert()
+        {
+            std::lock_guard lock{ _mutex };
+            db_instance->validate_sqlite3_result(sqlite3_step(stmt.get()), query.c_str(),
+                                                 "Failed to execute step!\n");
+            sqlite3_reset(stmt.get());
+            position = 1;
+        }
+
+    private:
+        std::shared_ptr<sqlite3_stmt> stmt;
+        std::string                   query;
+        database*                     db_instance;
+        int                           position;
+    };
+
+    template <typename... SingleRowValues>
+    auto create_bulk_statement_executor(const std::string& query)
+    {
+        sqlite3_stmt* p_stmt;
+        validate_sqlite3_result(
+            sqlite3_prepare_v2(_sqlite3_db_temp, query.c_str(), -1, &p_stmt, nullptr),
+            query.c_str(), "Failed to create bulk statement!");
+
+        auto stmt = std::make_shared<sqlite3_stmt>(p_stmt, sqlite3_finalize);
+
+        return database::bulk_executor<SingleRowValues...>{ stmt, query, this };
+    }
+
     static std::string get_upid();
 
 private:

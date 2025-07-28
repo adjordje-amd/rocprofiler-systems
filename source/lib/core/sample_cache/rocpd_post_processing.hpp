@@ -52,6 +52,7 @@ private:
     postprocessing_callback get_pmc_event_with_sample_callback() const;
 
     metadata& m_metadata;
+    int       counter = 0;
 };
 
 }  // namespace sample_cache
