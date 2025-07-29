@@ -75,6 +75,7 @@ struct query_value_builder
             _ss << placeholder_ss.str();
             _ss << ((ind != times - 1) ? "), " : ")");
         }
+        return *this;
     }
 
 private:

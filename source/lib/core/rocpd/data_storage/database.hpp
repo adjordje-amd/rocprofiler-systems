@@ -233,7 +233,7 @@ public:
             sqlite3_prepare_v2(_sqlite3_db_temp, query.c_str(), -1, &p_stmt, nullptr),
             query.c_str(), "Failed to create bulk statement!");
 
-        auto stmt = std::make_shared<sqlite3_stmt>(p_stmt, sqlite3_finalize);
+        std::shared_ptr<sqlite3_stmt> stmt{ p_stmt, sqlite3_finalize };
 
         return database::bulk_executor<SingleRowValues...>{ stmt, query, this };
     }

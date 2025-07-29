@@ -68,7 +68,9 @@ cache_manager::post_process()
 
     {
         auto start = clock::now();
+        rocpd::data_storage::database::get_instance().execute_query("BEGIN TRANSACTION;");
         post_process_metadata();
+        rocpd::data_storage::database::get_instance().execute_query("COMMIT;");
         auto end = clock::now();
         metadata_time =
             std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
@@ -87,13 +89,12 @@ cache_manager::post_process()
 
     {
         auto start = clock::now();
-        rocpd::data_storage::database::get_instance().execute_query("BEGIN TRANSACTION;");
         m_parser.consume_storage();
-        rocpd::data_storage::database::get_instance().execute_query("COMMIT;");
         auto end = clock::now();
         cache_time =
             std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
     }
+    m_postprocessing.flush_remaining();
 
     std::cout << "Metadata time: " << metadata_time
               << " milliseconds Cache time: " << cache_time << " milliseconds"

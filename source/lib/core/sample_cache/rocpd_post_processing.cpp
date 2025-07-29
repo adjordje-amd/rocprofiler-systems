@@ -24,13 +24,13 @@
 #include "agent_manager.hpp"
 #include "common.hpp"
 #include "config.hpp"
+#include "core/rocpd/data_storage/database.hpp"
+#include "core/rocpd/data_storage/queries/query_builders/insert_query_builders.hpp"
+#include "core/rocpd/data_storage/queries/table_insert_query.hpp"
 #include "library/rocprofiler-sdk/fwd.hpp"
 #include "library/thread_info.hpp"
 #include "node_info.hpp"
 #include "rocpd/data_processor.hpp"
-#include "rocpd/data_storage/database.hpp"
-#include "rocpd/data_storage/queries/query_builders/insert_query_builders.hpp"
-#include "rocpd/data_storage/queries/table_insert_query.hpp"
 #include "sample_cache/cache_storage_parser.hpp"
 #include "sample_cache/metadata_storage.hpp"
 #include "sample_cache/sample_type.hpp"
@@ -46,31 +46,6 @@ namespace sample_cache
 {
 namespace
 {
-struct kernel_dispatch_insert
-{
-    const char* guid;
-    size_t      nid;
-    size_t      pid;
-    size_t      tid;
-    size_t      agent_id;
-    size_t      kernel_id;
-    size_t      dispatch_id;
-    size_t      queue_id;
-    size_t      stream_id;
-    uint64_t    start;
-    uint64_t    end;
-    size_t      private_segment_size;
-    size_t      group_segment_size;
-    size_t      workgroup_size_x;
-    size_t      workgroup_size_y;
-    size_t      workgroup_size_z;
-    size_t      grid_size_x;
-    size_t      grid_size_y;
-    size_t      grid_size_z;
-    size_t      region_name_id;
-    size_t      event_id;
-    const char* extdata;
-};
 inline rocpd::data_processor&
 get_data_processor()
 {
@@ -118,8 +93,7 @@ get_kernel_dispatch_bulk_insert_executor()
 postprocessing_callback
 rocpd_post_processing::get_kernel_dispatch_callback()
 {
-    std::vector<kernel_dispatch_insert> kds_list;
-    kds_list.reserve(50);
+    m_kds_list.reserve(50);
 
     return [&](const storage_parsed_type_base& parsed) {
         const auto _kds = static_cast<const struct kernel_dispatch_sample&>(parsed);
@@ -158,8 +132,8 @@ rocpd_post_processing::get_kernel_dispatch_callback()
         const auto event_id = data_processor.insert_event(
             category_id, stack_id, parent_stack_id, correlation_id);
 
-        kds_list.emplace_back(
-            guid.c_str(), n_info.id, process.pid, thread_primary_key, agent_primary_key,
+        kernel_dispatch_insert kd(
+            n_info.id, process.pid, thread_primary_key, agent_primary_key,
             _kds.record.dispatch_info.kernel_id, _kds.record.dispatch_info.dispatch_id,
             _kds.record.dispatch_info.queue_id.handle, _kds.stream_handle,
             _kds.record.start_timestamp, _kds.record.end_timestamp,
@@ -169,38 +143,29 @@ rocpd_post_processing::get_kernel_dispatch_callback()
             _kds.record.dispatch_info.workgroup_size.y,
             _kds.record.dispatch_info.workgroup_size.z,
             _kds.record.dispatch_info.grid_size.x, _kds.record.dispatch_info.grid_size.y,
-            _kds.record.dispatch_info.grid_size.z, region_name_primary_key, event_id,
-            "{}");
+            _kds.record.dispatch_info.grid_size.z, region_name_primary_key, event_id);
+        m_kds_list.emplace_back(kd);
 
-        if(kds_list.size() == 50)
+        if(m_kds_list.size() == 50)
         {
-            for(auto& kds : kds_list)
+            for(auto& kds : m_kds_list)
             {
-                m_kernel_dispatch_bulk_insert_executor.bind_row_values(
-                    kds.guid, kds.nid, kds.pid, kds.tid, kds.agent_id, kds.kernel_id,
+                m_kernel_dispatch_bulk_insert_executor->bind_row_values(
+                    guid.c_str(), kds.nid, kds.pid, kds.tid, kds.agent_id, kds.kernel_id,
                     kds.dispatch_id, kds.queue_id, kds.stream_id, kds.start, kds.end,
                     kds.private_segment_size, kds.group_segment_size,
                     kds.workgroup_size_x, kds.workgroup_size_y, kds.workgroup_size_z,
                     kds.grid_size_x, kds.grid_size_y, kds.grid_size_z, kds.region_name_id,
-                    kds.event_id, kds.extdata);
+                    kds.event_id, "{}");
             }
-            m_kernel_dispatch_bulk_insert_executor.execute_bulk_insert();
-            kds_list.clear();
-            kds_list.reserve(50);
+
+            rocpd::data_storage::database::get_instance().execute_query(
+                "BEGIN TRANSACTION;");
+            m_kernel_dispatch_bulk_insert_executor->execute_bulk_insert();
+            rocpd::data_storage::database::get_instance().execute_query("COMMIT;");
+            m_kds_list.clear();
+            m_kds_list.reserve(50);
         }
-        // data_processor.insert_kernel_dispatch(
-        //     n_info.id, process.pid, thread_primary_key, agent_primary_key,
-        //     _kds.record.dispatch_info.kernel_id, _kds.record.dispatch_info.dispatch_id,
-        //     _kds.record.dispatch_info.queue_id.handle, _kds.stream_handle,
-        //     _kds.record.start_timestamp, _kds.record.end_timestamp,
-        //     _kds.record.dispatch_info.private_segment_size,
-        //     _kds.record.dispatch_info.group_segment_size,
-        //     _kds.record.dispatch_info.workgroup_size.x,
-        //     _kds.record.dispatch_info.workgroup_size.y,
-        //     _kds.record.dispatch_info.workgroup_size.z,
-        //     _kds.record.dispatch_info.grid_size.x,
-        //     _kds.record.dispatch_info.grid_size.y,
-        //     _kds.record.dispatch_info.grid_size.z, region_name_primary_key, event_id);
     };
 }
 
@@ -461,7 +426,6 @@ rocpd_post_processing::get_pmc_event_with_sample_callback() const
 
 rocpd_post_processing::rocpd_post_processing(metadata& md)
 : m_metadata(md)
-, m_kernel_dispatch_bulk_insert_executor(get_kernel_dispatch_bulk_insert_executor())
 {}
 
 void
@@ -490,9 +454,10 @@ rocpd_post_processing::post_process_metadata()
     {
         return;
     }
-    auto& data_processor = get_data_processor();
-    auto& agent_mngr     = agent_manager::get_instance();
-    auto  n_info         = node_info::get_instance();
+    auto& data_processor                   = get_data_processor();
+    auto& agent_mngr                       = agent_manager::get_instance();
+    auto  n_info                           = node_info::get_instance();
+    m_kernel_dispatch_bulk_insert_executor = get_kernel_dispatch_bulk_insert_executor();
 
     data_processor.insert_node_info(n_info.id, n_info.hash, n_info.machine_id.c_str(),
                                     n_info.system_name.c_str(), n_info.node_name.c_str(),
@@ -642,6 +607,24 @@ rocpd_post_processing::rocpd_insert_thread_id(info::thread&        t_info,
     get_data_processor().insert_thread_info(n_info.id, process_info.ppid,
                                             process_info.pid, t_info.thread_id,
                                             ss.str().c_str(), t_info.start, t_info.end);
+}
+
+void
+rocpd_post_processing::flush_remaining()
+{
+    auto& data_processor = rocpd::data_processor::get_instance();
+    if(!m_kds_list.empty())
+    {
+        for(const auto& kds : m_kds_list)
+        {
+            data_processor.insert_kernel_dispatch(
+                kds.nid, kds.pid, kds.tid, kds.agent_id, kds.kernel_id, kds.dispatch_id,
+                kds.queue_id, kds.stream_id, kds.start, kds.end, kds.private_segment_size,
+                kds.group_segment_size, kds.workgroup_size_x, kds.workgroup_size_y,
+                kds.workgroup_size_z, kds.grid_size_x, kds.grid_size_y, kds.grid_size_z,
+                kds.region_name_id, kds.event_id, "{}");
+        }
+    }
 }
 
 }  // namespace sample_cache
