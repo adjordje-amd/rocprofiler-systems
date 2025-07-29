@@ -210,46 +210,16 @@ create_agent_profile(rocprofiler_agent_id_t          agent_id,
     return counters_v;
 }
 
-std::pair<std::string, std::string>
-memtype_to_db(std::string_view memory_type)
+#if (ROCPROFILER_VERSION < 700)
+/**
+ * @brief Stream ID.
+ */
+typedef struct rocprofiler_stream_id_t
 {
-    constexpr auto MEMORY_PREFIX  = std::string_view{ "MEMORY_ALLOCATION_" };
-    constexpr auto SCRATCH_PREFIX = std::string_view{ "SCRATCH_MEMORY_" };
-    constexpr auto VMEM_PREFIX    = std::string_view{ "VMEM_" };
-    constexpr auto ASYNC_PREFIX   = std::string_view{ "ASYNC_" };
+    uint64_t handle;
+} rocprofiler_stream_id_t;
 
-    std::string _type;
-    std::string _level;
-    if(memory_type.find(MEMORY_PREFIX) == 0)
-    {
-        _type = memory_type.substr(MEMORY_PREFIX.length());
-        if(_type.find(VMEM_PREFIX) == 0)
-        {
-            _type  = _type.substr(VMEM_PREFIX.length());
-            _level = "VIRTUAL";
-        }
-        else
-        {
-            _level = "REAL";
-        }
-    }
-    else if(memory_type.find(SCRATCH_PREFIX) == 0)
-    {
-        _type  = memory_type.substr(SCRATCH_PREFIX.length());
-        _level = "SCRATCH";
-        if(memory_type.find(ASYNC_PREFIX) == 0)
-        {
-            _type = memory_type.substr(ASYNC_PREFIX.length());  // RECLAIM
-        }
-    }
-
-    if(_type == "ALLOCATE")
-    {
-        _type = "ALLOC";
-    }
-
-    return std::make_pair(_type, _level);
-}
+#endif
 
 auto&
 get_stream_stack()
@@ -559,6 +529,7 @@ cache_memory_allocation(rocprofiler_buffer_tracing_memory_allocation_record_t* r
                                             *record, stream_handle);
 }
 
+#if (ROCPROFILER_VERSION >= 700)
 void
 tool_hip_stream_callback(rocprofiler_callback_tracing_record_t record,
                          rocprofiler_user_data_t*, void*)
@@ -605,6 +576,7 @@ tool_hip_stream_callback(rocprofiler_callback_tracing_record_t record,
         ROCPROFSYS_FAIL_F("Unknown operation for hip_stream_callback!");
     }
 }
+#endif
 
 template <typename CategoryT>
 void
@@ -1585,9 +1557,15 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
         external_corr_id_request_kinds.size(),
         set_kernel_rename_and_stream_correlation_id, nullptr));
 
-    ROCPROFILER_CALL(rocprofiler_configure_callback_tracing_service(
-        _data->primary_ctx, ROCPROFILER_CALLBACK_TRACING_HIP_STREAM, nullptr, 0,
-        tool_hip_stream_callback, nullptr));
+#if (ROCPROFILER_VERSION >= 700)
+    if((_buffered_domain.count(ROCPROFILER_BUFFER_TRACING_KERNEL_DISPATCH) > 0) ||
+       (_buffered_domain.count(ROCPROFILER_BUFFER_TRACING_MEMORY_COPY) > 0))
+    {
+        ROCPROFILER_CALL(rocprofiler_configure_callback_tracing_service(
+            _data->primary_ctx, ROCPROFILER_CALLBACK_TRACING_HIP_STREAM, nullptr, 0,
+            tool_hip_stream_callback, nullptr));
+    }
+#endif
 
     // Insert the default stream and queue info to ensure that the default entry is
     {
