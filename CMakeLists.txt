@@ -334,6 +334,10 @@ if(ROCPROFSYS_BUILD_TESTING OR "$ENV{ROCPROFSYS_CI}" MATCHES "[1-9]+|ON|on|y|yes
     include(CTest)
 endif()
 
+if(ROCPROFSYS_ENABLE_BENCHMARK)
+    add_compile_definitions(-DROCPROFSYS_USE_BENCHMARK=1)
+endif()
+
 # ------------------------------------------------------------------------------#
 #
 # library and executables

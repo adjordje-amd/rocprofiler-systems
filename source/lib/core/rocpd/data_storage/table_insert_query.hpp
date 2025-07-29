@@ -21,42 +21,37 @@
 // SOFTWARE.
 
 #pragma once
-#include <cstddef>
-#include <memory>
-#include <vector>
 
-#include "agent.hpp"
+#include "insert_query_builders.hpp"
 
 namespace rocprofsys
 {
-
-struct agent_manager
+namespace rocpd
 {
-    static agent_manager& get_instance();
+namespace data_storage
+{
+namespace queries
+{
 
-    agent_manager(const agent_manager&)            = delete;
-    agent_manager& operator=(const agent_manager&) = delete;
-    agent_manager(agent_manager&&)                 = delete;
-    agent_manager& operator=(agent_manager&&)      = delete;
-    ~agent_manager()                               = default;
+struct table_insert_query
+{
+    table_insert_query()
+    : _query_columns_builder{ _ss }
+    {}
 
-    void         insert_agent(agent& agent);
-    const agent& get_agent_by_id(size_t device_id, agent_type type) const;
-    const agent& get_agent_by_handle(size_t device_id, agent_type type) const;
-    const agent& get_agent_by_handle(size_t device_handle) const;
-
-    std::vector<std::shared_ptr<agent>> get_agents_by_type(agent_type type) const;
-
-    std::vector<std::shared_ptr<agent>> get_agents() const;
-
-    size_t get_gpu_agents_count() const;
-    size_t get_cpu_agents_count() const;
+    query_builders::query_columns_builder& set_table_name(const std::string& tableName)
+    {
+        _ss.str("");
+        _ss << "INSERT INTO " << tableName << " ";
+        return _query_columns_builder;
+    }
 
 private:
-    std::vector<std::shared_ptr<agent>> _agents;
-    size_t                              _gpu_agents_cnt{ 0 };
-    size_t                              _cpu_agents_cnt{ 0 };
-    agent_manager() = default;
+    std::stringstream                     _ss;
+    query_builders::query_columns_builder _query_columns_builder;
 };
 
+}  // namespace queries
+}  // namespace data_storage
+}  // namespace rocpd
 }  // namespace rocprofsys
