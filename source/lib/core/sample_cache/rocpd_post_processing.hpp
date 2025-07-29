@@ -24,6 +24,7 @@
 #include "core/node_info.hpp"
 #include "core/sample_cache/cache_storage_parser.hpp"
 #include "core/sample_cache/metadata_storage.hpp"
+#include "rocpd/data_storage/database.hpp"
 
 namespace rocprofsys
 {
@@ -44,7 +45,7 @@ private:
     inline void rocpd_insert_thread_id(info::thread& t_info, const node_info& n_info,
                                        const info::process& process_info) const;
 
-    postprocessing_callback get_kernel_dispatch_callback() const;
+    postprocessing_callback get_kernel_dispatch_callback();
     postprocessing_callback get_memory_copy_callback() const;
     postprocessing_callback get_memory_allocate_callback() const;
     postprocessing_callback get_region_callback() const;
@@ -52,7 +53,11 @@ private:
     postprocessing_callback get_pmc_event_with_sample_callback() const;
 
     metadata& m_metadata;
-    int       counter = 0;
+    rocpd::data_storage::database::bulk_executor<
+        const char*, size_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+        uint64_t, uint64_t, size_t, size_t, size_t, size_t, size_t, size_t, size_t,
+        size_t, size_t, size_t, const char*>
+        m_kernel_dispatch_bulk_insert_executor;
 };
 
 }  // namespace sample_cache
