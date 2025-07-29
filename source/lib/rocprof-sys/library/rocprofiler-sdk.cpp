@@ -519,6 +519,7 @@ cache_memory_copy(rocprofiler_buffer_tracing_memory_copy_record_t* record)
                                             *record, stream_handle);
 }
 
+#if (ROCPROFILER_VERSION >= 600)
 void
 cache_memory_allocation(rocprofiler_buffer_tracing_memory_allocation_record_t* record)
 {
@@ -528,6 +529,7 @@ cache_memory_allocation(rocprofiler_buffer_tracing_memory_allocation_record_t* r
     sample_cache::get_cache_storage().store(sample_cache::entry_type::memory_alloc,
                                             *record, stream_handle);
 }
+#endif
 
 #if (ROCPROFILER_VERSION >= 700)
 void
@@ -1306,6 +1308,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                                           _end_ns);
                 }
             }
+#if (ROCPROFILER_VERSION >= 600)
             else if(header->kind == ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION)
             {
                 auto* record =
@@ -1318,6 +1321,7 @@ tool_tracing_buffered(rocprofiler_context_id_t /*context*/,
                     cache_memory_allocation(record);
                 }
             }
+#endif
             else if(header->kind == ROCPROFILER_BUFFER_TRACING_HSA_CORE_API ||
                     header->kind == ROCPROFILER_BUFFER_TRACING_HSA_AMD_EXT_API)
             {
@@ -1549,7 +1553,9 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
         std::array<rocprofiler_external_correlation_id_request_kind_t, 3>{
             ROCPROFILER_EXTERNAL_CORRELATION_REQUEST_KERNEL_DISPATCH,
             ROCPROFILER_EXTERNAL_CORRELATION_REQUEST_MEMORY_COPY,
+#if (ROCPROFILER_VERSION >= 600)
             ROCPROFILER_EXTERNAL_CORRELATION_REQUEST_MEMORY_ALLOCATION
+#endif
         };
 
     ROCPROFILER_CALL(rocprofiler_configure_external_correlation_id_request_service(
@@ -1646,6 +1652,7 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
             _data->memory_copy_buffer));
     }
 
+#if (ROCPROFILER_VERSION >= 600)
     if(_buffered_domain.count(ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION) > 0)
     {
         ROCPROFILER_CALL(rocprofiler_create_buffer(
@@ -1663,6 +1670,7 @@ tool_init(rocprofiler_client_finalize_t fini_func, void* user_data)
             _data->primary_ctx, ROCPROFILER_BUFFER_TRACING_MEMORY_ALLOCATION, nullptr, 0,
             _data->memory_alloc_buffer));
     }
+#endif
 
     if(!_counter_events.empty())
     {

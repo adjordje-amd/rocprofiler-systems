@@ -48,11 +48,13 @@ struct memory_copy_sample : storage_parsed_type_base
     size_t                                          stream_handle;
 };
 
+#if (ROCPROFILER_VERSION >= 600)
 struct memory_allocate_sample : storage_parsed_type_base
 {
     rocprofiler_buffer_tracing_memory_allocation_record_t record;
     size_t                                                stream_handle;
 };
+#endif
 
 struct region_sample : storage_parsed_type_base
 {
@@ -102,8 +104,10 @@ enum class entry_type : uint32_t
     region                = 0x0002,
     kernel_dispatch       = 0x0003,
     memory_copy           = 0x0004,
-    memory_alloc          = 0x0005,
-    fragmented_space      = 0xFFFF
+#if (ROCPROFILER_VERSION >= 600)
+    memory_alloc = 0x0005,
+#endif
+    fragmented_space = 0xFFFF
 };
 }  // namespace sample_cache
 }  // namespace rocprofsys

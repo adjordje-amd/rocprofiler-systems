@@ -82,14 +82,27 @@ get_mem_copy_src_address(
 #endif
 }
 
+#if (ROCPROFILER_VERSION >= 600)
 size_t
 get_mem_alloc_address(
     [[maybe_unused]] const rocprofiler_buffer_tracing_memory_allocation_record_t& record)
 {
-#if (ROCPROFILER_VERSION >= 700)
+#    if (ROCPROFILER_VERSION >= 700)
     return record.address.value;
-#else
+#    else
     return static_cast<size_t>(record.address.handle);
+#    endif
+}
+#endif
+
+auto
+get_handle_from_code_object(
+    const rocprofiler_callback_tracing_code_object_load_data_t& code_object)
+{
+#if (ROCPROFILER_VERSION >= 600)
+    return code_object.agent_id.handle;
+#else
+    return code_object.rocp_agent.handle;
 #endif
 }
 
@@ -192,6 +205,7 @@ rocpd_post_processing::get_memory_copy_callback() const
     };
 }
 
+#if (ROCPROFILER_VERSION >= 600)
 postprocessing_callback
 rocpd_post_processing::get_memory_allocate_callback() const
 {
@@ -272,6 +286,7 @@ rocpd_post_processing::get_memory_allocate_callback() const
             _mas.stream_handle, event_primary_key);
     };
 }
+#endif
 
 postprocessing_callback
 rocpd_post_processing::get_region_callback() const
@@ -402,8 +417,10 @@ rocpd_post_processing::register_parser_callback(storage_parser& parser)
     parser.register_type_callback(entry_type::kernel_dispatch,
                                   get_kernel_dispatch_callback());
     parser.register_type_callback(entry_type::memory_copy, get_memory_copy_callback());
+#if (ROCPROFILER_VERSION >= 600)
     parser.register_type_callback(entry_type::memory_alloc,
                                   get_memory_allocate_callback());
+#endif
     parser.register_type_callback(entry_type::in_time_sample,
                                   get_in_time_sample_callback());
     parser.register_type_callback(entry_type::pmc_event_with_sample,
@@ -470,7 +487,9 @@ rocpd_post_processing::post_process_metadata()
     auto _code_object_list = m_metadata.get_code_object_list();
     for(const auto& code_object : _code_object_list)
     {
-        auto dev_id = agent_mngr.get_agent_by_handle(code_object.agent_id.handle).base_id;
+        auto dev_id =
+            agent_mngr.get_agent_by_handle(get_handle_from_code_object(code_object))
+                .base_id;
 
         const char* strg_type = "UNKNOWN";
         switch(code_object.storage_type)
