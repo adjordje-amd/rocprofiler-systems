@@ -56,8 +56,13 @@ get_parent_stack_id([[maybe_unused]] const CorrelationIdType& correlation_id)
     {
         return correlation_id.ancestor;
     }
-#endif
+    else
+    {
+        return 0;
+    }
+#else
     return 0;
+#endif
 }
 
 size_t
