@@ -274,17 +274,6 @@ create_agent_profile(rocprofiler_agent_id_t          agent_id,
     return counters_v;
 }
 
-#if (ROCPROFILER_VERSION < 700)
-/**
- * @brief Stream ID.
- */
-typedef struct rocprofiler_stream_id_t
-{
-    uint64_t handle;
-} rocprofiler_stream_id_t;
-
-#endif
-
 const kernel_symbol_data_t*
 get_kernel_symbol_info(uint64_t _kernel_id)
 {
