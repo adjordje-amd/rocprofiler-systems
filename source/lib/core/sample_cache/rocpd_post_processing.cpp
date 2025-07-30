@@ -21,13 +21,13 @@
 // SOFTWARE.
 
 #include "sample_cache/rocpd_post_processing.hpp"
+#include "agent_manager.hpp"
 #include "common.hpp"
 #include "config.hpp"
 #include "library/rocprofiler-sdk/fwd.hpp"
 #include "library/thread_info.hpp"
-#include "agent_manager.hpp"
-#include "rocpd/data_processor.hpp"
 #include "node_info.hpp"
+#include "rocpd/data_processor.hpp"
 #include "sample_cache/cache_storage_parser.hpp"
 #include "sample_cache/metadata_storage.hpp"
 #include "sample_cache/sample_type.hpp"
@@ -49,8 +49,9 @@ get_data_processor()
 }
 template <typename CorrelationIdType>
 uint64_t
-get_parent_stack_id(const CorrelationIdType& correlation_id)
+get_parent_stack_id([[maybe_unused]] const CorrelationIdType& correlation_id)
 {
+#if (ROCPROFILER_VERSION >= 700)
     if constexpr(std::is_same_v<rocprofiler_correlation_id_t, CorrelationIdType>)
     {
         return correlation_id.ancestor;
@@ -59,7 +60,57 @@ get_parent_stack_id(const CorrelationIdType& correlation_id)
     {
         return 0;
     }
+#else
+    return 0;
+#endif
 }
+
+size_t
+get_mem_copy_dst_address(
+    [[maybe_unused]] const rocprofiler_buffer_tracing_memory_copy_record_t& record)
+{
+#if (ROCPROFILER_VERSION >= 700)
+    return record.dst_address.value;
+#else
+    return 0;
+#endif
+}
+
+size_t
+get_mem_copy_src_address(
+    [[maybe_unused]] const rocprofiler_buffer_tracing_memory_copy_record_t& record)
+{
+#if (ROCPROFILER_VERSION >= 700)
+    return record.src_address.value;
+#else
+    return 0;
+#endif
+}
+
+#if (ROCPROFILER_VERSION >= 600)
+size_t
+get_mem_alloc_address(
+    [[maybe_unused]] const rocprofiler_buffer_tracing_memory_allocation_record_t& record)
+{
+#    if (ROCPROFILER_VERSION >= 700)
+    return record.address.value;
+#    else
+    return static_cast<size_t>(record.address.handle);
+#    endif
+}
+#endif
+
+auto
+get_handle_from_code_object(
+    const rocprofiler_callback_tracing_code_object_load_data_t& code_object)
+{
+#if (ROCPROFILER_VERSION >= 600)
+    return code_object.agent_id.handle;
+#else
+    return code_object.rocp_agent.handle;
+#endif
+}
+
 }  // namespace
 
 postprocessing_callback
@@ -153,17 +204,18 @@ rocpd_post_processing::get_memory_copy_callback() const
         data_processor.insert_memory_copy(
             n_info.id, process.pid, thread_primary_key, _mcs.record.start_timestamp,
             _mcs.record.end_timestamp, name_primary_key, dst_agent_primary_key,
-            _mcs.record.dst_address.value, src_agent_primary_key,
-            _mcs.record.src_address.value, _mcs.record.bytes, queue_id,
+            get_mem_copy_dst_address(_mcs.record), src_agent_primary_key,
+            get_mem_copy_src_address(_mcs.record), _mcs.record.bytes, queue_id,
             _mcs.stream_handle, name_primary_key, event_primary_key);
     };
 }
 
+#if (ROCPROFILER_VERSION >= 600)
 postprocessing_callback
 rocpd_post_processing::get_memory_allocate_callback() const
 {
-    auto memtype_to_db = [](std::string_view memory_type)
-        -> std::pair<std::string, std::string> {
+    auto memtype_to_db =
+        [](std::string_view memory_type) -> std::pair<std::string, std::string> {
         constexpr auto MEMORY_PREFIX  = std::string_view{ "MEMORY_ALLOCATION_" };
         constexpr auto SCRATCH_PREFIX = std::string_view{ "SCRATCH_MEMORY_" };
         constexpr auto VMEM_PREFIX    = std::string_view{ "VMEM_" };
@@ -214,7 +266,7 @@ rocpd_post_processing::get_memory_allocate_callback() const
         if(_mas.record.agent_id.handle != std::numeric_limits<uint64_t>::max())
         {
             agent_primary_key =
-            agent_manager.get_agent_by_handle(_mas.record.agent_id.handle).base_id;
+                agent_manager.get_agent_by_handle(_mas.record.agent_id.handle).base_id;
         }
         const auto* _name =
             m_metadata.get_buffer_name_info().at(_mas.record.kind, _mas.record.operation);
@@ -235,10 +287,11 @@ rocpd_post_processing::get_memory_allocate_callback() const
         data_processor.insert_memory_alloc(
             n_info.id, process.pid, thread_primary_key, agent_primary_key, type.c_str(),
             level.c_str(), _mas.record.start_timestamp, _mas.record.end_timestamp,
-            _mas.record.address.value, _mas.record.allocation_size, queue_id,
+            get_mem_alloc_address(_mas.record), _mas.record.allocation_size, queue_id,
             _mas.stream_handle, event_primary_key);
     };
 }
+#endif
 
 postprocessing_callback
 rocpd_post_processing::get_region_callback() const
@@ -369,8 +422,10 @@ rocpd_post_processing::register_parser_callback(storage_parser& parser)
     parser.register_type_callback(entry_type::kernel_dispatch,
                                   get_kernel_dispatch_callback());
     parser.register_type_callback(entry_type::memory_copy, get_memory_copy_callback());
+#if (ROCPROFILER_VERSION >= 600)
     parser.register_type_callback(entry_type::memory_alloc,
                                   get_memory_allocate_callback());
+#endif
     parser.register_type_callback(entry_type::in_time_sample,
                                   get_in_time_sample_callback());
     parser.register_type_callback(entry_type::pmc_event_with_sample,
@@ -397,17 +452,17 @@ rocpd_post_processing::post_process_metadata()
     data_processor.insert_process_info(n_info.id, process_info.ppid, process_info.pid, 0,
                                        0, 0, 0, process_info.command.c_str(), "{}");
 
-    const auto& agents = agent_mngr.get_agents();
-    int counter = 0;
+    const auto& agents  = agent_mngr.get_agents();
+    int         counter = 0;
     for(const auto& rocpd_agent : agents)
     {
         auto _base_id = rocpd::data_processor::get_instance().insert_agent(
             n_info.id, process_info.pid,
-            ((rocpd_agent->type == agent_type::GPU) ? "GPU" : "CPU"),
-            counter++, rocpd_agent->logical_node_id,
-            rocpd_agent->logical_node_type_id, rocpd_agent->device_id,
-            rocpd_agent->name.c_str(), rocpd_agent->model_name.c_str(),
-            rocpd_agent->vendor_name.c_str(), rocpd_agent->product_name.c_str(), "");
+            ((rocpd_agent->type == agent_type::GPU) ? "GPU" : "CPU"), counter++,
+            rocpd_agent->logical_node_id, rocpd_agent->logical_node_type_id,
+            rocpd_agent->device_id, rocpd_agent->name.c_str(),
+            rocpd_agent->model_name.c_str(), rocpd_agent->vendor_name.c_str(),
+            rocpd_agent->product_name.c_str(), "");
         rocpd_agent->base_id = _base_id;
     }
     auto _string_list = m_metadata.get_string_list();
@@ -425,16 +480,21 @@ rocpd_post_processing::post_process_metadata()
     auto _track_info_list = m_metadata.get_track_info_list();
     for(auto& track : _track_info_list)
     {
-        auto thread_id = track.thread_id.has_value() ?
-            std::make_optional<size_t>(data_processor.map_thread_id_to_primary_key(track.thread_id.value())): std::nullopt;
-        data_processor.insert_track(
-            track.track_name.c_str(), n_info.id, process_info.pid, thread_id);
+        auto thread_id =
+            track.thread_id.has_value()
+                ? std::make_optional<size_t>(data_processor.map_thread_id_to_primary_key(
+                      track.thread_id.value()))
+                : std::nullopt;
+        data_processor.insert_track(track.track_name.c_str(), n_info.id, process_info.pid,
+                                    thread_id);
     }
 
     auto _code_object_list = m_metadata.get_code_object_list();
     for(const auto& code_object : _code_object_list)
     {
-        auto dev_id = agent_mngr.get_agent_by_handle(code_object.agent_id.handle).base_id;
+        auto dev_id =
+            agent_mngr.get_agent_by_handle(get_handle_from_code_object(code_object))
+                .base_id;
 
         const char* strg_type = "UNKNOWN";
         switch(code_object.storage_type)

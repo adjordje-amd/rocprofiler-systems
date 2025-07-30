@@ -99,6 +99,7 @@ storage_parser::consume_storage()
                 invoke_callbacks(header.type, _memory_copy_sample);
                 break;
             }
+#if (ROCPROFILER_VERSION >= 600)
             case entry_type::memory_alloc:
             {
                 memory_allocate_sample _memory_allocate_sample;
@@ -108,6 +109,7 @@ storage_parser::consume_storage()
                 invoke_callbacks(header.type, _memory_allocate_sample);
                 break;
             }
+#endif
             case entry_type::region:
             {
                 region_sample _region_sample;
