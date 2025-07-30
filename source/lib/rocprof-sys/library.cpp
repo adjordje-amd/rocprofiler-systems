@@ -27,6 +27,8 @@
 #include "api.hpp"
 #include "common/setup.hpp"
 #include "common/static_object.hpp"
+#include "core/agent.hpp"
+#include "core/agent_manager.hpp"
 #include "core/categories.hpp"
 #include "core/components/fwd.hpp"
 #include "core/concepts.hpp"
@@ -38,6 +40,7 @@
 #include "core/dynamic_library.hpp"
 #include "core/gpu.hpp"
 #include "core/locking.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto_fwd.hpp"
 #include "core/rocpd/data_processor.hpp"
 #include "core/sample_cache/cache_manager.hpp"
@@ -761,7 +764,6 @@ rocprofsys_finalize_hidden(void)
         {
             rocpd::data_processor::get_instance().flush();
         }
-
         set_state(State::Finalized);
         std::quick_exit(EXIT_SUCCESS);
         return;

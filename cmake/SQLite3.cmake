@@ -1,14 +1,17 @@
 include_guard(GLOBAL)
 
 if(ROCPROFILER_BUILD_SQLITE3)
+    message(STATUS "Building SQLite3 from source!")
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/external/sqlite
+    )
     # checkout submodule if not already checked out or clone repo if no .gitmodules file
     rocprofiler_systems_checkout_git_submodule(
-        RECURSIVE
         RELATIVE_PATH external/sqlite
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
         TEST_FILE configure
-        REPO_URL https://github.com/sqlite/sqlite
-        REPO_BRANCH "version-3.47.0"
+        REPO_URL https://github.com/sqlite/sqlite.git
+        REPO_BRANCH "version-3.45.3"
     )
 
     find_program(MAKE_COMMAND NAMES make gmake PATH_SUFFIXES bin REQUIRED)

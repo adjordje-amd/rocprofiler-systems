@@ -53,7 +53,7 @@ const agent&
 agent_manager::get_agent_by_type_index(size_t type_index, agent_type type) const
 {
     ROCPROFSYS_VERBOSE(3, "Getting agent for type: %s, with type index: %ld\n",
-                        (type == agent_type::GPU) ? "GPU" : "CPU", type_index);
+                       (type == agent_type::GPU) ? "GPU" : "CPU", type_index);
     auto _agent =
         std::find_if(_agents.begin(), _agents.end(), [&](const auto& agent_ptr) {
             return agent_ptr->type == type && agent_ptr->device_type_index == type_index;
