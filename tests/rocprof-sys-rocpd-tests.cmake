@@ -66,4 +66,33 @@ rocprofiler_systems_add_validation_test(
     DEPENDS transpose-rocpd
     LABELS "rocprofiler" "timer-sampling" "hitGetLastError"
 )
+rocprofiler_systems_add_validation_test(
+    NAME transpose-rocpd-sampling-test 
+    ROCPD_FILE "rocpd.db"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/transpose/SDK_metrics_rules.json"
+    DEPENDS transpose-rocpd
+    LABELS "SDK_metrics"
+)
 
+
+#----------------------------------------------------------------------------------------#
+#
+# RCCL Test  #
+#
+#----------------------------------------------------------------------------------------#
+
+rocprofiler_systems_add_test(
+  NAME rccl-rocpd
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/examples/rccl/all_reduce_perf
+  GPU ON
+  MPI ON
+  ENVIRONMENT "${_rocpd_environment}"
+)
+
+rocprofiler_systems_add_validation_test(
+    NAME rccl-rocpd-sampling
+    ROCPD_FILE "rocpd.db"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/rccl/validation_rules.json"
+    DEPENDS rccl-rocpd
+    LABELS "rocprofiler"
+)
