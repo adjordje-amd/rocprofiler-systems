@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <optional>
 #define TIMEMORY_KOKKOSP_POSTFIX ROCPROFSYS_PUBLIC_API
 
 #include "api.hpp"
@@ -28,6 +29,7 @@
 #include "core/config.hpp"
 #include "core/debug.hpp"
 #include "core/defines.hpp"
+#include "core/node_info.hpp"
 #include "core/perfetto.hpp"
 #include "core/rocpd/json.hpp"
 #include "core/sample_cache/cache_manager.hpp"
@@ -165,7 +167,7 @@ metadata_initialize_kokkos_category()
 }
 
 void
-metadata_initialize_kokos_track()
+metadata_initialize_kokkos_track()
 {
     size_t thread_id = gettid();
     rocprofsys::sample_cache::get_cache_metadata().add_track(
@@ -173,8 +175,8 @@ metadata_initialize_kokos_track()
 }
 
 void
-cache_kokos_event(const char* name, const char* event_type, const char* target,
-                  uint64_t timestamp_ns)
+cache_kokkos_event(const char* name, const char* event_type, const char* target,
+                   uint64_t timestamp_ns)
 {
     auto event_metadata = rocpd::json::create();
 
@@ -304,7 +306,7 @@ extern "C"
             rocprofsys_push_trace_hidden("kokkos_main");
 
             metadata_initialize_kokkos_category();
-            metadata_initialize_kokos_track();
+            metadata_initialize_kokkos_track();
         }
 
         setup_kernel_logger();
@@ -611,8 +613,8 @@ extern "C"
             kokkosp::profiler_t<kokkosp_region>{ _name }.mark();
         }
 
-        cache_kokos_event(JOIN(" ", _kp_prefix, label).c_str(), "[dual_view_sync]",
-                          (is_device) ? "device" : "host", timestamp);
+        cache_kokkos_event(JOIN(" ", _kp_prefix, label).c_str(), "[dual_view_sync]",
+                           (is_device) ? "device" : "host", timestamp);
     }
 
     void kokkosp_dual_view_modify(const char* label, const void* const, bool is_device)
@@ -636,8 +638,8 @@ extern "C"
             kokkosp::profiler_t<kokkosp_region>{ _name }.mark();
         }
 
-        cache_kokos_event(JOIN(" ", _kp_prefix, label).c_str(), "[dual_view_modify]",
-                          (is_device) ? "device" : "host", timestamp);
+        cache_kokkos_event(JOIN(" ", _kp_prefix, label).c_str(), "[dual_view_modify]",
+                           (is_device) ? "device" : "host", timestamp);
     }
 
     //----------------------------------------------------------------------------------//
