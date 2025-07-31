@@ -34,7 +34,7 @@
 #include <stdexcept>
 #include <string>
 #include <timemory/utility/demangle.hpp>
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
 #    include "library/rocprofiler-sdk/fwd.hpp"
 #    include <rocprofiler-sdk/version.h>
 #endif
@@ -51,7 +51,7 @@ get_data_processor()
     return rocpd::data_processor::get_instance();
 }
 
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
 auto
 get_handle_from_code_object(
     const rocprofiler_callback_tracing_code_object_load_data_t& code_object)
@@ -69,7 +69,7 @@ postprocessing_callback
 rocpd_post_processing::get_kernel_dispatch_callback() const
 {
     return [&](const storage_parsed_type_base& parsed) {
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
         auto _kds = static_cast<const struct kernel_dispatch_sample&>(parsed);
 
         auto& data_processor = get_data_processor();
@@ -118,7 +118,7 @@ postprocessing_callback
 rocpd_post_processing::get_memory_copy_callback() const
 {
     return [&](const storage_parsed_type_base& parsed) {
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
         auto _mcs = static_cast<const struct memory_copy_sample&>(parsed);
 
         auto& data_processor = get_data_processor();
@@ -251,7 +251,7 @@ postprocessing_callback
 rocpd_post_processing::get_region_callback() const
 {
     auto parse_args = [](const std::string& arg_str) {
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
         rocprofiler_sdk::function_args_t args;
         const std::string                delimiter = ";;";
 
@@ -290,7 +290,7 @@ rocpd_post_processing::get_region_callback() const
     };
 
     return [&](const storage_parsed_type_base& parsed) {
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
         auto  _rs            = static_cast<const struct region_sample&>(parsed);
         auto& data_processor = get_data_processor();
         auto& n_info         = node_info::get_instance();
@@ -373,7 +373,7 @@ rocpd_post_processing::rocpd_post_processing(metadata& md)
 void
 rocpd_post_processing::register_parser_callback(storage_parser& parser)
 {
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
     if(!get_use_rocpd())
     {
         return;
@@ -396,7 +396,7 @@ rocpd_post_processing::register_parser_callback(storage_parser& parser)
 void
 rocpd_post_processing::post_process_metadata()
 {
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
     if(!get_use_rocpd())
     {
         return;

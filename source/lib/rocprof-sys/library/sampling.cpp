@@ -1758,6 +1758,7 @@ void
 rocpd_post_process_backtrace_metrics(int64_t                                 _tid,
                                      const std::vector<timer_sampling_data>& _timer_data)
 {
+#if ROCPROFSYS_USE_ROCM > 0
     auto _valid_metrics = backtrace_metrics::valid_array_t{};
 
     for(const auto& itr : _timer_data)
@@ -1774,12 +1775,14 @@ rocpd_post_process_backtrace_metrics(int64_t                                 _ti
             itr.m_metrics.post_process_rocpd(_tid, 0.5 * (itr.m_beg + itr.m_end));
         backtrace_metrics::fini_rocpd(_tid, _valid_metrics);
     }
+#endif
 }
 
 void
 rocpd_post_process_timer_data(int64_t                                 _tid,
                               const std::vector<timer_sampling_data>& _timer_data)
 {
+#if ROCPROFSYS_USE_ROCM > 0
     auto& data_processor = get_data_processor();
 
     const auto& _thread_info = thread_info::get(_tid, SequentTID);
@@ -1867,14 +1870,17 @@ rocpd_post_process_timer_data(int64_t                                 _tid,
             }
         }
     }
+#endif
 }
 
 void
 post_process_rocpd(int64_t _tid, const std::vector<timer_sampling_data>& _timer_data,
                    const std::vector<overflow_sampling_data>& _overflow_data)
 {
+#if ROCPROFSYS_USE_ROCM > 0
     rocpd_post_process_overflow_data(_tid, _overflow_data);
     rocpd_post_process_timer_data(_tid, _timer_data);
+#endif
 }
 
 struct sampling_initialization

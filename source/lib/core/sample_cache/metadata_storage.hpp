@@ -28,7 +28,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <optional>
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
 #    include <rocprofiler-sdk/callback_tracing.h>
 #    include <rocprofiler-sdk/cxx/name_info.hpp>
 #endif
@@ -102,7 +102,7 @@ struct track
     }
 };
 
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
 struct code_object_less
 {
     bool operator()(const rocprofiler_callback_tracing_code_object_load_data_t& lhs,
@@ -148,7 +148,7 @@ struct metadata
     std::vector<uint64_t>       get_stream_list() const;
     std::vector<std::string_view> get_string_list() const;
 
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
     void add_code_object(
         const rocprofiler_callback_tracing_code_object_load_data_t& code_object);
     void add_kernel_symbol(
@@ -177,7 +177,7 @@ private:
     common::synchronized<std::set<uint64_t>>                   m_streams;
     common::synchronized<std::set<uint64_t>>                   m_queues;
     common::synchronized<std::unordered_set<std::string_view>> m_strings;
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
     common::synchronized<std::set<rocprofiler_callback_tracing_code_object_load_data_t,
                                   info::code_object_less>>
         m_code_objects;

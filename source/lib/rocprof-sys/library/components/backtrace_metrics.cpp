@@ -638,6 +638,7 @@ backtrace_metrics::post_process_perfetto(int64_t _tid, uint64_t _ts) const
 void
 backtrace_metrics::post_process_rocpd(int64_t _tid, uint64_t _ts) const
 {
+#if ROCPROFSYS_USE_ROCM > 0
     auto is_category_enabled = [&](const auto& _category) { return (*this)(_category); };
 
     if(is_category_enabled(category::thread_cpu_time{}))
@@ -670,6 +671,7 @@ backtrace_metrics::post_process_rocpd(int64_t _tid, uint64_t _ts) const
                                                hw_counter_data_t>(0, _ts, m_hw_counter,
                                                                   _tid);
     }
+#endif
 }
 }  // namespace component
 }  // namespace rocprofsys

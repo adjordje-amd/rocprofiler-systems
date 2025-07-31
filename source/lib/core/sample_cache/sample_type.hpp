@@ -26,7 +26,7 @@
 #include <unistd.h>
 #include <utility>
 
-#if ROCPROFSYS_USE_ROCM
+#if ROCPROFSYS_USE_ROCM > 0
 #    include <rocprofiler-sdk/version.h>
 #endif
 
