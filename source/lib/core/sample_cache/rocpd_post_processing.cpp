@@ -68,7 +68,7 @@ get_handle_from_code_object(
 postprocessing_callback
 rocpd_post_processing::get_kernel_dispatch_callback() const
 {
-    return [&](const storage_parsed_type_base& parsed) {
+    return [&]([[maybe_unused]] const storage_parsed_type_base& parsed) {
 #if ROCPROFSYS_USE_ROCM > 0
         auto _kds = static_cast<const struct kernel_dispatch_sample&>(parsed);
 
@@ -117,7 +117,7 @@ rocpd_post_processing::get_kernel_dispatch_callback() const
 postprocessing_callback
 rocpd_post_processing::get_memory_copy_callback() const
 {
-    return [&](const storage_parsed_type_base& parsed) {
+    return [&]([[maybe_unused]] const storage_parsed_type_base& parsed) {
 #if ROCPROFSYS_USE_ROCM > 0
         auto _mcs = static_cast<const struct memory_copy_sample&>(parsed);
 
@@ -160,11 +160,11 @@ rocpd_post_processing::get_memory_copy_callback() const
     };
 }
 
-#if (ROCPROFSYS_USE_ROCM && ROCPROFILER_VERSION >= 600)
+#if (ROCPROFSYS_USE_ROCM > 0 && ROCPROFILER_VERSION >= 600)
 postprocessing_callback
 rocpd_post_processing::get_memory_allocate_callback() const
 {
-#    if ROCPROFSYS_USE_ROCM
+#    if ROCPROFSYS_USE_ROCM > 0
     auto memtype_to_db =
         [](std::string_view memory_type) -> std::pair<std::string, std::string> {
         constexpr auto MEMORY_PREFIX  = std::string_view{ "MEMORY_ALLOCATION_" };
@@ -206,8 +206,8 @@ rocpd_post_processing::get_memory_allocate_callback() const
     };
 #    endif
 
-    return [&](const storage_parsed_type_base& parsed) {
-#    if ROCPROFSYS_USE_ROCM
+    return [&]([[maybe_unused]] const storage_parsed_type_base& parsed) {
+#    if ROCPROFSYS_USE_ROCM > 0
         auto  _mas           = static_cast<const struct memory_allocate_sample&>(parsed);
         auto& data_processor = get_data_processor();
         auto& agent_manager  = agent_manager::get_instance();
@@ -250,7 +250,7 @@ rocpd_post_processing::get_memory_allocate_callback() const
 postprocessing_callback
 rocpd_post_processing::get_region_callback() const
 {
-    auto parse_args = [](const std::string& arg_str) {
+    [[maybe_unused]] auto parse_args = []([[maybe_unused]] const std::string& arg_str) {
 #if ROCPROFSYS_USE_ROCM > 0
         rocprofiler_sdk::function_args_t args;
         const std::string                delimiter = ";;";
@@ -289,7 +289,7 @@ rocpd_post_processing::get_region_callback() const
 #endif
     };
 
-    return [&](const storage_parsed_type_base& parsed) {
+    return [&]([[maybe_unused]] const storage_parsed_type_base& parsed) {
 #if ROCPROFSYS_USE_ROCM > 0
         auto  _rs            = static_cast<const struct region_sample&>(parsed);
         auto& data_processor = get_data_processor();
@@ -371,7 +371,7 @@ rocpd_post_processing::rocpd_post_processing(metadata& md)
 {}
 
 void
-rocpd_post_processing::register_parser_callback(storage_parser& parser)
+rocpd_post_processing::register_parser_callback([[maybe_unused]] storage_parser& parser)
 {
 #if ROCPROFSYS_USE_ROCM > 0
     if(!get_use_rocpd())
