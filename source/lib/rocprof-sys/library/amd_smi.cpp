@@ -56,6 +56,7 @@
 
 #include <cassert>
 #include <optional>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -503,12 +504,14 @@ data::post_process(uint32_t _dev_id)
 
         uint64_t _ts = itr.m_ts;
         if(!_thread_info->is_valid_time(_ts)) continue;
+        const auto is_mi300 = gpu::is_gpu_category_mi300(_dev_id);
 
         double _gfxbusy = itr.m_busy_perc.gfx_activity;
         double _umcbusy = itr.m_busy_perc.umc_activity;
         double _mmbusy  = itr.m_busy_perc.mm_activity;
         double _temp    = itr.m_temp;
-        double _power   = itr.m_power.current_socket_power;
+        double _power   = is_mi300 ? itr.m_power.current_socket_power
+                                   : itr.m_power.average_socket_power;
         double _usage   = itr.m_mem_usage / static_cast<double>(units::megabyte);
 
         auto setup_perfetto_counter_tracks = [&]() {
