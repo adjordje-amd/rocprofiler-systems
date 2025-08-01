@@ -36,6 +36,7 @@
 #include <timemory/utility/demangle.hpp>
 #if ROCPROFSYS_USE_ROCM > 0
 #    include "library/rocprofiler-sdk/fwd.hpp"
+#    include <rocprofiler-sdk/context.h>
 #    include <rocprofiler-sdk/version.h>
 #endif
 
@@ -216,8 +217,9 @@ rocpd_post_processing::get_memory_allocate_callback() const
         auto  thread_primary_key =
             data_processor.map_thread_id_to_primary_key(_mas.thread_id);
         auto agent_primary_key = std::optional<uint64_t>{};
-        if(_mas.agent_id_handle != std::numeric_limits<uint64_t>::max() &&
-           _mas.agent_id_handle != std::numeric_limits<uint64_t>::min())
+
+        const auto invalid_context = ROCPROFILER_CONTEXT_NONE;
+        if(_mas.agent_id_handle != invalid_context.handle)
         {
             agent_primary_key =
                 agent_manager.get_agent_by_handle(_mas.agent_id_handle).base_id;
