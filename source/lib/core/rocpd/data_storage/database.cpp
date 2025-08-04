@@ -28,9 +28,12 @@
 #include <config.hpp>
 #include <fstream>
 #include <regex>
+#include <rocprofiler-sdk-rocpd/sql.h>
 #include <timemory/environment/types.hpp>
 #include <timemory/utility/filepath.hpp>
 #include <unistd.h>
+
+#include <rocprofiler-sdk-rocpd/rocpd.h>
 
 namespace
 {
@@ -43,7 +46,16 @@ create_directory_for_database_file(const std::string& db_file)
         tim::filepath::makedir(_db_dirname);
     }
 }
+void
+load_schema_cb(rocpd_sql_engine_t, rocpd_sql_schema_kind_t, rocpd_sql_options_t,
+               const rocpd_sql_schema_jinja_variables_t*, const char*,
+               const char* schema_content, void* user_data)
+{
+    auto* query = static_cast<std::string*>(user_data);
+    *query      = schema_content;
+}
 }  // namespace
+
 namespace rocprofsys
 {
 namespace rocpd
@@ -79,52 +91,26 @@ database::~database()
 void
 database::initialize_schema()
 {
-    auto get_file_path = [](const std::string_view filename) {
-        auto _rocprofsys_root = tim::get_env<std::string>(
-            "rocprofiler_systems_ROOT", tim::get_env<std::string>("ROCPROFSYS_ROOT", ""));
-        if(!_rocprofsys_root.empty() &&
-           tim::filepath::direxists(std::string(_rocprofsys_root)))
-        {
-            auto new_file_path = std::string(_rocprofsys_root)
-                                     .append("/share/rocprofiler-systems/")
-                                     .append(filename);
-            if(tim::filepath::exists(new_file_path))
-            {
-                return new_file_path;
-            }
-        }
-        return std::string("source/lib/core/rocpd/data_storage/schema/").append(filename);
+    auto                               upid = get_upid();
+    rocpd_sql_schema_jinja_variables_t info{ 2 * upid.size(), upid.c_str(),
+                                             upid.c_str() };
+
+    const std::vector<rocpd_sql_schema_kind_t> schema_kinds = {
+        ROCPD_SQL_SCHEMA_ROCPD_TABLES, ROCPD_SQL_SCHEMA_ROCPD_VIEWS,
+        ROCPD_SQL_SCHEMA_ROCPD_DATA_VIEWS, ROCPD_SQL_SCHEMA_ROCPD_MARKER_VIEWS,
+        ROCPD_SQL_SCHEMA_ROCPD_SUMMARY_VIEWS
     };
 
-    std::vector<std::string_view> schema_files = { "rocpd_tables.sql", "rocpd_views.sql",
-                                                   "data_views.sql", "marker_views.sql",
-                                                   "summary_views.sql" };
-
-    // Process each schema file
-    for(const auto& schema_file : schema_files)
+    for(const auto& shema_kind : schema_kinds)
     {
-        auto          file_path = get_file_path(schema_file);
-        std::ifstream file(file_path);
-        if(!file.is_open())
-        {
-            throw std::runtime_error(
-                std::string("Failed to open schema file ").append(file_path));
-        }
+        std::string query;
+        rocpd_sql_load_schema(ROCPD_SQL_ENGINE_SQLITE3, shema_kind,
+                              ROCPD_SQL_OPTIONS_NONE, &info, load_schema_cb, nullptr, 0,
+                              &query);
 
-        std::stringstream ss_query;
-        ss_query << file.rdbuf();
-        std::string query = ss_query.str();
-
-        std::regex upid_pattern("\\{\\{uuid\\}\\}");
-        std::regex view_upid_pattern("\\{\\{view_upid\\}\\}");
-
-        query = std::regex_replace(query, upid_pattern, "_" + get_upid());
-        query = std::regex_replace(query, view_upid_pattern, "");
-
-        validate_sqlite3_result(
-            sqlite3_exec(_sqlite3_db_temp, query.c_str(), 0, 0, 0), query.c_str(),
-            std::string("Invalid schema file, init database failed!").append(file_path));
-        file.close();
+        validate_sqlite3_result(sqlite3_exec(_sqlite3_db_temp, query.c_str(), 0, 0, 0),
+                                query.c_str(),
+                                std::string("Invalid schema, init database failed!"));
     }
 }
 

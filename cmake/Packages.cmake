@@ -218,7 +218,7 @@ endif()
 if(ROCPROFSYS_USE_ROCM)
     find_package(rocprofiler-sdk ${rocprofiler_systems_FIND_QUIETLY} REQUIRED)
     rocprofiler_systems_target_compile_definitions(rocprofiler-systems-rocm
-                                                   INTERFACE ROCPROFSYS_USE_ROCM
+    INTERFACE ROCPROFSYS_USE_ROCM
     )
     target_link_libraries(
         rocprofiler-systems-rocm
@@ -227,6 +227,12 @@ if(ROCPROFSYS_USE_ROCM)
 
     find_package(amd-smi ${rocprofiler_systems_FIND_QUIETLY} REQUIRED)
     target_link_libraries(rocprofiler-systems-rocm INTERFACE amd-smi::amd-smi)
+
+    find_package(rocprofiler-sdk-rocpd ${rocprofiler_systems_FIND_QUIETLY} REQUIRED)
+    target_link_libraries(
+        rocprofiler-systems-rocm
+        INTERFACE rocprofiler-sdk-rocpd::rocprofiler-sdk-rocpd
+    )
 endif()
 
 # ----------------------------------------------------------------------------------------#
