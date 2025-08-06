@@ -1,0 +1,80 @@
+{
+    "required_tables": [
+        {
+    "name": "top",
+    "required_columns": [
+        "name",
+        "total_calls",
+        "total_duration",
+        "average",
+        "percentage"
+    ],
+    "validation_queries": [
+        {
+            "description": "Check for null function names",
+            "query": "SELECT COUNT(*) as count FROM top WHERE name IS NULL",
+            "expected_result": 0,
+            "comparison": "equals",
+            "error_message": "Found entries with null function names in top table"
+        },
+   {
+            "description": "Check for OMPT get_teaminfo function in top table",
+         "query": "SELECT COUNT(*) as count FROM top WHERE name LIKE '%__ompt_get_teaminfo(int, int*)%'",
+            "expected_result": 0,
+            "comparison": "greater_than",
+            "error_message": "No __ompt_get_teaminfo(int, int*) function found in top table"
+        },
+       
+        
+        {
+            "description": "Check that all entries have valid total_calls",
+            "query": "SELECT COUNT(*) as count FROM top WHERE total_calls <= 0",
+            "expected_result": 0,
+            "comparison": "equals",
+            "error_message": "Found entries with total_calls <= 0 in top table"
+        },
+        {
+            "description": "Check that all entries have valid duration",
+            "query": "SELECT COUNT(*) as count FROM top WHERE total_duration <= 0",
+            "expected_result": 0,
+            "comparison": "equals",
+            "error_message": "Found entries with zero or negative duration in top table"
+        },
+        {
+            "description": "Check that percentage values are valid",
+            "query": "SELECT COUNT(*) as count FROM top WHERE percentage < 0 OR percentage > 100",
+            "expected_result": 0,
+            "comparison": "equals",
+            "error_message": "Found invalid percentage values (not between 0-100) in top table"
+        }
+    ]
+},
+{
+    "name": "rocpd_string",
+    "required_columns": [
+        "id",
+        "string"
+    ],
+    "validation_queries": [
+        {
+            "description": "Check that we have some string entries",
+            "query": "SELECT COUNT(*) as count FROM rocpd_string",
+            "expected_result": 0,
+            "comparison": "greater_than",
+            "error_message": "No string entries found in rocpd_string table"
+        },
+        {
+            "description": "Check for OpenMP OMPT wrapper callback functions",
+            "query": "SELECT COUNT(*) as count FROM rocpd_string WHERE string LIKE '%tim::openmp%' OR string LIKE '%ompt_callback%' OR string LIKE '%ompt_scope_endpoint%'",
+            "expected_result": 0,
+            "comparison": "greater_than",
+            "error_message": "No OpenMP OMPT wrapper callback functions found in string table - OMPT tracing may not be working"
+        }
+    ]
+}
+
+
+       
+
+    ]
+}

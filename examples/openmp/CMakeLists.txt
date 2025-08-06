@@ -39,10 +39,11 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
         FORCE
     )
 else()
-    find_program(CLANGXX_EXECUTABLE NAMES clang++)
+    find_program(CLANGXX_EXECUTABLE NAMES amdclang++ clang++)
     find_library(
         LIBOMP_LIBRARY
         NAMES omp omp5 ${CMAKE_SHARED_LIBRARY_PREFIX}omp${CMAKE_SHARED_LIBRARY_SUFFIX}.5
+        PATHS /opt/rocm/lib /opt/rocm/lib/llvm/lib
     )
     if(
         CLANGXX_EXECUTABLE
@@ -50,7 +51,10 @@ else()
         AND COMMAND rocprofiler_systems_custom_compilation
         AND USE_CLANG_OMP
     )
-        target_compile_options(openmp-common PUBLIC -W -Wall -fopenmp=libomp)
+       # target_compile_options(openmp-common PUBLIC -W -Wall -fopenmp=libomp)
+       message(STATUS "Using ${CLANGXX_EXECUTABLE} for OpenMP examples")
+       target_compile_options(openmp-common PUBLIC -W -Wall -fopenmp=libomp)
+
         target_link_libraries(openmp-common PUBLIC ${LIBOMP_LIBRARY})
         rocprofiler_systems_custom_compilation(COMPILER ${CLANGXX_EXECUTABLE}
                                                TARGET openmp-common

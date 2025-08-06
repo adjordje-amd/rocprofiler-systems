@@ -25,11 +25,11 @@
 # ROCPD tests
 #
 # -------------------------------------------------------------------------------------- #
-
 set(_rocpd_environment
     "${_base_environment}"
     "ROCPROFSYS_USE_ROCPD=true"
 )
+
 
 rocprofiler_systems_add_test(
     SKIP_REWRITE SKIP_RUNTIME
@@ -77,22 +77,63 @@ rocprofiler_systems_add_validation_test(
 
 #----------------------------------------------------------------------------------------#
 #
-# RCCL Test  #
+# OMPT Test  #
 #
 #----------------------------------------------------------------------------------------#
 
+
 rocprofiler_systems_add_test(
-  NAME rccl-rocpd
-  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/examples/rccl/all_reduce_perf
+  SKIP_REWRITE SKIP_RUNTIME
+  NAME openmp-cg-rocpd
+  TARGET openmp-cg
   GPU ON
-  MPI ON
+  MPI OFF
+  NUM_PROCS 1
   ENVIRONMENT "${_rocpd_environment}"
 )
 
 rocprofiler_systems_add_validation_test(
-    NAME rccl-rocpd-sampling
+    NAME openmp-cg-rocpd-sampling
     ROCPD_FILE "rocpd.db"
-    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/rccl/validation_rules.json"
-    DEPENDS rccl-rocpd
-    LABELS "rocprofiler"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/openmp/openmp-cg-tests/validation_rules.json"
+    DEPENDS openmp-cg-rocpd
+    LABELS "rocprofiler" "openmp-cg"
+)
+#########################################################
+rocprofiler_systems_add_test(
+  SKIP_REWRITE SKIP_RUNTIME
+  NAME openmp-lu-rocpd
+  TARGET openmp-lu
+  GPU ON
+  MPI OFF
+  NUM_PROCS 1
+  ENVIRONMENT "${_rocpd_environment}"
+)
+
+rocprofiler_systems_add_validation_test(
+    NAME openmp-lu-rocpd-sampling
+    ROCPD_FILE "rocpd.db"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/openmp/openmp-lu-tests/validation_rules.json"
+    DEPENDS openmp-lu-rocpd
+    LABELS "rocprofiler" "openmp-lu"
+)
+
+##########################################################
+
+rocprofiler_systems_add_test(
+  SKIP_REWRITE SKIP_RUNTIME
+  NAME openmp-target-rocpd
+  TARGET openmp-target
+  GPU ON
+  MPI OFF
+  NUM_PROCS 1
+  ENVIRONMENT "${_rocpd_environment}"
+)
+
+rocprofiler_systems_add_validation_test(
+    NAME openmp-target-rocpd-sampling
+    ROCPD_FILE "rocpd.db"
+    ARGS --validation-rules "${CMAKE_CURRENT_LIST_DIR}/rocpd_validation_rules/openmp/openmp-target-tests/validation_rules.json"
+    DEPENDS openmp-target-rocpd
+    LABELS "rocprofiler" "openmp-target"
 )
