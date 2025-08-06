@@ -1,5 +1,8 @@
 # ROCm Systems Profiler: Application profiling, tracing, and analysis
 
+> [!CAUTION]
+> The rocprofiler-systems repository is retired, please use the [ROCm/rocm-systems](https://github.com/ROCm/rocm-systems) repository
+
 [![Ubuntu 20.04 with GCC, ROCm, and MPI](https://github.com/ROCm/rocprofiler-systems/actions/workflows/ubuntu-focal.yml/badge.svg)](https://github.com/ROCm/rocprofiler-systems/actions/workflows/ubuntu-focal.yml)
 [![Ubuntu 22.04 (GCC, Python, ROCm)](https://github.com/ROCm/rocprofiler-systems/actions/workflows/ubuntu-jammy.yml/badge.svg)](https://github.com/ROCm/rocprofiler-systems/actions/workflows/ubuntu-jammy.yml)
 [![OpenSUSE 15.x with GCC](https://github.com/ROCm/rocprofiler-systems/actions/workflows/opensuse.yml/badge.svg)](https://github.com/ROCm/rocprofiler-systems/actions/workflows/opensuse.yml)
