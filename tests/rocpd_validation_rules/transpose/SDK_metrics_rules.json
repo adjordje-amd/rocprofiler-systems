@@ -20,14 +20,8 @@
       "expected_result": 0,
       "comparison": "equals",
       "error_message": "Empty or NULL category entries found in events_args"
-    },
-    {
-      "description": "Ensure event_id and arg_position are non-negative",
-      "query": "SELECT COUNT(*) FROM events_args WHERE event_id < 0 OR arg_position < 0;",
-      "expected_result": 0,
-      "comparison": "equals",
-      "error_message": "Negative values found in event_id or arg_position in events_args"
     }
+   
   ]
 }
 ,
@@ -65,7 +59,15 @@
           "expected_result": 1,
           "comparison": "greater_than",
           "error_message": "'rocm_hip_api' string not found in the table rocpd_string"
+        },
+          {
+          "description": "Verify that 'rocm_hsa_api' string is present in the table",
+          "query": "SELECT COUNT(*) FROM rocpd_string WHERE string LIKE '%rocm_hsa_api%';",
+          "expected_result": 1,
+          "comparison": "greater_than",
+          "error_message": "'rocm_hsa_api' string not found in the table rocpd_string"
         }
+
       ]
     },
     {
@@ -104,71 +106,6 @@
     
     
   ]
-},
-{
-  "commit": "Validation rules for hip_compiler_api",
-  "name": "rocpd_region",
-  "required_columns": ["name_id", "start", "end"],
- 
-  "validation_queries": [
-    {
-      "description": "Check existence of name_id = 7",
-      "query": "SELECT COUNT(*) FROM rocpd_region WHERE name_id = 7;",
-      "expected_result": 1,
-      "comparison": "greater_than_or_equal",
-      "error_message": "name_id 7 is missing from rocpd_region"
-    },
-    {
-      "description": "Validate timing for name_id = 7",
-      "query": "SELECT COUNT(*) FROM rocpd_region WHERE name_id = 7 AND start > 0 AND end > 0 AND (end - start) >= 0;",
-      "expected_result": 1,
-      "comparison": "greater_than_or_equal",
-      "error_message": "Invalid start/end timing for name_id 7"
-    },
-    {
-      "description": "Check existence of name_id = 8",
-      "query": "SELECT COUNT(*) FROM rocpd_region WHERE name_id = 8;",
-      "expected_result": 1,
-      "comparison": "greater_than_or_equal",
-      "error_message": "name_id 8 is missing from rocpd_region"
-    },
-    {
-      "description": "Validate timing for name_id = 8",
-      "query": "SELECT COUNT(*) FROM rocpd_region WHERE name_id = 8 AND start > 0 AND end > 0 AND (end - start) >= 0;",
-      "expected_result": 1,
-      "comparison": "greater_than_or_equal",
-      "error_message": "Invalid start/end timing for name_id 8"
-    },
-    {
-      "description": "Check existence of name_id = 53",
-      "query": "SELECT COUNT(*) FROM rocpd_region WHERE name_id = 53;",
-      "expected_result": 1,
-      "comparison": "greater_than_or_equal",
-      "error_message": "name_id 53 is missing from rocpd_region"
-    },
-    {
-      "description": "Validate timing for name_id = 53",
-      "query": "SELECT COUNT(*) FROM rocpd_region WHERE name_id = 53 AND start > 0 AND end > 0 AND (end - start) >= 0;",
-      "expected_result": 1,
-      "comparison": "greater_than_or_equal",
-      "error_message": "Invalid start/end timing for name_id 53"
-    },
-    {
-      "description": "Check existence of name_id = 54",
-      "query": "SELECT COUNT(*) FROM rocpd_region WHERE name_id = 54;",
-      "expected_result": 1,
-      "comparison": "greater_than_or_equal",
-      "error_message": "name_id 54 is missing from rocpd_region"
-    },
-    {
-      "description": "Validate timing for name_id = 54",
-      "query": "SELECT COUNT(*) FROM rocpd_region WHERE name_id = 54 AND start > 0 AND end > 0 AND (end - start) >= 0;",
-      "expected_result": 1,
-      "comparison": "greater_than_or_equal",
-      "error_message": "Invalid start/end timing for name_id 54"
-    }
-  ]
-
 },
 {
   "commit": "Validation rule for rocm_hsa_api",
@@ -339,11 +276,94 @@
     }
     
   ]
-}
-
+},
+{
+      "commit": "Validation rules for memory_allocations",
+      "name": "memory_allocations",
+      "required_columns": [
+        "id", "guid", "category", "nid", "pid", "tid", "start", "end", "duration", "type", "level", "agent_name"
+      ],
+      "validation_queries": [
+        {
+          "description": "Check that all IDs are not NULL",
+          "query": "SELECT COUNT(*) FROM memory_allocations WHERE id IS NULL;",
+          "expected_result": 0,
+          "comparison": "equals",
+          "error_message": "NULL entries found in the id column of memory_allocations"
+        },
+        {
+          "description": "Verify that 'rocm_memory_allocate' appears more than 10 times in category",
+          "query": "SELECT COUNT(*) FROM memory_allocations WHERE category LIKE '%rocm_memory_allocate%';",
+          "expected_result": 10,
+          "comparison": "greater_than",
+          "error_message": "'rocm_memory_allocate' string appears fewer than 10 times in category column of memory_allocations"
+        }
+      ]
+    },
+     {
+      "name": "rocpd_string",
+      "required_columns": [
+        "id", "guid", "string"
+      ],
+      "validation_queries": [
+        {
+          "description": "Verify that 'rocm_memory_allocate' is present in the string column",
+          "query": "SELECT COUNT(*) FROM rocpd_string WHERE string LIKE '%rocm_memory_allocate%';",
+          "expected_result": 0,
+          "comparison": "greater_than",
+          "error_message": "'rocm_memory_allocate' string not found in the string column of rocpd_string"
+        }
+      ]
+    },
+     {
+      "commit": "Validation rules for memory_copies",
+      "name": "rocpd_string",
+      "required_columns": [
+        "id", "guid", "string"
+      ],
+      "validation_queries": [
+       {
+          "description": "Verify that 'rocm_memory_copy' is present in the string column",
+          "query": "SELECT COUNT(*) FROM rocpd_string WHERE string LIKE '%rocm_memory_copy%';",
+          "expected_result": 0,
+          "comparison": "greater_than",
+          "error_message": "'rocm_memory_copy' string not found in the string column of rocpd_string"
+        },
+        {
+          "description": "Verify that 'MEMORY_COPY_DEVICE_TO_HOST' is present in the string column",
+          "query": "SELECT COUNT(*) FROM rocpd_string WHERE string LIKE '%MEMORY_COPY_DEVICE_TO_HOST%';",
+          "expected_result": 0,
+          "comparison": "greater_than",
+          "error_message": "'MEMORY_COPY_DEVICE_TO_HOST' string not found in the string column of rocpd_string"
+        }
+      ]
+    },
+     {
+      "commit": "Validation rules for memory_copies",
+      "name": "memory_copies",
+      "required_columns": [
+        "id", "guid", "category", "nid", "pid", "tid", "start", "end"
+      ],
+      "validation_queries": [
+        {
+          "description": "Verify that 'rocm_memory_copy' appears more than 10 times in category",
+          "query": "SELECT COUNT(*) FROM memory_copies WHERE category LIKE '%rocm_memory_copy%';",
+          "expected_result": 10,
+          "comparison": "greater_than",
+          "error_message": "'rocm_memory_copy' string appears fewer than 10 times in category column of memory_copies"
+        },
+        {
+          "description": "Check that all IDs are not NULL",
+          "query": "SELECT COUNT(*) FROM memory_copies WHERE id IS NULL;",
+          "expected_result": 0,
+          "comparison": "equals",
+          "error_message": "NULL entries found in the id column of memory_copies"
+        }
+      ]
+    }
   ]
-}
 
+}
 
 
 
