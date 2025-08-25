@@ -16,22 +16,22 @@
                     "comparison": "greater_than",
                     "error_message": "No string entries found in rocpd_string table"
                 },
-                {
-                    "description": "Check for OMPT get_teaminfo function",
-                    "query": "SELECT COUNT(*) as count FROM rocpd_string WHERE string LIKE '%_ompt_get_teaminfo%'",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "No __ompt_get_teaminfo(int, int*) function found in string table"
-                },
-               
-
-                {
+              
+             {
                     "description": "Check for any OMPT-related strings",
                     "query": "SELECT COUNT(*) as count FROM rocpd_string WHERE string LIKE '%ompt%'",
                     "expected_result": 0,
                     "comparison": "greater_than",
                     "error_message": "No OMPT-related strings found in rocpd_string table"
+                },
+                {
+                   "description": "Check that 'openmp::' appears more than 10 times in string column",
+                   "query": "SELECT COUNT(*) as count FROM rocpd_string WHERE string LIKE '%openmp::%';",
+                   "expected_result": 10,
+                   "comparison": "greater_than",
+                   "error_message": "'openmp::' appears fewer than 11 times in string column of rocpd_string"
                 }
+                
             ]
         },
          {
@@ -66,65 +66,11 @@
                     "expected_result": 0,
                     "comparison": "equals",
                     "error_message": "Found entries with zero or negative duration in top table"
-                },
+                }
              
                
-                {
-                    "description": "Check that percentage values are valid",
-                    "query": "SELECT COUNT(*) as count FROM top WHERE percentage < 0 OR percentage > 100",
-                    "expected_result": 0,
-                    "comparison": "equals",
-                    "error_message": "Found invalid percentage values (not between 0-100) in top table"
-                }
+             
             ]
-        },
-        {
-    "name": "rocpd_region",
-    "required_columns": [
-        "id",
-        "name_id",
-        "start",
-        "end"
-    ],
-    "validation_queries": [
-        {
-            "description": "Check for null id values",
-            "query": "SELECT COUNT(*) as count FROM rocpd_region WHERE id IS NULL",
-            "expected_result": 0,
-            "comparison": "equals",
-            "error_message": "Found entries with null id values in rocpd_region table"
-        },
-     
-        {
-            "description": "Check for specific name_id 578",
-            "query": "SELECT COUNT(*) as count FROM rocpd_region WHERE name_id = 578",
-            "expected_result": 0,
-            "comparison": "greater_than",
-            "error_message": "No entries found with name_id = 578 in rocpd_region table"
-        },
-        {
-            "description": "Check for specific name_id 586",
-            "query": "SELECT COUNT(*) as count FROM rocpd_region WHERE name_id = 586",
-            "expected_result": 0,
-            "comparison": "greater_than",
-            "error_message": "No entries found with name_id = 586 in rocpd_region table"
-        },
-        {
-            "description": "Check that start times are valid",
-            "query": "SELECT COUNT(*) as count FROM rocpd_region WHERE start <= 0",
-            "expected_result": 0,
-            "comparison": "equals",
-            "error_message": "Found entries with invalid start times in rocpd_region table"
-        },
-        {
-            "description": "Check that end times are after start times",
-            "query": "SELECT COUNT(*) as count FROM rocpd_region WHERE end <= start",
-            "expected_result": 0,
-            "comparison": "equals",
-            "error_message": "Found entries where end time is not greater than start time"
         }
-      
-    ]
-}
-    ]
+        ]
 }

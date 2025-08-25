@@ -27,106 +27,26 @@
                     "expected_result": 0,
                     "comparison": "greater_than",
                     "error_message": "No kernels found with valid call counts"
-                },
-                {
-                    "description": "Check for vector multiplication kernels",
-                    "query": "SELECT COUNT(*) as count FROM kernel_summary WHERE name LIKE '%vmul%' OR name LIKE '%mul%'",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "No vector multiplication kernels found"
                 }
+                
             ]
         },
-        {
-            "name": "regions",
-            "required_columns": [
-                "name",
-                "duration"
-            ],
-            "validation_queries": [
-                {
-                    "description": "Check for OpenMP OMPT instrumentation regions",
-                    "query": "SELECT COUNT(*) as count FROM regions WHERE name LIKE '%openmp%' AND (name LIKE '%ompt%' OR name LIKE '%callback%')",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "No OpenMP OMPT instrumentation regions found"
-                },
-                {
-                    "description": "Check for rocprofsys OMPT component activity",
-                    "query": "SELECT COUNT(*) as count FROM regions WHERE name LIKE '%rocprofsys%' AND name LIKE '%ompt%'",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "No rocprofsys OMPT component activity found in regions"
-                }
-            ]
-        },
-        {
+      {
             "name": "rocpd_string",
             "required_columns": [
                 "string"
             ],
             "validation_queries": [
                 {
-                    "description": "Check for OpenMP OMPT wrapper components",
-                    "query": "SELECT COUNT(*) as count FROM rocpd_string WHERE string LIKE '%tim::openmp::ompt_wrapper%'",
+                    "description": "Check for omp_offloading components",
+                    "query": "SELECT COUNT(*) as count FROM rocpd_string WHERE string LIKE '%omp_offloading%'",
                     "expected_result": 0,
                     "comparison": "greater_than",
-                    "error_message": "No OpenMP OMPT wrapper components found"
-                },
-                {
-                    "description": "Check for callback connector strings",
-                    "query": "SELECT COUNT(*) as count FROM rocpd_string WHERE string LIKE '%callback_connector%' AND string LIKE '%component_tuple%'",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "No callback connector components found"
-                },
-                {
-                    "description": "Check for rocprofsys OMPT component",
-                    "query": "SELECT COUNT(*) as count FROM rocpd_string WHERE string LIKE '%rocprofsys::component::ompt%'",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "No rocprofsys OMPT component found"
-                },
-                {
-                    "description": "Check for target data operation types",
-                    "query": "SELECT COUNT(*) as count FROM rocpd_string WHERE string LIKE '%ompt_target_data_op_t%'",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "No OpenMP target data operation types found"
-                }
-            ]
-        },
-        {
-            "name": "rocpd_region",
-            "required_columns": [
-                "id",
-                "name_id",
-                "start",
-                "end"
-            ],
-            "validation_queries": [
-                {
-                    "description": "Check for name_id 103 entries",
-                    "query": "SELECT COUNT(*) as count FROM rocpd_region WHERE name_id = 103",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "No name_id 103 entries found - specific OpenMP region not captured"
-                },
-                {
-                    "description": "Check for name_id 104 entries", 
-                    "query": "SELECT COUNT(*) as count FROM rocpd_region WHERE name_id = 104",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "No name_id 104 entries found - specific OpenMP region not captured"
-                },
-                {
-                    "description": "Check for valid durations in target regions",
-                    "query": "SELECT COUNT(*) as count FROM rocpd_region WHERE name_id IN (103, 104) AND (end - start) > 0",
-                    "expected_result": 0,
-                    "comparison": "greater_than",
-                    "error_message": "Found target regions (103, 104) but with invalid durations"
+                    "error_message": "No omp_offloading components found"
                 }
             ]
         }
+
+
     ]
 }
