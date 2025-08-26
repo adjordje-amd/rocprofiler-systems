@@ -45,8 +45,53 @@
                     "error_message": "No omp_offloading components found"
                 }
             ]
+        },
+          {
+            "name": "top",
+            "required_columns": [
+                "name",
+                "total_calls",
+                "average"
+            ],
+            "validation_queries": [
+                {
+                    "description": "Check that 'omp_offoading' is present in the name column",
+                    "query": "SELECT COUNT(*) as count FROM top WHERE name LIKE '%omp_offloading%'",
+                    "expected_result": 0,
+                    "comparison": "greater_than",
+                    "error_message": "'omp_offoading' not found in the name column of top table"
+                }
+            ]
+        },
+         {
+            "name": "kernels",
+            "required_columns": [
+                "id",
+                "guid",
+                "category",
+                "region",
+                "name"
+            ],
+            "validation_queries": [
+                {
+                    "description": "Check that 'kernels' is present in the name column",
+                    "query": "SELECT COUNT(*) as count FROM kernels WHERE name LIKE '%omp_offloading%'",
+                    "expected_result": 0,
+                    "comparison": "greater_than",
+                    "error_message": "'omp_offloading' not found in the name column of kernels table"
+                },
+                {
+                    "description": "Check that id is not null in kernels table",
+                    "query": "SELECT COUNT(*) as count FROM kernels WHERE id IS NULL",
+                    "expected_result": 0,
+                    "comparison": "equals",
+                    "error_message": "Found entries with null id in kernels table"
+                }
+            ]
         }
+        
 
 
+        
     ]
 }

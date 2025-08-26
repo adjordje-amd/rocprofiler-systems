@@ -71,7 +71,32 @@
             "error_message": "No OpenMP OMPT wrapper callback functions found in string table - OMPT tracing may not be working"
         }
     ]
-}
+},
+ {
+            "name": "regions",
+            "required_columns": [
+                "id",
+                "guid",
+                "category",
+                "name"
+            ],
+            "validation_queries": [
+                {
+                    "description": "Check that 'openmp' appears more than 1000 times in the name column",
+                    "query": "SELECT COUNT(*) as count FROM regions WHERE name LIKE '%openmp%'",
+                    "expected_result": 1000,
+                    "comparison": "greater_than",
+                    "error_message": "'openmp' appears fewer than 1001 times in the name column of regions table"
+                },
+                {
+                    "description": "Check that id is not null in regions table",
+                    "query": "SELECT COUNT(*) as count FROM regions WHERE id IS NULL",
+                    "expected_result": 0,
+                    "comparison": "equals",
+                    "error_message": "Found entries with null id in regions table"
+                }
+            ]
+        }
     
 
 
